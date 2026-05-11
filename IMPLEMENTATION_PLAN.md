@@ -115,9 +115,9 @@ This section preserves the broader technology plan from the original project doc
 | ML API | Python FastAPI | Prediction endpoints called by Spring Boot. |
 | Data processing | pandas, NumPy | Feature engineering and model input preparation. |
 | Baseline ML | scikit-learn | Random Forest, Logistic Regression, Isolation Forest, and clustering later. |
-| Attention model | PyTorch optional | Future lightweight Transformer encoder for sequence modeling. |
+| Attention model | PyTorch optional | Future lightweight Transformer encoder for sequence modeling; NVIDIA GPU acceleration is optional and not part of the baseline MVP. |
 | Model storage | joblib, pickle, `.pt` files | Store scikit-learn and PyTorch model artifacts locally. |
-| Experiments | Jupyter Notebook | Train and evaluate models before productionizing. |
+| Experiments | Jupyter Notebook | Train and evaluate models before productionizing; GPU can be used locally for later PyTorch experiments. |
 | Testing | pytest | Test prediction routes and feature engineering functions. |
 
 ### Data, Infrastructure, and Tools
@@ -127,6 +127,7 @@ This section preserves the broader technology plan from the original project doc
 | Database | PostgreSQL | Primary store for strategies, candles, backtests, trades, and audit events. |
 | Cache/queue | Redis optional | Skip initially; consider for paper-trading sessions or background coordination. |
 | Local orchestration | Docker Compose | Run PostgreSQL, ML service, backend, and optional frontend locally. |
+| Optional GPU runtime | NVIDIA Container Toolkit / Docker GPU support | Future-only path for CUDA-backed PyTorch training or inference; default Compose stack must remain CPU-compatible. |
 | Frontend | React + TypeScript optional | Add only after API is stable. |
 | Charts | Recharts or Plotly optional | Future equity curve, drawdown, and regime visualizations. |
 | API testing | Postman / Insomnia | Manual testing alongside Swagger. |
@@ -569,6 +570,8 @@ POST /predict/strategy-risk
 
 The MVP risk score should be rule-based. Do not train a real model yet.
 
+The MVP ML service should remain CPU-first. NVIDIA GPU support is useful for later PyTorch training or heavier inference, but the first risk-scoring endpoint must not require CUDA, GPU drivers, or GPU-enabled Docker to run.
+
 ### Risk Prediction Input
 
 Accept backtest metrics such as:
@@ -613,9 +616,20 @@ The exact thresholds can be refined during implementation, but the MVP should ro
 Add tests for:
 
 - Health endpoint.
+- Optional GPU health endpoint in future phases, only when CUDA-backed models are introduced.
 - Valid prediction request.
 - Invalid prediction request.
 - Each risk label branch.
+
+### Optional Future GPU Path
+
+When the project moves beyond rule-based scoring into PyTorch sequence models:
+
+- Add a separate GPU-enabled Docker profile or service, rather than changing the default `ml-service`.
+- Pin compatible CUDA, PyTorch, and Python versions.
+- Add a `GET /health/gpu` endpoint that reports CUDA availability and device name.
+- Keep CPU fallback behavior for rule-based and scikit-learn scoring.
+- Document local verification with `nvidia-smi` from inside a container.
 
 ---
 
@@ -780,6 +794,21 @@ The backend should depend on:
 
 The backend should be resilient if the ML service is temporarily unavailable.
 
+### Optional GPU Compose Profile
+
+Do not make the default local stack require GPU support. If CUDA-backed PyTorch models are added later, introduce an optional Compose profile such as:
+
+```bash
+docker compose --profile gpu up --build
+```
+
+The GPU profile should:
+
+- Use a CUDA/PyTorch-compatible ML service image.
+- Request NVIDIA GPU devices through Docker Compose.
+- Keep `postgres` and `backend` unchanged where possible.
+- Fall back to the CPU `ml-service` for MVP rule-based scoring.
+
 ---
 
 ## 18. Documentation
@@ -924,6 +953,7 @@ After the MVP is stable, consider:
 - Market regime classifier.
 - Anomaly detector.
 - PyTorch Transformer encoder for sequence-based regime or trade-quality classification.
+- Optional local NVIDIA GPU acceleration for PyTorch training and heavier model inference.
 - Cloud deployment after local reproducibility is strong.
 
 ---
@@ -1012,6 +1042,15 @@ Potential future outputs:
 - Drawdown risk warning.
 - Anomaly detection support.
 
+### Local NVIDIA GPU Use
+
+GPU acceleration belongs with this future attention-model phase, not the Backend MVP. When implemented locally:
+
+- Training scripts and notebooks may use CUDA if available.
+- Inference should report whether it is using CPU or GPU.
+- The API should avoid returning different business results solely because GPU is enabled.
+- Tests should cover CPU execution, with GPU checks treated as optional environment-specific tests.
+
 ---
 
 ## 25. Seven-Phase Development Roadmap
@@ -1023,7 +1062,7 @@ Potential future outputs:
 | Phase 3 - Baseline ML Service | FastAPI risk endpoint and Spring Boot ML client. | Backtest result includes ML risk score and classification. |
 | Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Simulated orders can be approved/rejected with logged reasons. |
 | Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | User can run a strategy in simulation mode without real money. |
-| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint. | Model classifies regimes or trade quality from recent candle windows. |
+| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | Model classifies regimes or trade quality from recent candle windows; CPU path still works for local reproducibility. |
 | Phase 7 - Polish | README, tests, seed data, optional dashboard, screenshots. | Portfolio-ready project with clear docs and reproducible local setup. |
 
 ---
@@ -1036,6 +1075,7 @@ Potential future outputs:
 | Overpromising trading performance | Position the app as research/risk analysis, not a profit generator. |
 | Bad market data quality | Validate CSV rows, detect missing candles, and log data gaps. |
 | ML model gives false confidence | Show reasons/limitations and keep deterministic risk rules separate from ML. |
+| GPU-specific setup makes the project hard to run | Keep the MVP CPU-compatible and add GPU support only as an optional profile for later PyTorch work. |
 | Transformer complexity | Add it only after baseline backtesting and simple ML are complete. |
 | Real-money trading danger | Keep live broker integration out of the first version. |
 | Uncontrolled user strategy code | Use structured JSON strategies before allowing custom scripting. |
@@ -1064,6 +1104,7 @@ The project should eventually include:
 - Java 21 and Spring Boot 3 are used.
 - PostgreSQL 16 is used locally through Docker Compose.
 - The ML service starts as rule-based FastAPI, not a trained model.
+- NVIDIA GPU support is optional and reserved for later PyTorch model work; the default MVP stack must run without a GPU.
 - Strategy execution is long-only with one position at a time.
 - Trades execute at candle close price.
 - Swagger is sufficient as the initial UI.
