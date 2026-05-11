@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: signalattention-backend
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:signalattention}
+    username: ${POSTGRES_USER:signalattention}
+    password: ${POSTGRES_PASSWORD:signalattention}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: ${BACKEND_PORT:8080}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+signalattention:
+  ml-service:
+    base-url: ${ML_SERVICE_URL:http://localhost:8000}
