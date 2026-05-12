@@ -24,11 +24,15 @@ public class MarketDataController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public MarketDataImportSummary importCsv(@RequestParam("file") MultipartFile file) throws IOException {
+    public MarketDataImportSummary importCsv(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new BadRequestException("CSV file is required");
         }
-        return marketDataService.importCsv(file.getInputStream());
+        try {
+            return marketDataService.importCsv(file.getInputStream());
+        } catch (IOException exception) {
+            throw new BadRequestException("Unable to read CSV file", exception);
+        }
     }
 
     @GetMapping("/candles")
