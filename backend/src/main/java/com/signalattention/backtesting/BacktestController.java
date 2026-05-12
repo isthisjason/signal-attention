@@ -3,6 +3,7 @@ package com.signalattention.backtesting;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import com.signalattention.ml.MlStrategyRiskResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,5 +45,10 @@ public class BacktestController {
     @GetMapping("/api/backtests/{id}/metrics")
     public BacktestMetricsResponse getMetrics(@PathVariable Long id) {
         return backtestService.getMetrics(id);
+    }
+
+    @PostMapping("/api/backtests/{id}/ml-risk-score")
+    public MlStrategyRiskResponse scoreMlRisk(@PathVariable Long id) {
+        return backtestService.scoreMlRisk(id);
     }
 }

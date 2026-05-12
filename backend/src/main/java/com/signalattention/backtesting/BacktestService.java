@@ -10,6 +10,9 @@ import com.signalattention.indicators.CrossoverSignalType;
 import com.signalattention.indicators.SmaCrossoverDetector;
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.MarketCandleRepository;
+import com.signalattention.ml.MlRiskClient;
+import com.signalattention.ml.MlStrategyRiskRequest;
+import com.signalattention.ml.MlStrategyRiskResponse;
 import com.signalattention.strategies.SmaCrossoverRulesRequest;
 import com.signalattention.strategies.Strategy;
 import com.signalattention.strategies.StrategyRepository;
@@ -39,6 +42,7 @@ public class BacktestService {
     private final SmaCrossoverDetector smaCrossoverDetector;
     private final AuditService auditService;
     private final ObjectMapper objectMapper;
+    private final MlRiskClient mlRiskClient;
 
     public BacktestService(
             StrategyRepository strategyRepository,
@@ -47,7 +51,8 @@ public class BacktestService {
             BacktestTradeRepository backtestTradeRepository,
             SmaCrossoverDetector smaCrossoverDetector,
             AuditService auditService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MlRiskClient mlRiskClient
     ) {
         this.strategyRepository = strategyRepository;
         this.marketCandleRepository = marketCandleRepository;
@@ -56,6 +61,7 @@ public class BacktestService {
         this.smaCrossoverDetector = smaCrossoverDetector;
         this.auditService = auditService;
         this.objectMapper = objectMapper;
+        this.mlRiskClient = mlRiskClient;
     }
 
     @Transactional
@@ -97,6 +103,31 @@ public class BacktestService {
     @Transactional(readOnly = true)
     public BacktestMetricsResponse getMetrics(Long id) {
         return BacktestMetricsResponse.from(findRun(id));
+    }
+
+    @Transactional
+    public MlStrategyRiskResponse scoreMlRisk(Long id) {
+        BacktestRun run = findRun(id);
+        try {
+            MlStrategyRiskResponse response = mlRiskClient.scoreStrategyRisk(new MlStrategyRiskRequest(
+                    run.getTotalReturn(),
+                    run.getMaxDrawdown(),
+                    run.getWinRate(),
+                    run.getProfitFactor(),
+                    run.getTradeCount(),
+                    run.getAverageTradeReturn(),
+                    run.getFeeDrag(),
+                    run.getVolatility()
+            ));
+            run.setMlRiskScore(response.riskScore());
+            run.setMlRiskLabel(response.riskLabel());
+            backtestRunRepository.save(run);
+            auditService.record(ENTITY_TYPE, id.toString(), "ML_RISK_SCORE_COMPLETED", "ML risk score completed", mlMetadataJson(run, response));
+            return response;
+        } catch (RuntimeException exception) {
+            auditService.record(ENTITY_TYPE, id.toString(), "ML_RISK_SCORE_FAILED", exception.getMessage(), "{\"backtestRunId\":" + id + "}");
+            throw exception;
+        }
     }
 
     private BacktestRun execute(Strategy strategy, BacktestRequest request) {
@@ -373,6 +404,18 @@ public class BacktestService {
                     "strategyId", run.getStrategy().getId(),
                     "tradeCount", run.getTradeCount(),
                     "totalReturn", run.getTotalReturn()
+            ));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Unable to serialize audit metadata", exception);
+        }
+    }
+
+    private String mlMetadataJson(BacktestRun run, MlStrategyRiskResponse response) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "backtestRunId", run.getId(),
+                    "riskScore", response.riskScore(),
+                    "riskLabel", response.riskLabel()
             ));
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Unable to serialize audit metadata", exception);
