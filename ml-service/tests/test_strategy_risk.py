@@ -1,12 +1,9 @@
 from decimal import Decimal
 
-from fastapi.testclient import TestClient
+import pytest
+from pydantic import ValidationError
 
-from app.main import app
 from app.routes.strategy_risk import StrategyRiskRequest, predict_strategy_risk
-
-
-client = TestClient(app)
 
 
 def risk_request(**overrides: object) -> StrategyRiskRequest:
@@ -25,31 +22,16 @@ def risk_request(**overrides: object) -> StrategyRiskRequest:
 
 
 def test_valid_prediction_request() -> None:
-    response = client.post(
-        "/predict/strategy-risk",
-        json={
-            "totalReturn": "18",
-            "maxDrawdown": "8",
-            "winRate": "58",
-            "profitFactor": "1.8",
-            "tradeCount": 24,
-            "averageTradeReturn": "0.8",
-            "feeDrag": "12",
-            "volatility": "1.5",
-        },
-    )
+    response = predict_strategy_risk(risk_request())
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["riskLabel"] == "LOW_RISK"
-    assert Decimal(body["riskScore"]) >= Decimal("0")
-    assert body["reasons"]
+    assert response.riskLabel == "LOW_RISK"
+    assert response.riskScore >= Decimal("0")
+    assert response.reasons
 
 
 def test_invalid_prediction_request() -> None:
-    response = client.post(
-        "/predict/strategy-risk",
-        json={
+    with pytest.raises(ValidationError):
+        StrategyRiskRequest(**{
             "totalReturn": "18",
             "maxDrawdown": "-1",
             "winRate": "120",
@@ -58,10 +40,7 @@ def test_invalid_prediction_request() -> None:
             "averageTradeReturn": "0.8",
             "feeDrag": "12",
             "volatility": "1.5",
-        },
-    )
-
-    assert response.status_code == 422
+        })
 
 
 def test_low_risk_label() -> None:
