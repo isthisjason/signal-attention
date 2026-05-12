@@ -1,5 +1,6 @@
 package com.signalattention.strategies;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -16,6 +17,7 @@ public record SmaCrossoverRulesRequest(
 ) {
 
     @AssertTrue(message = "shortWindow must be less than longWindow")
+    @JsonIgnore
     public boolean isWindowOrderValid() {
         if (shortWindow == null || longWindow == null) {
             return true;
