@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.MarketCandleRepository;
+import com.signalattention.risk.RiskPolicy;
+import com.signalattention.risk.RiskPolicyRepository;
 import com.signalattention.strategies.Strategy;
 import com.signalattention.strategies.StrategyRepository;
 import com.signalattention.strategies.StrategyStatus;
@@ -46,6 +48,9 @@ class PersistenceIntegrationTests {
     @Autowired
     private MarketCandleRepository marketCandleRepository;
 
+    @Autowired
+    private RiskPolicyRepository riskPolicyRepository;
+
     @Test
     void flywayMigrationsSupportStrategyPersistence() {
         Strategy strategy = new Strategy(
@@ -72,6 +77,33 @@ class PersistenceIntegrationTests {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void flywayMigrationsSupportRiskPolicyPersistence() {
+        Strategy strategy = strategyRepository.saveAndFlush(strategy());
+        RiskPolicy policy = new RiskPolicy(
+                strategy,
+                new BigDecimal("25"),
+                new BigDecimal("5"),
+                new BigDecimal("12"),
+                new BigDecimal("8"),
+                30
+        );
+
+        RiskPolicy saved = riskPolicyRepository.saveAndFlush(policy);
+
+        assertThat(saved.getId()).isNotNull();
+        assertThat(riskPolicyRepository.findByStrategyId(strategy.getId())).isPresent();
+    }
+
+    @Test
+    void riskPoliciesRejectDuplicateStrategy() {
+        Strategy strategy = strategyRepository.saveAndFlush(strategy());
+        riskPolicyRepository.saveAndFlush(riskPolicy(strategy));
+
+        assertThatThrownBy(() -> riskPolicyRepository.saveAndFlush(riskPolicy(strategy)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private MarketCandle candle(Instant openTime) {
         return new MarketCandle(
                 "BTC-USD",
@@ -82,6 +114,28 @@ class PersistenceIntegrationTests {
                 new BigDecimal("41900.00"),
                 new BigDecimal("42050.00"),
                 new BigDecimal("12.50")
+        );
+    }
+
+    private Strategy strategy() {
+        return new Strategy(
+                "BTC SMA",
+                "BTC-USD",
+                "1h",
+                StrategyType.SMA_CROSSOVER,
+                "{\"shortWindow\":20,\"longWindow\":50,\"initialBalance\":10000,\"feePercent\":0.1,\"positionSizePercent\":25}",
+                StrategyStatus.ACTIVE
+        );
+    }
+
+    private RiskPolicy riskPolicy(Strategy strategy) {
+        return new RiskPolicy(
+                strategy,
+                new BigDecimal("25"),
+                new BigDecimal("5"),
+                new BigDecimal("12"),
+                new BigDecimal("8"),
+                30
         );
     }
 }
