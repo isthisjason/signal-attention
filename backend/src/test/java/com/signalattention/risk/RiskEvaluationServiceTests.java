@@ -2,8 +2,13 @@ package com.signalattention.risk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.signalattention.audit.AuditService;
 import com.signalattention.common.ResourceNotFoundException;
 import com.signalattention.strategies.Strategy;
 import com.signalattention.strategies.StrategyStatus;
@@ -24,11 +29,14 @@ class RiskEvaluationServiceTests {
     @Mock
     private RiskPolicyRepository riskPolicyRepository;
 
+    @Mock
+    private AuditService auditService;
+
     private RiskEvaluationService riskEvaluationService;
 
     @BeforeEach
     void setUp() {
-        riskEvaluationService = new RiskEvaluationService(riskPolicyRepository);
+        riskEvaluationService = new RiskEvaluationService(riskPolicyRepository, auditService, new ObjectMapper());
     }
 
     @Test
@@ -41,6 +49,13 @@ class RiskEvaluationServiceTests {
         assertThat(response.orderNotional()).isEqualByComparingTo("2000.00000000");
         assertThat(response.positionSizePercent()).isEqualByComparingTo("20.000000");
         assertThat(response.reasonCodes()).contains(RiskReasonCode.POSITION_SIZE_WITHIN_LIMIT);
+        verify(auditService).record(
+                eq("RISK_EVALUATION"),
+                eq("1"),
+                eq("RISK_APPROVED"),
+                eq("Risk evaluation approved"),
+                contains("POSITION_SIZE_WITHIN_LIMIT")
+        );
     }
 
     @Test
@@ -52,6 +67,13 @@ class RiskEvaluationServiceTests {
         assertThat(response.decision()).isEqualTo(RiskDecision.REJECTED);
         assertThat(response.positionSizePercent()).isEqualByComparingTo("40.000000");
         assertThat(response.reasonCodes()).contains(RiskReasonCode.POSITION_SIZE_EXCEEDS_LIMIT);
+        verify(auditService).record(
+                eq("RISK_EVALUATION"),
+                eq("1"),
+                eq("RISK_REJECTED"),
+                eq("Risk evaluation rejected"),
+                contains("POSITION_SIZE_EXCEEDS_LIMIT")
+        );
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.signalattention.risk;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.signalattention.audit.AuditService;
 import com.signalattention.common.ResourceNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -7,6 +10,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class RiskEvaluationService {
 
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+    private static final String ENTITY_TYPE = "RISK_EVALUATION";
 
     private final RiskPolicyRepository riskPolicyRepository;
+    private final AuditService auditService;
+    private final ObjectMapper objectMapper;
 
-    public RiskEvaluationService(RiskPolicyRepository riskPolicyRepository) {
+    public RiskEvaluationService(
+            RiskPolicyRepository riskPolicyRepository,
+            AuditService auditService,
+            ObjectMapper objectMapper
+    ) {
         this.riskPolicyRepository = riskPolicyRepository;
+        this.auditService = auditService;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -82,7 +95,7 @@ public class RiskEvaluationService {
             }
         }
 
-        return new RiskEvaluationResponse(
+        RiskEvaluationResponse response = new RiskEvaluationResponse(
                 decision,
                 request.strategyId(),
                 orderNotional,
@@ -90,5 +103,27 @@ public class RiskEvaluationService {
                 List.copyOf(reasonCodes),
                 List.copyOf(reasons)
         );
+        auditService.record(
+                ENTITY_TYPE,
+                request.strategyId().toString(),
+                "RISK_" + decision.name(),
+                "Risk evaluation " + decision.name().toLowerCase(),
+                metadataJson(response)
+        );
+        return response;
+    }
+
+    private String metadataJson(RiskEvaluationResponse response) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "strategyId", response.strategyId(),
+                    "decision", response.decision(),
+                    "orderNotional", response.orderNotional(),
+                    "positionSizePercent", response.positionSizePercent(),
+                    "reasonCodes", response.reasonCodes()
+            ));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Unable to serialize risk evaluation metadata", exception);
+        }
     }
 }
