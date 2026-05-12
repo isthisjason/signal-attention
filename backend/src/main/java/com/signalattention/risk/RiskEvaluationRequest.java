@@ -14,7 +14,7 @@ public record RiskEvaluationRequest(
         @NotNull @DecimalMin(value = "0.00000001") BigDecimal price,
         @NotNull @DecimalMin(value = "0.00000001") BigDecimal accountEquity,
         @DecimalMin(value = "0.0") BigDecimal currentDailyLoss,
-        @DecimalMin(value = "0.0") BigDecimal openPositionEntryPrice,
+        @DecimalMin(value = "0.00000001") BigDecimal openPositionEntryPrice,
         Instant lastRiskRejectionAt,
         Instant evaluatedAt
 ) {
