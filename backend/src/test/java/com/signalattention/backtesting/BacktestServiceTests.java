@@ -15,6 +15,8 @@ import com.signalattention.indicators.SmaCrossoverDetector;
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlRiskClient;
+import com.signalattention.ml.MlStrategyRiskRequest;
+import com.signalattention.ml.MlStrategyRiskResponse;
 import com.signalattention.strategies.SmaCrossoverRulesRequest;
 import com.signalattention.strategies.Strategy;
 import com.signalattention.strategies.StrategyRepository;
@@ -142,6 +144,39 @@ class BacktestServiceTests {
                 .hasMessage("Not enough candles for long SMA window");
     }
 
+    @Test
+    void scoreMlRiskPersistsRiskFields() throws Exception {
+        BacktestRun run = completedRun();
+        MlStrategyRiskResponse mlResponse = new MlStrategyRiskResponse(
+                new BigDecimal("42.50"),
+                "MEDIUM_RISK",
+                List.of("Limited trade count weakens confidence.")
+        );
+        when(backtestRunRepository.findById(10L)).thenReturn(Optional.of(run));
+        when(mlRiskClient.scoreStrategyRisk(any(MlStrategyRiskRequest.class))).thenReturn(mlResponse);
+        when(backtestRunRepository.save(any(BacktestRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MlStrategyRiskResponse response = backtestService.scoreMlRisk(10L);
+
+        assertThat(response.riskLabel()).isEqualTo("MEDIUM_RISK");
+        assertThat(run.getMlRiskScore()).isEqualByComparingTo("42.50");
+        assertThat(run.getMlRiskLabel()).isEqualTo("MEDIUM_RISK");
+        verify(backtestRunRepository).save(run);
+        verify(auditService).record(eq("BACKTEST"), eq("10"), eq("ML_RISK_SCORE_COMPLETED"), eq("ML risk score completed"), any());
+    }
+
+    @Test
+    void scoreMlRiskAuditsFailures() throws Exception {
+        BacktestRun run = completedRun();
+        RuntimeException failure = new RuntimeException("ML service unavailable");
+        when(backtestRunRepository.findById(10L)).thenReturn(Optional.of(run));
+        when(mlRiskClient.scoreStrategyRisk(any(MlStrategyRiskRequest.class))).thenThrow(failure);
+
+        assertThatThrownBy(() -> backtestService.scoreMlRisk(10L))
+                .isSameAs(failure);
+        verify(auditService).record(eq("BACKTEST"), eq("10"), eq("ML_RISK_SCORE_FAILED"), eq("ML service unavailable"), any());
+    }
+
     private Strategy strategy() throws Exception {
         SmaCrossoverRulesRequest rules = new SmaCrossoverRulesRequest(
                 2,
@@ -160,6 +195,21 @@ class BacktestServiceTests {
         );
         ReflectionTestUtils.setField(strategy, "id", 1L);
         return strategy;
+    }
+
+    private BacktestRun completedRun() throws Exception {
+        BacktestRun run = new BacktestRun(strategy(), START, END, new BigDecimal("1000"), BacktestStatus.COMPLETED);
+        ReflectionTestUtils.setField(run, "id", 10L);
+        run.setFinalBalance(new BigDecimal("1100"));
+        run.setTotalReturn(new BigDecimal("10"));
+        run.setMaxDrawdown(new BigDecimal("5"));
+        run.setWinRate(new BigDecimal("50"));
+        run.setProfitFactor(new BigDecimal("1.4"));
+        run.setTradeCount(8);
+        run.setAverageTradeReturn(new BigDecimal("1.2"));
+        run.setFeeDrag(new BigDecimal("4"));
+        run.setVolatility(new BigDecimal("2.5"));
+        return run;
     }
 
     private List<MarketCandle> candles(String... closes) {
