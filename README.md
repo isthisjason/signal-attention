@@ -39,6 +39,7 @@ The backend MVP demo flow is:
 5. Review generated trades and metrics.
 6. Request an ML risk score.
 7. Confirm the risk score is persisted and audit events were recorded.
+8. Optionally configure a risk policy and evaluate a simulated order.
 
 ## Useful Local Commands
 
@@ -75,9 +76,12 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/backtests/{id}/trades`
 - `GET /api/backtests/{id}/metrics`
 - `POST /api/backtests/{id}/ml-risk-score`
+- `POST /api/strategies/{id}/risk-policy`
+- `GET /api/strategies/{id}/risk-policy`
+- `POST /api/risk/evaluate-order`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
 
 ## Current Status
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, and rule-based ML risk scoring through FastAPI. See `IMPLEMENTATION_PLAN.md` for future phases such as risk policies, paper trading, a dashboard, and attention-model experiments.
+The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, and a baseline risk engine for policy-based simulated order approval. See `IMPLEMENTATION_PLAN.md` for future phases such as paper trading, a dashboard, and attention-model experiments.

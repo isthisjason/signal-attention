@@ -63,3 +63,42 @@ curl -X POST http://localhost:8080/api/backtests/BACKTEST_ID/ml-risk-score
 ```
 
 Fetch the backtest again to confirm `mlRiskScore` and `mlRiskLabel` were persisted.
+
+## Optional Phase 4 Risk Policy Flow
+
+Create or update a strategy risk policy:
+
+```bash
+curl -X POST http://localhost:8080/api/strategies/STRATEGY_ID/risk-policy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "maxPositionSizePercent": 25,
+    "stopLossPercent": 5,
+    "takeProfitPercent": 12,
+    "maxDailyLossPercent": 8,
+    "cooldownMinutes": 30
+  }'
+```
+
+Fetch the current policy:
+
+```bash
+curl http://localhost:8080/api/strategies/STRATEGY_ID/risk-policy
+```
+
+Evaluate a simulated order:
+
+```bash
+curl -X POST http://localhost:8080/api/risk/evaluate-order \
+  -H "Content-Type: application/json" \
+  -d '{
+    "strategyId": STRATEGY_ID,
+    "symbol": "BTC-USD",
+    "side": "BUY",
+    "quantity": 0.25,
+    "price": 42000,
+    "accountEquity": 100000,
+    "currentDailyLoss": 0,
+    "evaluatedAt": "2024-01-01T00:00:00Z"
+  }'
+```
