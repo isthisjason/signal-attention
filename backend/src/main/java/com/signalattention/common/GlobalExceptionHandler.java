@@ -26,6 +26,11 @@ public class GlobalExceptionHandler {
         return buildError(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiError> handleBadRequest(BadRequestException exception, HttpServletRequest request) {
+        return buildError(HttpStatus.BAD_REQUEST, exception.getMessage(), request, List.of());
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException exception, HttpServletRequest request) {
         return buildError(HttpStatus.NOT_FOUND, exception.getMessage(), request, List.of());
