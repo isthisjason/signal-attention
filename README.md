@@ -76,6 +76,8 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/backtests/{id}/metrics`
 - `POST /api/backtests/{id}/ml-risk-score`
 
+See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
+
 ## Current Status
 
 The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, and rule-based ML risk scoring through FastAPI. See `IMPLEMENTATION_PLAN.md` for future phases such as risk policies, paper trading, a dashboard, and attention-model experiments.
