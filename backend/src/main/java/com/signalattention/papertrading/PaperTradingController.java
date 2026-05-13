@@ -41,6 +41,26 @@ public class PaperTradingController {
         return paperTradingService.stopSession(id);
     }
 
+    @GetMapping("/api/paper-sessions/{id}")
+    public PaperSessionResponse getSession(@PathVariable Long id) {
+        return paperTradingService.getSession(id);
+    }
+
+    @GetMapping("/api/strategies/{strategyId}/paper-sessions")
+    public List<PaperSessionResponse> getStrategySessions(@PathVariable Long strategyId) {
+        return paperTradingService.getStrategySessions(strategyId);
+    }
+
+    @GetMapping("/api/paper-sessions/{id}/summary")
+    public PaperSessionSummaryResponse getSummary(@PathVariable Long id) {
+        return paperTradingService.getSummary(id);
+    }
+
+    @PostMapping("/api/paper-sessions/{id}/replay")
+    public PaperSessionReplayResponse replay(@PathVariable Long id, @Valid @RequestBody PaperSessionReplayRequest request) {
+        return paperTradingService.replay(id, request);
+    }
+
     @PostMapping("/api/paper-sessions/{id}/orders")
     public PaperOrderResponse submitOrder(@PathVariable Long id, @Valid @RequestBody PaperOrderRequest request) {
         return paperTradingService.submitOrder(id, request);

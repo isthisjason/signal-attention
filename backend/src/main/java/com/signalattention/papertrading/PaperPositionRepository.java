@@ -8,6 +8,8 @@ public interface PaperPositionRepository extends JpaRepository<PaperPosition, Lo
 
     List<PaperPosition> findByPaperSessionIdOrderByOpenedAtAsc(Long paperSessionId);
 
+    List<PaperPosition> findByPaperSessionIdAndStatusOrderByOpenedAtAsc(Long paperSessionId, PaperPositionStatus status);
+
     Optional<PaperPosition> findFirstByPaperSessionIdAndSymbolAndStatusOrderByOpenedAtAsc(
             Long paperSessionId,
             String symbol,

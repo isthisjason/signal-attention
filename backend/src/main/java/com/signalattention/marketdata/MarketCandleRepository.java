@@ -28,4 +28,6 @@ public interface MarketCandleRepository extends JpaRepository<MarketCandle, Long
             Instant start,
             Instant end
     );
+
+    MarketCandle findFirstBySymbolAndTimeframeOrderByOpenTimeDesc(String symbol, String timeframe);
 }
