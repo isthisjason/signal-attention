@@ -201,6 +201,77 @@ class PaperTradingServiceLifecycleTests {
                 .hasMessage("Paper session must be running to replay candles");
     }
 
+    @Test
+    void summaryPricesOpenPositionsAndCalculatesEquity() {
+        PaperSession session = session(PaperSessionStatus.RUNNING);
+        PaperPosition open = position(session, PaperPositionStatus.OPEN, "2", "100");
+        PaperPosition closed = position(session, PaperPositionStatus.CLOSED, "1.5", "80");
+        closed.setExitPrice(new BigDecimal("100"));
+        when(sessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        when(positionRepository.findByPaperSessionIdAndStatusOrderByOpenedAtAsc(10L, PaperPositionStatus.OPEN)).thenReturn(List.of(open));
+        when(positionRepository.findByPaperSessionIdOrderByOpenedAtAsc(10L)).thenReturn(List.of(open, closed));
+        when(marketCandleRepository.findFirstBySymbolAndTimeframeOrderByOpenTimeDesc("BTC-USD", "1h"))
+                .thenReturn(candle("2024-01-01T03:00:00Z", "125"));
+
+        PaperSessionSummaryResponse response = service.getSummary(10L);
+
+        assertThat(response.openPositionValue()).isEqualByComparingTo("250.00000000");
+        assertThat(response.unrealizedPnl()).isEqualByComparingTo("50.00000000");
+        assertThat(response.realizedPnl()).isEqualByComparingTo("30.00000000");
+        assertThat(response.totalEquity()).isEqualByComparingTo("10250.00000000");
+        assertThat(response.hasUnpricedPositions()).isFalse();
+    }
+
+    @Test
+    void summaryMarksMissingCandlePricesAsUnpriced() {
+        PaperSession session = session(PaperSessionStatus.RUNNING);
+        PaperPosition open = position(session, PaperPositionStatus.OPEN, "2", "100");
+        when(sessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        when(positionRepository.findByPaperSessionIdAndStatusOrderByOpenedAtAsc(10L, PaperPositionStatus.OPEN)).thenReturn(List.of(open));
+        when(positionRepository.findByPaperSessionIdOrderByOpenedAtAsc(10L)).thenReturn(List.of(open));
+
+        PaperSessionSummaryResponse response = service.getSummary(10L);
+
+        assertThat(response.hasUnpricedPositions()).isTrue();
+        assertThat(response.openPositions()).singleElement().satisfies(mark -> {
+            assertThat(mark.priced()).isFalse();
+            assertThat(mark.markPrice()).isNull();
+        });
+    }
+
+    @Test
+    void replayHonorsMaxCandlesAndAllowsNoGeneratedSignals() {
+        PaperSession session = session(PaperSessionStatus.RUNNING, strategyWithRules());
+        List<MarketCandle> candles = List.of(
+                candle("2024-01-01T00:00:00Z", "100"),
+                candle("2024-01-01T01:00:00Z", "101"),
+                candle("2024-01-01T02:00:00Z", "102"),
+                candle("2024-01-01T03:00:00Z", "103")
+        );
+        when(sessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        when(marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
+                eq("BTC-USD"),
+                eq("1h"),
+                any(Instant.class),
+                any(Instant.class)
+        )).thenReturn(candles);
+        when(smaCrossoverDetector.detect(List.of(
+                new BigDecimal("100"),
+                new BigDecimal("101"),
+                new BigDecimal("102")
+        ), 2, 3)).thenReturn(List.of());
+
+        PaperSessionReplayResponse response = service.replay(10L, new PaperSessionReplayRequest(
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-01T03:00:00Z"),
+                3
+        ));
+
+        assertThat(response.candlesRead()).isEqualTo(3);
+        assertThat(response.signalsProcessed()).isZero();
+        assertThat(response.filledOrders()).isZero();
+    }
+
     private PaperSession session(PaperSessionStatus status) {
         return session(status, strategy());
     }
@@ -242,5 +313,12 @@ class PaperTradingServiceLifecycleTests {
                 new BigDecimal(close),
                 BigDecimal.ONE
         );
+    }
+
+    private PaperPosition position(PaperSession session, PaperPositionStatus status, String quantity, String entryPrice) {
+        PaperPosition position = new PaperPosition(session, "BTC-USD", new BigDecimal(quantity), new BigDecimal(entryPrice));
+        ReflectionTestUtils.setField(position, "id", 30L);
+        position.setStatus(status);
+        return position;
     }
 }
