@@ -1,5 +1,6 @@
 package com.signalattention.dashboard;
 
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -15,5 +16,10 @@ public class DashboardController {
     @GetMapping("/api/dashboard/summary")
     public DashboardSummaryResponse getSummary() {
         return dashboardService.getSummary();
+    }
+
+    @GetMapping("/api/dashboard/strategy-performance")
+    public List<DashboardStrategyPerformanceResponse> getStrategyPerformance() {
+        return dashboardService.getStrategyPerformance();
     }
 }

@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface BacktestRunRepository extends JpaRepository<BacktestRun, Long> {
 
     Optional<BacktestRun> findFirstByOrderByCreatedAtDesc();
+
+    Optional<BacktestRun> findFirstByStrategyIdOrderByCreatedAtDesc(Long strategyId);
 }

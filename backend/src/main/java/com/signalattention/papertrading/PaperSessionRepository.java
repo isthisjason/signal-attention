@@ -8,4 +8,6 @@ public interface PaperSessionRepository extends JpaRepository<PaperSession, Long
     List<PaperSession> findByStrategyIdOrderByCreatedAtDesc(Long strategyId);
 
     long countByStatus(PaperSessionStatus status);
+
+    long countByStrategyId(Long strategyId);
 }
