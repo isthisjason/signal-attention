@@ -72,6 +72,42 @@ class DashboardServiceTests {
         assertThat(response.recentAuditEvents()).isEmpty();
     }
 
+    @Test
+    void getStrategyPerformanceReturnsEmptyListWhenNoStrategiesExist() {
+        when(strategyRepository.findAll()).thenReturn(List.of());
+
+        List<DashboardStrategyPerformanceResponse> responses = service.getStrategyPerformance();
+
+        assertThat(responses).isEmpty();
+    }
+
+    @Test
+    void getStrategyPerformanceAllowsStrategiesWithoutBacktests() {
+        Strategy strategy = strategy();
+        when(strategyRepository.findAll()).thenReturn(List.of(strategy));
+        when(backtestRunRepository.findFirstByStrategyIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
+        when(paperSessionRepository.countByStrategyId(1L)).thenReturn(2L);
+
+        DashboardStrategyPerformanceResponse response = service.getStrategyPerformance().get(0);
+
+        assertThat(response.strategyId()).isEqualTo(1L);
+        assertThat(response.latestBacktestId()).isNull();
+        assertThat(response.paperSessionCount()).isEqualTo(2);
+    }
+
+    @Test
+    void getStrategyPerformanceIncludesLatestScoredBacktest() {
+        Strategy strategy = strategy();
+        when(strategyRepository.findAll()).thenReturn(List.of(strategy));
+        when(backtestRunRepository.findFirstByStrategyIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.of(backtestRun()));
+
+        DashboardStrategyPerformanceResponse response = service.getStrategyPerformance().get(0);
+
+        assertThat(response.latestBacktestId()).isEqualTo(10L);
+        assertThat(response.latestTotalReturn()).isEqualByComparingTo("5.5");
+        assertThat(response.latestMlRiskLabel()).isEqualTo("LOW_RISK");
+    }
+
     private BacktestRun backtestRun() {
         BacktestRun run = new BacktestRun(strategy(), Instant.parse("2024-01-01T00:00:00Z"), Instant.parse("2024-01-02T00:00:00Z"), new BigDecimal("10000"), BacktestStatus.COMPLETED);
         ReflectionTestUtils.setField(run, "id", 10L);
