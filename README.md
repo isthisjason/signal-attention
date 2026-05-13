@@ -93,6 +93,7 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
 See [docs/architecture.md](docs/architecture.md) for the current service and data-flow diagram.
+See [docs/verification.md](docs/verification.md) for the local verification checklist.
 
 ## Current Status
 
