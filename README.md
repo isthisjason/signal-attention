@@ -92,6 +92,7 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/dashboard/summary`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
+See [docs/architecture.md](docs/architecture.md) for the current service and data-flow diagram.
 
 ## Current Status
 
