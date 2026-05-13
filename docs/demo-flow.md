@@ -171,6 +171,16 @@ curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/stop
 
 ```bash
 curl http://localhost:8080/api/dashboard/summary
+curl http://localhost:8080/api/dashboard/strategy-performance
+```
+
+## Audit Events
+
+Review recent audit events, or filter by entity:
+
+```bash
+curl http://localhost:8080/api/audit-events
+curl "http://localhost:8080/api/audit-events?entityType=BACKTEST&limit=10"
 ```
 
 ## Known Simulation Limits

@@ -89,11 +89,31 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/paper-sessions/{id}/summary`
 - `POST /api/paper-sessions/{id}/replay`
 - `PATCH /api/paper-sessions/{id}/stop`
+- `GET /api/audit-events`
 - `GET /api/dashboard/summary`
+- `GET /api/dashboard/strategy-performance`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
 See [docs/architecture.md](docs/architecture.md) for the current service and data-flow diagram.
 See [docs/verification.md](docs/verification.md) for the local verification checklist.
+
+## What This Demonstrates
+
+- Spring Boot REST API design with validation and consistent error responses
+- PostgreSQL persistence with JPA entities, repositories, and Flyway migrations
+- Deterministic backtesting and risk metrics for a constrained SMA strategy
+- Service-to-service integration between Spring Boot and FastAPI
+- Rule-based ML-style risk scoring with explainable reasons
+- Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
+- Docker Compose local orchestration for backend, database, and ML service
+
+## Known Limitations
+
+- No real-money trading, broker integration, or live order execution
+- No authentication, users, roles, or account isolation yet
+- No trained model or attention/PyTorch inference path yet
+- Paper trading is deterministic simulation and manual candle replay only
+- Dashboard support is backend API aggregation only; no frontend is included
 
 ## Current Status
 
