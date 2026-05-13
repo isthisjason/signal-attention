@@ -102,3 +102,47 @@ curl -X POST http://localhost:8080/api/risk/evaluate-order \
     "evaluatedAt": "2024-01-01T00:00:00Z"
   }'
 ```
+
+## Optional Phase 5 Paper Trading Flow
+
+Create a paper trading session:
+
+```bash
+curl -X POST http://localhost:8080/api/strategies/STRATEGY_ID/paper-sessions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "initialBalance": 100000
+  }'
+```
+
+Use the returned `id` as `PAPER_SESSION_ID`, then start the session:
+
+```bash
+curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/start
+```
+
+Submit a simulated buy order:
+
+```bash
+curl -X POST http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "side": "BUY",
+    "symbol": "BTC-USD",
+    "quantity": 0.25,
+    "price": 42000
+  }'
+```
+
+Review simulated activity:
+
+```bash
+curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/orders
+curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/positions
+```
+
+Stop the session:
+
+```bash
+curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/stop
+```
