@@ -80,14 +80,19 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/strategies/{id}/risk-policy`
 - `POST /api/risk/evaluate-order`
 - `POST /api/strategies/{id}/paper-sessions`
+- `GET /api/strategies/{id}/paper-sessions`
+- `GET /api/paper-sessions/{id}`
 - `PATCH /api/paper-sessions/{id}/start`
 - `POST /api/paper-sessions/{id}/orders`
 - `GET /api/paper-sessions/{id}/orders`
 - `GET /api/paper-sessions/{id}/positions`
+- `GET /api/paper-sessions/{id}/summary`
+- `POST /api/paper-sessions/{id}/replay`
 - `PATCH /api/paper-sessions/{id}/stop`
+- `GET /api/dashboard/summary`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
 
 ## Current Status
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, a baseline risk engine for policy-based simulated order approval, and a paper-trading simulation foundation. See `IMPLEMENTATION_PLAN.md` for future phases such as a dashboard and attention-model experiments.
+The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, and a compact dashboard summary API. See `IMPLEMENTATION_PLAN.md` for future phases such as a frontend dashboard and attention-model experiments.

@@ -121,6 +121,13 @@ Use the returned `id` as `PAPER_SESSION_ID`, then start the session:
 curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/start
 ```
 
+Fetch the session directly or list sessions for a strategy:
+
+```bash
+curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID
+curl http://localhost:8080/api/strategies/STRATEGY_ID/paper-sessions
+```
+
 Submit a simulated buy order:
 
 ```bash
@@ -139,6 +146,19 @@ Review simulated activity:
 ```bash
 curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/orders
 curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/positions
+curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/summary
+```
+
+Replay imported candles through the running paper session:
+
+```bash
+curl -X POST http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/replay \
+  -H "Content-Type: application/json" \
+  -d '{
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2024-01-10T00:00:00Z",
+    "maxCandles": 250
+  }'
 ```
 
 Stop the session:
@@ -146,3 +166,16 @@ Stop the session:
 ```bash
 curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/stop
 ```
+
+## Dashboard Summary
+
+```bash
+curl http://localhost:8080/api/dashboard/summary
+```
+
+## Known Simulation Limits
+
+- Paper trading is deterministic simulation only; it does not place real broker orders.
+- Candle replay is manual and bounded by the request. There is no background scheduler yet.
+- Paper fills use submitted or replay candle close prices and do not model slippage.
+- Position summaries use the latest imported candle for mark-to-market values. If no candle exists for an open position, the position is returned as unpriced.

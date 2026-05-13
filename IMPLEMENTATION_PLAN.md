@@ -16,7 +16,7 @@ The MVP is **not** intended to provide live trading, broker integration, real-mo
 
 SignalAttention should be presented as a research and risk-management platform, not as a price-prediction or profit-guarantee tool. The product story is strongest when it emphasizes safer workflows: historical testing, simulation, risk scoring, regime awareness, explainability, and audit trails.
 
-The MVP is intentionally backend-first. Paper trading, the full risk engine, dashboard, authentication, and attention-based modeling remain planned later phases, not first-milestone requirements.
+The MVP is intentionally backend-first. The baseline now includes risk-policy and paper-trading simulation APIs, while authentication, a frontend dashboard, live trading, broker integration, and attention-based modeling remain later phases.
 
 ---
 
@@ -648,11 +648,11 @@ These notes preserve the broader architecture from the PDF while keeping the MVP
 | `marketdata` | CSV imports, candle storage, market data lookup. | MVP |
 | `indicators` | SMA, EMA, RSI, MACD, volatility, volume z-score calculators. | SMA only in MVP |
 | `backtesting` | Trade simulation and metrics calculation. | MVP |
-| `risk` | Risk policies, order approval/rejection, position sizing. | Future |
+| `risk` | Risk policies, order approval/rejection, position sizing. | Implemented baseline |
 | `ml` | HTTP client and DTOs for Python predictions. | MVP baseline |
-| `papertrading` | Sessions, simulated orders, positions, P&L tracking. | Future |
+| `papertrading` | Sessions, simulated orders, positions, P&L tracking, manual candle replay. | Implemented baseline |
 | `audit` | Append-only events for important decisions. | MVP |
-| `dashboard` | Aggregated endpoints for charts and portfolio views. | Future |
+| `dashboard` | Aggregated endpoints for portfolio/demo summary views. | Implemented baseline API |
 | `common` | Exceptions, error responses, utilities, validation. | MVP |
 
 ### Future Python ML Service Structure
@@ -926,7 +926,7 @@ Do not include these in the first milestone:
 
 - Real-money trading.
 - Broker API integration.
-- Paper trading sessions.
+- Live or broker-backed trading sessions.
 - Full JWT authentication.
 - Multi-user account management.
 - React frontend.
@@ -959,9 +959,9 @@ After the MVP is stable, consider:
 ---
 
 
-## 23. Future API Roadmap
+## 23. Extended API Roadmap
 
-These endpoints are part of the broader project vision but are not required for the Backend MVP.
+These endpoints are part of the broader project vision. Risk controls, baseline paper trading, and dashboard summary are implemented as backend APIs; authentication, market regime/anomaly analysis, richer dashboard views, and frontend work remain future scope.
 
 ### Authentication
 
@@ -977,7 +977,7 @@ GET  /api/market-regime?symbol=BTC-USD
 POST /api/anomaly-check
 ```
 
-### Risk Controls
+### Risk Controls Implemented Baseline
 
 ```text
 POST /api/strategies/{id}/risk-policy
@@ -985,14 +985,18 @@ GET  /api/strategies/{id}/risk-policy
 POST /api/risk/evaluate-order
 ```
 
-### Paper Trading
+### Paper Trading Implemented Baseline
 
 ```text
 POST  /api/strategies/{id}/paper-sessions
+GET   /api/strategies/{id}/paper-sessions
+GET   /api/paper-sessions/{id}
 PATCH /api/paper-sessions/{id}/start
 PATCH /api/paper-sessions/{id}/stop
+POST  /api/paper-sessions/{id}/replay
 GET   /api/paper-sessions/{id}/orders
 GET   /api/paper-sessions/{id}/positions
+GET   /api/paper-sessions/{id}/summary
 ```
 
 ### Dashboard
@@ -1060,8 +1064,8 @@ GPU acceleration belongs with this future attention-model phase, not the Backend
 | Phase 1 - Backend Foundation | Spring Boot app, PostgreSQL, strategy entity, candle entity, Swagger, Docker Compose. | App runs locally and can create strategies and store/import candle data. |
 | Phase 2 - Basic Backtesting | SMA crossover, indicators, trade simulation, metrics. | User can run a backtest and receive metrics and simulated trades. |
 | Phase 3 - Baseline ML Service | FastAPI risk endpoint and Spring Boot ML client. | Backtest result includes ML risk score and classification. |
-| Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Simulated orders can be approved/rejected with logged reasons. |
-| Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | User can run a strategy in simulation mode without real money. |
+| Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Implemented baseline simulated-order approval/rejection with logged reasons. |
+| Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | Implemented baseline sessions, manual orders, positions, summaries, and manual candle replay. |
 | Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | Model classifies regimes or trade quality from recent candle windows; CPU path still works for local reproducibility. |
 | Phase 7 - Polish | README, tests, seed data, optional dashboard, screenshots. | Portfolio-ready project with clear docs and reproducible local setup. |
 
