@@ -11,6 +11,7 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
 | ML health | `curl http://localhost:8000/health` | Returns `{"status":"ok"}`. |
 | Demo flow | Follow `docs/demo-flow.md` | Import, strategy, backtest, ML score, paper replay, dashboard, and audit flow works. |
+| Market regime flow | `curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"` | Returns a regime label, confidence, reasons, and derived features after candles are imported. |
 
 ## Local Tooling Notes
 

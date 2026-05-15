@@ -40,6 +40,7 @@ The backend MVP demo flow is:
 6. Request an ML risk score.
 7. Confirm the risk score is persisted and audit events were recorded.
 8. Optionally configure a risk policy and evaluate a simulated order.
+9. Optionally request a CPU-safe market regime classification from recent imported candles.
 
 ## Useful Local Commands
 
@@ -92,6 +93,7 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/audit-events`
 - `GET /api/dashboard/summary`
 - `GET /api/dashboard/strategy-performance`
+- `GET /api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
 See [docs/architecture.md](docs/architecture.md) for the current service and data-flow diagram.
@@ -104,6 +106,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - Deterministic backtesting and risk metrics for a constrained SMA strategy
 - Service-to-service integration between Spring Boot and FastAPI
 - Rule-based ML-style risk scoring with explainable reasons
+- CPU-safe market regime classification from recent candle sequences
 - Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
 - Docker Compose local orchestration for backend, database, and ML service
 
@@ -111,10 +114,10 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 
 - No real-money trading, broker integration, or live order execution
 - No authentication, users, roles, or account isolation yet
-- No trained model or attention/PyTorch inference path yet
+- No trained model or PyTorch Transformer inference path yet
 - Paper trading is deterministic simulation and manual candle replay only
 - Dashboard support is backend API aggregation only; no frontend is included
 
 ## Current Status
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, and a compact dashboard summary API. See `IMPLEMENTATION_PLAN.md` for future phases such as a frontend dashboard and attention-model experiments.
+The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, and a compact dashboard summary API. See `IMPLEMENTATION_PLAN.md` for future phases such as a frontend dashboard and PyTorch attention-model experiments.

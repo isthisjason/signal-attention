@@ -1066,7 +1066,7 @@ GPU acceleration belongs with this future attention-model phase, not the Backend
 | Phase 3 - Baseline ML Service | FastAPI risk endpoint and Spring Boot ML client. | Backtest result includes ML risk score and classification. |
 | Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Implemented baseline simulated-order approval/rejection with logged reasons. |
 | Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | Implemented baseline sessions, manual orders, positions, summaries, and manual candle replay. |
-| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | Model classifies regimes or trade quality from recent candle windows; CPU path still works for local reproducibility. |
+| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | CPU-safe market regime foundation is implemented; trained PyTorch model and optional GPU profile remain future work. |
 | Phase 7 - Polish | README, tests, seed data, optional dashboard, screenshots. | Portfolio-ready project with clear docs and reproducible local setup. |
 
 ---
@@ -1097,6 +1097,12 @@ The project should eventually include:
 - Short explanation of why the app uses ML for risk analysis instead of guaranteed price prediction.
 - Architecture diagram showing backend, ML service, PostgreSQL, and optional dashboard.
 - Optional React dashboard with equity curve, drawdown chart, risk score, and regime classification.
+
+## 29. Current Project Progress
+
+- Phases 1-5 are implemented as backend-first local MVP capabilities.
+- Phase 6 now has a CPU-safe foundation: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
+- Remaining Phase 6 work: introduce a trained sequence model path, PyTorch Transformer experiment/inference modules, model artifact loading, and optional GPU Compose profile while preserving CPU reproducibility.
 
 ---
 
