@@ -31,4 +31,20 @@ public class MlRiskClient {
             throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
         }
     }
+
+    public MlMarketRegimeResponse predictMarketRegime(MlMarketRegimeRequest request) {
+        try {
+            MlMarketRegimeResponse response = restClient.post()
+                    .uri("/predict/market-regime")
+                    .body(request)
+                    .retrieve()
+                    .body(MlMarketRegimeResponse.class);
+            if (response == null) {
+                throw new ExternalServiceException("ML service returned an empty response", null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
+        }
+    }
 }
