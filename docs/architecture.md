@@ -35,6 +35,12 @@ flowchart LR
 - `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, risk evaluation, paper trading, dashboard aggregation, and market regime proxying.
 - `ml-service`: Provides CPU-first rule-based strategy risk scoring and market regime classification.
 
+## Market Regime Modes
+
+The market regime endpoint defaults to `MARKET_REGIME_MODE=rules`. This path uses deterministic feature extraction and rule-based labels, stays CPU-only, and is the mode used by the default Docker Compose setup.
+
+`MARKET_REGIME_MODE=torch` is reserved for an optional model-backed classifier. It requires `MARKET_REGIME_ARTIFACT_PATH` and the optional Torch dependencies; the default service does not require PyTorch or GPU drivers.
+
 ## Current Boundaries
 
 - No real-money trading or broker integration.
