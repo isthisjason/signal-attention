@@ -4,6 +4,7 @@ from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeRe
 from app.services.market_regime_classifier import MarketRegimeClassifier
 from app.services.market_regime_config import MarketRegimeSettings, get_market_regime_settings
 from app.services.market_regime_features import build_market_regime_features
+from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
 
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
@@ -14,6 +15,8 @@ def get_market_regime_classifier(settings: MarketRegimeSettings | None = None) -
     selected_settings = settings or get_market_regime_settings()
     if selected_settings.mode == "rules":
         return RuleBasedMarketRegimeClassifier()
+    if selected_settings.mode == "torch":
+        return TorchMarketRegimeClassifier(selected_settings)
     raise ValueError(f"Unsupported market regime mode: {selected_settings.mode}")
 
 
