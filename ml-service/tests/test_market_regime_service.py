@@ -34,6 +34,22 @@ def test_classifies_trending_up() -> None:
     assert response.reasons
 
 
+def test_rule_classifier_output_is_stable() -> None:
+    closes = [Decimal("100") + Decimal(index) for index in range(20)]
+
+    response = classify_market_regime(request_for(closes))
+
+    assert response.regimeLabel == "TRENDING_UP"
+    assert response.confidence == Decimal("92.00")
+    assert response.reasons == ["Price is rising and remains above its sequence average."]
+    assert response.features.latestReturnPercent == Decimal("0.85")
+    assert response.features.averageReturnPercent == Decimal("0.92")
+    assert response.features.volatilityPercent == Decimal("0.05")
+    assert response.features.trendSlopePercent == Decimal("1.00")
+    assert response.features.smaDistancePercent == Decimal("8.68")
+    assert response.features.volumeZScore == Decimal("0.00")
+
+
 def test_classifies_trending_down() -> None:
     closes = [Decimal("120") - Decimal(index) for index in range(20)]
 
