@@ -1,11 +1,20 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeResponse
+from app.services.market_regime_classifier import MarketRegimeClassifier
+from app.services.market_regime_config import MarketRegimeSettings, get_market_regime_settings
 from app.services.market_regime_features import build_market_regime_features
 
 
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
-    return RuleBasedMarketRegimeClassifier().classify(request)
+    return get_market_regime_classifier().classify(request)
+
+
+def get_market_regime_classifier(settings: MarketRegimeSettings | None = None) -> MarketRegimeClassifier:
+    selected_settings = settings or get_market_regime_settings()
+    if selected_settings.mode == "rules":
+        return RuleBasedMarketRegimeClassifier()
+    raise ValueError(f"Unsupported market regime mode: {selected_settings.mode}")
 
 
 class RuleBasedMarketRegimeClassifier:
