@@ -130,7 +130,8 @@ class MarketRegimeServiceTests {
                         BigDecimal.ONE,
                         BigDecimal.ONE,
                         BigDecimal.ZERO
-                )
+                ),
+                "rules"
         );
     }
 }

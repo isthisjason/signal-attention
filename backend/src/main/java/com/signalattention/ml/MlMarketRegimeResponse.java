@@ -7,6 +7,7 @@ public record MlMarketRegimeResponse(
         String regimeLabel,
         BigDecimal confidence,
         List<String> reasons,
-        MlMarketRegimeFeatures features
+        MlMarketRegimeFeatures features,
+        String classifierSource
 ) {
 }
