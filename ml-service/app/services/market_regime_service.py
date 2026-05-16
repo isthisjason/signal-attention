@@ -47,6 +47,7 @@ class RuleBasedMarketRegimeClassifier:
             confidence=quantize_confidence(confidence),
             reasons=reasons,
             features=features,
+            classifierSource="rules",
         )
 
 def trend_confidence(trend_slope: Decimal, sma_distance: Decimal) -> Decimal:

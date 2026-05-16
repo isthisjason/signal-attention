@@ -49,3 +49,4 @@ class MarketRegimeResponse(BaseModel):
     confidence: Decimal
     reasons: list[str]
     features: MarketRegimeFeatures
+    classifierSource: str | None = None
