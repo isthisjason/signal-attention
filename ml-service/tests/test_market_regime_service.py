@@ -4,6 +4,7 @@ from decimal import Decimal
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_config import MarketRegimeSettings
 from app.services.market_regime_service import classify_market_regime, get_market_regime_classifier
+from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
 
 def candle(index: int, close: Decimal, volume: Decimal = Decimal("1000")) -> MarketRegimeCandle:
@@ -70,6 +71,14 @@ def test_rejects_invalid_market_regime_mode() -> None:
         assert str(exc) == "Unsupported market regime mode: unknown"
     else:
         raise AssertionError("Expected invalid market regime mode to fail")
+
+
+def test_selects_torch_market_regime_mode() -> None:
+    settings = MarketRegimeSettings(mode="torch", artifact_path="models/regime.pt")
+
+    classifier = get_market_regime_classifier(settings)
+
+    assert isinstance(classifier, TorchMarketRegimeClassifier)
 
 
 def test_classifies_sideways() -> None:
