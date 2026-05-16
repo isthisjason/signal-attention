@@ -16,7 +16,7 @@ The project is intentionally risk-focused rather than profit-prediction-focused.
 
 - Docker Desktop with WSL integration enabled
 - Java 21
-- Maven 3.9 or compatible Maven 3.x
+- Maven 3.9 or compatible Maven 3.x, or the included backend Maven wrapper
 - Python 3.12 or compatible Python 3.x
 
 ## Local Services
@@ -48,7 +48,7 @@ Run backend tests:
 
 ```bash
 cd backend
-mvn test
+./mvnw test
 ```
 
 Run ML service tests:
