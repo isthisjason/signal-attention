@@ -2,7 +2,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
-from app.services.market_regime_service import classify_market_regime
+from app.services.market_regime_config import MarketRegimeSettings
+from app.services.market_regime_service import classify_market_regime, get_market_regime_classifier
 
 
 def candle(index: int, close: Decimal, volume: Decimal = Decimal("1000")) -> MarketRegimeCandle:
@@ -57,6 +58,17 @@ def test_classifies_trending_down() -> None:
 
     assert response.regimeLabel == "TRENDING_DOWN"
     assert response.confidence >= Decimal("60")
+
+
+def test_rejects_invalid_market_regime_mode() -> None:
+    settings = MarketRegimeSettings(mode="unknown")
+
+    try:
+        get_market_regime_classifier(settings)
+    except ValueError as exc:
+        assert str(exc) == "Unsupported market regime mode: unknown"
+    else:
+        raise AssertionError("Expected invalid market regime mode to fail")
 
 
 def test_classifies_sideways() -> None:
