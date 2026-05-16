@@ -59,6 +59,13 @@ python3 -m pip install -r requirements.txt
 python3 -m pytest
 ```
 
+Install optional Torch dependencies for model-backed market regime experiments:
+
+```bash
+cd ml-service
+python3 -m pip install -r requirements-torch.txt
+```
+
 Start the full local stack:
 
 ```bash
@@ -115,6 +122,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - No real-money trading, broker integration, or live order execution
 - No authentication, users, roles, or account isolation yet
 - No trained model or PyTorch Transformer inference path yet
+- Optional Torch dependencies are excluded from the default setup
 - Paper trading is deterministic simulation and manual candle replay only
 - Dashboard support is backend API aggregation only; no frontend is included
 
