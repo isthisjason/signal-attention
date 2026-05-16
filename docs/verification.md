@@ -5,7 +5,8 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | Area | Command | Expected result |
 | --- | --- | --- |
 | ML service tests | `cd ml-service && python3 -m pytest` | Health and strategy-risk tests pass. |
-| Backend unit/integration tests | `cd backend && ./mvnw test` | Spring, service, and Testcontainers tests pass. |
+| Backend unit tests | `cd backend && ./mvnw test` | Spring and service tests pass. Docker-backed Testcontainers tests run when Docker is available and skip when it is not. |
+| Backend persistence integration tests | `cd backend && ./mvnw -Dgroups=integration test` | Flyway/JPA persistence tests pass when Docker is available. |
 | Compose syntax | `docker compose config` | Compose file renders without errors. |
 | Full local stack | `docker compose up --build` | PostgreSQL, backend, and ML service start. |
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
@@ -16,6 +17,8 @@ Use this checklist from a clean clone or a freshly pulled branch.
 ## Local Tooling Notes
 
 - Java 21 is required for backend tests and the Maven wrapper.
+- The Maven wrapper is checked into the backend project; local Maven is optional.
 - Docker Desktop WSL integration is required for Compose and Testcontainers in WSL.
+- If Docker is unavailable, backend unit tests still pass and Docker-backed persistence tests are skipped.
 - If Docker is unavailable, ML tests can still be run through the local Python environment.
 - If Java is unavailable, backend compile/test verification remains blocked until Java is installed or the backend is built inside Docker.
