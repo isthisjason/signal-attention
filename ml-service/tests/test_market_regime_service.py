@@ -41,6 +41,7 @@ def test_rule_classifier_output_is_stable() -> None:
     response = classify_market_regime(request_for(closes))
 
     assert response.regimeLabel == "TRENDING_UP"
+    assert response.classifierSource == "rules"
     assert response.confidence == Decimal("92.00")
     assert response.reasons == ["Price is rising and remains above its sequence average."]
     assert response.features.latestReturnPercent == Decimal("0.85")
