@@ -123,6 +123,23 @@ p {
   margin-top: 20px;
 }
 
+.panel-message {
+  border-style: dashed;
+}
+
+.panel-message p {
+  margin-bottom: 0;
+}
+
+.panel-message-error {
+  border-color: rgb(180 35 24 / 35%);
+  background: #fff7f6;
+}
+
+.panel-message-error p {
+  color: var(--danger);
+}
+
 .muted {
   color: var(--muted);
 }

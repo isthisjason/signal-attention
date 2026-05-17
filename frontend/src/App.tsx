@@ -129,10 +129,7 @@ function SummaryCards({ state }: { state: LoadState<DashboardSummary> }) {
   }
   if (state.status === "error") {
     return (
-      <section className="panel">
-        <h2>Dashboard summary</h2>
-        <p>{state.error}</p>
-      </section>
+      <PanelMessage title="Dashboard summary" tone="error" message={state.error} />
     );
   }
 
@@ -170,27 +167,17 @@ function formatPercent(value: number | null) {
 
 function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
   if (state.status === "loading") {
-    return (
-      <section className="panel">
-        <h2>Strategy performance</h2>
-        <p>Loading strategy performance.</p>
-      </section>
-    );
+    return <PanelMessage title="Strategy performance" message="Loading strategy performance." />;
   }
   if (state.status === "error") {
-    return (
-      <section className="panel">
-        <h2>Strategy performance</h2>
-        <p>{state.error}</p>
-      </section>
-    );
+    return <PanelMessage title="Strategy performance" tone="error" message={state.error} />;
   }
   if (state.data.length === 0) {
     return (
-      <section className="panel">
-        <h2>Strategy performance</h2>
-        <p>No strategies have been created yet.</p>
-      </section>
+      <PanelMessage
+        title="Strategy performance"
+        message="No strategies have been created yet. Complete the demo flow to populate this table."
+      />
     );
   }
 
@@ -239,28 +226,13 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
 
 function AuditTimeline({ state }: { state: LoadState<AuditEvent[]> }) {
   if (state.status === "loading") {
-    return (
-      <section className="panel">
-        <h2>Audit events</h2>
-        <p>Loading audit events.</p>
-      </section>
-    );
+    return <PanelMessage title="Audit events" message="Loading audit events." />;
   }
   if (state.status === "error") {
-    return (
-      <section className="panel">
-        <h2>Audit events</h2>
-        <p>{state.error}</p>
-      </section>
-    );
+    return <PanelMessage title="Audit events" tone="error" message={state.error} />;
   }
   if (state.data.length === 0) {
-    return (
-      <section className="panel">
-        <h2>Audit events</h2>
-        <p>No audit events have been recorded yet.</p>
-      </section>
-    );
+    return <PanelMessage title="Audit events" message="No audit events have been recorded yet." />;
   }
 
   return (
@@ -300,19 +272,15 @@ function formatDateTime(value: string | null) {
 
 function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }) {
   if (state.status === "loading") {
-    return (
-      <section className="panel">
-        <h2>Market regime</h2>
-        <p>Loading BTC-USD 1h market regime.</p>
-      </section>
-    );
+    return <PanelMessage title="Market regime" message="Loading BTC-USD 1h market regime." />;
   }
   if (state.status === "error") {
     return (
-      <section className="panel">
-        <h2>Market regime</h2>
-        <p>{state.error}</p>
-      </section>
+      <PanelMessage
+        title="Market regime"
+        tone="error"
+        message={`${state.error} Import at least 20 BTC-USD 1h candles before using this panel.`}
+      />
     );
   }
 
@@ -357,6 +325,23 @@ function Feature({ label, value, suffix = "" }: { label: string; value: number; 
         {suffix}
       </strong>
     </div>
+  );
+}
+
+function PanelMessage({
+  title,
+  message,
+  tone = "neutral",
+}: {
+  title: string;
+  message: string;
+  tone?: "neutral" | "error";
+}) {
+  return (
+    <section className={`panel panel-message panel-message-${tone}`}>
+      <h2>{title}</h2>
+      <p>{message}</p>
+    </section>
   );
 }
 
