@@ -136,10 +136,7 @@ function App() {
       </header>
       <SummaryCards state={summaryState} />
       <StrategyTable state={strategiesState} />
-      <section className="panel">
-        <h2>Market regime</h2>
-        <p>{regimeStatusText(regimeState)}</p>
-      </section>
+      <MarketRegimePanel state={regimeState} />
       <AuditTimeline state={auditState} />
     </main>
   );
@@ -329,14 +326,66 @@ function formatDateTime(value: string | null) {
   }).format(new Date(value));
 }
 
-function regimeStatusText(state: LoadState<MarketRegimeResponse>) {
+function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }) {
   if (state.status === "loading") {
-    return "Loading BTC-USD 1h market regime.";
+    return (
+      <section className="panel">
+        <h2>Market regime</h2>
+        <p>Loading BTC-USD 1h market regime.</p>
+      </section>
+    );
   }
   if (state.status === "error") {
-    return state.error;
+    return (
+      <section className="panel">
+        <h2>Market regime</h2>
+        <p>{state.error}</p>
+      </section>
+    );
   }
-  return `Loaded ${state.data.regimeLabel} from ${state.data.classifierSource}.`;
+
+  const { features } = state.data;
+
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Market regime</h2>
+          <p>BTC-USD, 1h, latest 128 candles</p>
+        </div>
+        <div className="regime-badge">
+          <strong>{formatAction(state.data.regimeLabel)}</strong>
+          <span>{state.data.confidence.toFixed(2)}% confidence</span>
+        </div>
+      </div>
+      <ul className="reason-list">
+        {state.data.reasons.map((reason) => (
+          <li key={reason}>{reason}</li>
+        ))}
+      </ul>
+      <div className="feature-grid">
+        <Feature label="Latest return" value={features.latestReturnPercent} suffix="%" />
+        <Feature label="Avg return" value={features.averageReturnPercent} suffix="%" />
+        <Feature label="Volatility" value={features.volatilityPercent} suffix="%" />
+        <Feature label="Trend slope" value={features.trendSlopePercent} suffix="%" />
+        <Feature label="SMA distance" value={features.smaDistancePercent} suffix="%" />
+        <Feature label="Volume z-score" value={features.volumeZScore} />
+      </div>
+      <p className="muted">Classifier source: {state.data.classifierSource}</p>
+    </section>
+  );
+}
+
+function Feature({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
+  return (
+    <div className="feature">
+      <span>{label}</span>
+      <strong>
+        {value.toFixed(2)}
+        {suffix}
+      </strong>
+    </div>
+  );
 }
 
 export default App;

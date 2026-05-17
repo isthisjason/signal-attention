@@ -216,14 +216,84 @@ td small {
   margin: 6px 0 0;
 }
 
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.regime-badge {
+  border: 1px solid rgb(15 118 110 / 30%);
+  border-radius: 8px;
+  background: rgb(15 118 110 / 8%);
+  min-width: 190px;
+  padding: 12px;
+}
+
+.regime-badge strong,
+.regime-badge span {
+  display: block;
+}
+
+.regime-badge strong {
+  text-transform: capitalize;
+}
+
+.regime-badge span {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.reason-list {
+  margin: 0 0 18px;
+  padding-left: 20px;
+}
+
+.reason-list li {
+  margin-bottom: 8px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.feature {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.feature span,
+.feature strong {
+  display: block;
+}
+
+.feature span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.feature strong {
+  margin-top: 8px;
+}
+
 @media (max-width: 960px) {
   .dashboard-grid,
-  .metric-grid {
+  .metric-grid,
+  .feature-grid {
     grid-template-columns: 1fr;
   }
 
   .dashboard-header {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .panel-heading {
     flex-direction: column;
   }
 }
