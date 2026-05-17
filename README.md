@@ -9,6 +9,7 @@ The project is intentionally risk-focused rather than profit-prediction-focused.
 - Java 21 and Spring Boot 3 for the backend API
 - PostgreSQL 16 for strategy, market data, backtest, trade, and audit persistence
 - Python FastAPI for the risk-scoring service
+- React and TypeScript for the local dashboard
 - Docker Compose for local orchestration
 - Swagger/OpenAPI for the initial API UI
 
@@ -18,12 +19,14 @@ The project is intentionally risk-focused rather than profit-prediction-focused.
 - Java 21
 - Maven 3.9 or compatible Maven 3.x, or the included backend Maven wrapper
 - Python 3.12 or compatible Python 3.x
+- Node.js 24 or compatible current Node.js runtime
 
 ## Local Services
 
 Planned local URLs:
 
 - Backend API: `http://localhost:8080`
+- Frontend dashboard: `http://localhost:5173`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - ML service: `http://localhost:8000`
 - PostgreSQL: `localhost:5432`
@@ -72,6 +75,16 @@ Start the full local stack:
 docker compose up --build
 ```
 
+Run the frontend directly during local development:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
+
 ## MVP API Flow
 
 After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` or equivalent HTTP requests:
@@ -114,8 +127,9 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - Service-to-service integration between Spring Boot and FastAPI
 - Rule-based ML-style risk scoring with explainable reasons
 - CPU-safe market regime classification from recent candle sequences
+- React dashboard for summary metrics, strategy performance, audit events, and regime status
 - Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
-- Docker Compose local orchestration for backend, database, and ML service
+- Docker Compose local orchestration for backend, database, ML service, and frontend
 
 ## Known Limitations
 
@@ -124,8 +138,8 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - No trained model or PyTorch Transformer inference path yet
 - Optional Torch dependencies are excluded from the default setup
 - Paper trading is deterministic simulation and manual candle replay only
-- Dashboard support is backend API aggregation only; no frontend is included
+- The frontend is a local unauthenticated dashboard; user accounts and access control are not implemented
 
 ## Current Status
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, and a compact dashboard summary API. See `IMPLEMENTATION_PLAN.md` for future phases such as a frontend dashboard and PyTorch attention-model experiments.
+The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, dashboard summary APIs, and a React dashboard. See `IMPLEMENTATION_PLAN.md` for future phases such as authentication and PyTorch attention-model experiments.
