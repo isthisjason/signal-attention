@@ -107,10 +107,7 @@ function App() {
       </header>
       <SummaryCards state={summaryState} />
       <StrategyTable state={strategiesState} />
-      <section className="panel">
-        <h2>Audit events</h2>
-        <p>{auditStatusText(auditState)}</p>
-      </section>
+      <AuditTimeline state={auditState} />
     </main>
   );
 }
@@ -238,14 +235,65 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
   );
 }
 
-function auditStatusText(state: LoadState<AuditEvent[]>) {
+function AuditTimeline({ state }: { state: LoadState<AuditEvent[]> }) {
   if (state.status === "loading") {
-    return "Loading audit events.";
+    return (
+      <section className="panel">
+        <h2>Audit events</h2>
+        <p>Loading audit events.</p>
+      </section>
+    );
   }
   if (state.status === "error") {
-    return state.error;
+    return (
+      <section className="panel">
+        <h2>Audit events</h2>
+        <p>{state.error}</p>
+      </section>
+    );
   }
-  return `Loaded ${state.data.length} audit events.`;
+  if (state.data.length === 0) {
+    return (
+      <section className="panel">
+        <h2>Audit events</h2>
+        <p>No audit events have been recorded yet.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel">
+      <h2>Audit events</h2>
+      <ol className="timeline">
+        {state.data.map((event) => (
+          <li key={event.id}>
+            <div>
+              <strong>{formatAction(event.action)}</strong>
+              <span>
+                {event.entityType} #{event.entityId}
+              </span>
+            </div>
+            <time dateTime={event.createdAt}>{formatDateTime(event.createdAt)}</time>
+            <p>{event.message}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function formatAction(value: string) {
+  return value.replaceAll("_", " ").toLowerCase();
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "N/A";
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 export default App;
