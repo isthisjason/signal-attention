@@ -84,6 +84,33 @@ p {
   margin-bottom: 20px;
 }
 
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  min-height: 118px;
+  padding: 18px;
+}
+
+.metric-card span,
+.metric-card small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.85rem;
+}
+
+.metric-card strong {
+  display: block;
+  font-size: 2rem;
+  line-height: 1.1;
+  margin-top: 12px;
+}
+
+.metric-card small {
+  margin-top: 8px;
+}
+
 .panel {
   border: 1px solid var(--border);
   border-radius: 8px;

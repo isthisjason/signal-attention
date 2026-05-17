@@ -44,22 +44,63 @@ function App() {
           <h1>Trading research dashboard</h1>
         </div>
       </header>
-      <section className="panel">
-        <h2>Dashboard summary</h2>
-        <p>{summaryStatusText(summaryState)}</p>
-      </section>
+      <SummaryCards state={summaryState} />
     </main>
   );
 }
 
-function summaryStatusText(state: LoadState<DashboardSummary>) {
+function SummaryCards({ state }: { state: LoadState<DashboardSummary> }) {
   if (state.status === "loading") {
-    return "Loading backend summary.";
+    return (
+      <section className="metric-grid">
+        {["Strategies", "Backtests", "Paper sessions", "Latest backtest"].map((label) => (
+          <article className="metric-card" key={label}>
+            <span>{label}</span>
+            <strong>Loading</strong>
+          </article>
+        ))}
+      </section>
+    );
   }
   if (state.status === "error") {
-    return state.error;
+    return (
+      <section className="panel">
+        <h2>Dashboard summary</h2>
+        <p>{state.error}</p>
+      </section>
+    );
   }
-  return `Loaded ${state.data.strategyCount} strategies and ${state.data.backtestCount} backtests.`;
+
+  const latest = state.data.latestBacktest;
+
+  return (
+    <section className="metric-grid" aria-label="Dashboard summary">
+      <article className="metric-card">
+        <span>Strategies</span>
+        <strong>{state.data.strategyCount}</strong>
+      </article>
+      <article className="metric-card">
+        <span>Backtests</span>
+        <strong>{state.data.backtestCount}</strong>
+      </article>
+      <article className="metric-card">
+        <span>Running paper sessions</span>
+        <strong>{state.data.activePaperSessionCount}</strong>
+      </article>
+      <article className="metric-card">
+        <span>Latest backtest</span>
+        <strong>{latest ? formatPercent(latest.totalReturn) : "None"}</strong>
+        {latest ? <small>{latest.mlRiskLabel || "No ML score"}</small> : null}
+      </article>
+    </section>
+  );
+}
+
+function formatPercent(value: number | null) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  return `${value.toFixed(2)}%`;
 }
 
 export default App;
