@@ -6,6 +6,8 @@ This flow assumes the local stack is running:
 docker compose up --build
 ```
 
+The React dashboard is available at `http://localhost:5173` when the frontend service or local Vite dev server is running.
+
 ## 1. Import Sample Candles
 
 ```bash
@@ -173,6 +175,8 @@ curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/stop
 curl http://localhost:8080/api/dashboard/summary
 curl http://localhost:8080/api/dashboard/strategy-performance
 ```
+
+Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, strategy performance, market regime status, and recent audit events.
 
 ## Market Regime Analysis
 

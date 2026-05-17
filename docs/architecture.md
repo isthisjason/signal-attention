@@ -3,6 +3,8 @@
 ```mermaid
 flowchart LR
     user[Developer / Swagger / curl] --> backend[Spring Boot Backend]
+    user --> frontend[React Dashboard]
+    frontend --> backend
     csv[Sample OHLCV CSV] --> backend
 
     backend --> strategies[Strategy CRUD]
@@ -34,6 +36,7 @@ flowchart LR
 - `postgres`: Stores strategies, candles, backtests, trades, risk policies, paper sessions, positions, orders, and audit events.
 - `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, risk evaluation, paper trading, dashboard aggregation, and market regime proxying.
 - `ml-service`: Provides CPU-first rule-based strategy risk scoring and market regime classification.
+- `frontend`: Provides a local React dashboard for summary metrics, strategy performance, audit events, and market regime status.
 
 ## Market Regime Modes
 
@@ -46,4 +49,4 @@ The market regime endpoint defaults to `MARKET_REGIME_MODE=rules`. This path use
 - No real-money trading or broker integration.
 - No authentication or multi-user model yet.
 - No trained attention/PyTorch model yet; the current market regime path is deterministic and CPU-safe.
-- Dashboard support is backend API only; no frontend is included.
+- The dashboard is local and unauthenticated; account isolation remains future scope.
