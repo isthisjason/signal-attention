@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import { errorMessage } from "./api/client";
 import {
   DashboardSummary,
@@ -24,10 +25,17 @@ const loadingStrategies: LoadState<StrategyPerformance[]> = {
   error: null,
 };
 
+const loadingAuditEvents: LoadState<AuditEvent[]> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+
 function App() {
   const [summaryState, setSummaryState] = useState<LoadState<DashboardSummary>>(loadingSummary);
   const [strategiesState, setStrategiesState] =
     useState<LoadState<StrategyPerformance[]>>(loadingStrategies);
+  const [auditState, setAuditState] = useState<LoadState<AuditEvent[]>>(loadingAuditEvents);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +49,26 @@ function App() {
       .catch((error: unknown) => {
         if (active) {
           setSummaryState({ status: "error", data: null, error: errorMessage(error) });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchAuditEvents()
+      .then((data) => {
+        if (active) {
+          setAuditState({ status: "success", data, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setAuditState({ status: "error", data: null, error: errorMessage(error) });
         }
       });
 
@@ -79,6 +107,10 @@ function App() {
       </header>
       <SummaryCards state={summaryState} />
       <StrategyTable state={strategiesState} />
+      <section className="panel">
+        <h2>Audit events</h2>
+        <p>{auditStatusText(auditState)}</p>
+      </section>
     </main>
   );
 }
@@ -204,6 +236,16 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
       </div>
     </section>
   );
+}
+
+function auditStatusText(state: LoadState<AuditEvent[]>) {
+  if (state.status === "loading") {
+    return "Loading audit events.";
+  }
+  if (state.status === "error") {
+    return state.error;
+  }
+  return `Loaded ${state.data.length} audit events.`;
 }
 
 export default App;
