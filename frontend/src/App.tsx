@@ -78,10 +78,7 @@ function App() {
         </div>
       </header>
       <SummaryCards state={summaryState} />
-      <section className="panel">
-        <h2>Strategy performance</h2>
-        <p>{strategyStatusText(strategiesState)}</p>
-      </section>
+      <StrategyTable state={strategiesState} />
     </main>
   );
 }
@@ -140,14 +137,73 @@ function formatPercent(value: number | null) {
   return `${value.toFixed(2)}%`;
 }
 
-function strategyStatusText(state: LoadState<StrategyPerformance[]>) {
+function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
   if (state.status === "loading") {
-    return "Loading strategy performance.";
+    return (
+      <section className="panel">
+        <h2>Strategy performance</h2>
+        <p>Loading strategy performance.</p>
+      </section>
+    );
   }
   if (state.status === "error") {
-    return state.error;
+    return (
+      <section className="panel">
+        <h2>Strategy performance</h2>
+        <p>{state.error}</p>
+      </section>
+    );
   }
-  return `Loaded ${state.data.length} strategy rows.`;
+  if (state.data.length === 0) {
+    return (
+      <section className="panel">
+        <h2>Strategy performance</h2>
+        <p>No strategies have been created yet.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel">
+      <h2>Strategy performance</h2>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Market</th>
+              <th>Status</th>
+              <th>Return</th>
+              <th>Drawdown</th>
+              <th>Trades</th>
+              <th>ML risk</th>
+              <th>Paper sessions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {state.data.map((strategy) => (
+              <tr key={strategy.strategyId}>
+                <td>
+                  <strong>{strategy.name}</strong>
+                  <small>#{strategy.strategyId}</small>
+                </td>
+                <td>
+                  {strategy.symbol}
+                  <small>{strategy.timeframe}</small>
+                </td>
+                <td>{strategy.status}</td>
+                <td>{formatPercent(strategy.latestTotalReturn)}</td>
+                <td>{formatPercent(strategy.latestMaxDrawdown)}</td>
+                <td>{strategy.latestTradeCount ?? "N/A"}</td>
+                <td>{strategy.latestMlRiskLabel || "Unscored"}</td>
+                <td>{strategy.paperSessionCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 }
 
 export default App;
