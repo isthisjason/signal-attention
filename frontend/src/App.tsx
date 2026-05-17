@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { errorMessage } from "./api/client";
-import { DashboardSummary, fetchDashboardSummary } from "./api/dashboard";
+import {
+  DashboardSummary,
+  StrategyPerformance,
+  fetchDashboardSummary,
+  fetchStrategyPerformance,
+} from "./api/dashboard";
 
 type LoadState<T> =
   | { status: "loading"; data: null; error: null }
@@ -13,8 +18,16 @@ const loadingSummary: LoadState<DashboardSummary> = {
   error: null,
 };
 
+const loadingStrategies: LoadState<StrategyPerformance[]> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+
 function App() {
   const [summaryState, setSummaryState] = useState<LoadState<DashboardSummary>>(loadingSummary);
+  const [strategiesState, setStrategiesState] =
+    useState<LoadState<StrategyPerformance[]>>(loadingStrategies);
 
   useEffect(() => {
     let active = true;
@@ -36,6 +49,26 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    fetchStrategyPerformance()
+      .then((data) => {
+        if (active) {
+          setStrategiesState({ status: "success", data, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setStrategiesState({ status: "error", data: null, error: errorMessage(error) });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <main className="app-shell">
       <header className="dashboard-header">
@@ -45,6 +78,10 @@ function App() {
         </div>
       </header>
       <SummaryCards state={summaryState} />
+      <section className="panel">
+        <h2>Strategy performance</h2>
+        <p>{strategyStatusText(strategiesState)}</p>
+      </section>
     </main>
   );
 }
@@ -101,6 +138,16 @@ function formatPercent(value: number | null) {
     return "N/A";
   }
   return `${value.toFixed(2)}%`;
+}
+
+function strategyStatusText(state: LoadState<StrategyPerformance[]>) {
+  if (state.status === "loading") {
+    return "Loading strategy performance.";
+  }
+  if (state.status === "error") {
+    return state.error;
+  }
+  return `Loaded ${state.data.length} strategy rows.`;
 }
 
 export default App;
