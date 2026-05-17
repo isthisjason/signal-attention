@@ -7,6 +7,7 @@ import {
   fetchDashboardSummary,
   fetchStrategyPerformance,
 } from "./api/dashboard";
+import { MarketRegimeResponse, fetchMarketRegime } from "./api/marketRegime";
 
 type LoadState<T> =
   | { status: "loading"; data: null; error: null }
@@ -31,11 +32,19 @@ const loadingAuditEvents: LoadState<AuditEvent[]> = {
   error: null,
 };
 
+const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+
 function App() {
   const [summaryState, setSummaryState] = useState<LoadState<DashboardSummary>>(loadingSummary);
   const [strategiesState, setStrategiesState] =
     useState<LoadState<StrategyPerformance[]>>(loadingStrategies);
   const [auditState, setAuditState] = useState<LoadState<AuditEvent[]>>(loadingAuditEvents);
+  const [regimeState, setRegimeState] =
+    useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
 
   useEffect(() => {
     let active = true;
@@ -49,6 +58,26 @@ function App() {
       .catch((error: unknown) => {
         if (active) {
           setSummaryState({ status: "error", data: null, error: errorMessage(error) });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchMarketRegime()
+      .then((data) => {
+        if (active) {
+          setRegimeState({ status: "success", data, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setRegimeState({ status: "error", data: null, error: errorMessage(error) });
         }
       });
 
@@ -107,6 +136,10 @@ function App() {
       </header>
       <SummaryCards state={summaryState} />
       <StrategyTable state={strategiesState} />
+      <section className="panel">
+        <h2>Market regime</h2>
+        <p>{regimeStatusText(regimeState)}</p>
+      </section>
       <AuditTimeline state={auditState} />
     </main>
   );
@@ -294,6 +327,16 @@ function formatDateTime(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function regimeStatusText(state: LoadState<MarketRegimeResponse>) {
+  if (state.status === "loading") {
+    return "Loading BTC-USD 1h market regime.";
+  }
+  if (state.status === "error") {
+    return state.error;
+  }
+  return `Loaded ${state.data.regimeLabel} from ${state.data.classifierSource}.`;
 }
 
 export default App;
