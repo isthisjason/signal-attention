@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import { errorMessage } from "./api/client";
 import {
@@ -46,85 +46,54 @@ function App() {
   const [regimeState, setRegimeState] =
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
 
-  useEffect(() => {
-    let active = true;
+  const loadDashboard = useCallback(() => {
+    setSummaryState(loadingSummary);
+    setStrategiesState(loadingStrategies);
+    setAuditState(loadingAuditEvents);
+    setRegimeState(loadingMarketRegime);
 
     fetchDashboardSummary()
       .then((data) => {
-        if (active) {
-          setSummaryState({ status: "success", data, error: null });
-        }
+        setSummaryState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
-        if (active) {
-          setSummaryState({ status: "error", data: null, error: errorMessage(error) });
-        }
+        setSummaryState({ status: "error", data: null, error: errorMessage(error) });
       });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
 
     fetchMarketRegime()
       .then((data) => {
-        if (active) {
-          setRegimeState({ status: "success", data, error: null });
-        }
+        setRegimeState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
-        if (active) {
-          setRegimeState({ status: "error", data: null, error: errorMessage(error) });
-        }
+        setRegimeState({ status: "error", data: null, error: errorMessage(error) });
       });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
 
     fetchAuditEvents()
       .then((data) => {
-        if (active) {
-          setAuditState({ status: "success", data, error: null });
-        }
+        setAuditState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
-        if (active) {
-          setAuditState({ status: "error", data: null, error: errorMessage(error) });
-        }
+        setAuditState({ status: "error", data: null, error: errorMessage(error) });
       });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
 
     fetchStrategyPerformance()
       .then((data) => {
-        if (active) {
-          setStrategiesState({ status: "success", data, error: null });
-        }
+        setStrategiesState({ status: "success", data, error: null });
       })
       .catch((error: unknown) => {
-        if (active) {
-          setStrategiesState({ status: "error", data: null, error: errorMessage(error) });
-        }
+        setStrategiesState({ status: "error", data: null, error: errorMessage(error) });
       });
-
-    return () => {
-      active = false;
-    };
   }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const loading =
+    summaryState.status === "loading" ||
+    strategiesState.status === "loading" ||
+    auditState.status === "loading" ||
+    regimeState.status === "loading";
 
   return (
     <main className="app-shell">
@@ -133,6 +102,9 @@ function App() {
           <p className="eyebrow">SignalAttention</p>
           <h1>Trading research dashboard</h1>
         </div>
+        <button className="button" disabled={loading} onClick={loadDashboard} type="button">
+          {loading ? "Refreshing" : "Refresh"}
+        </button>
       </header>
       <SummaryCards state={summaryState} />
       <StrategyTable state={strategiesState} />
