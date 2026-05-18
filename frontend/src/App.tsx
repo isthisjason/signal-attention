@@ -20,14 +20,19 @@ import { MarketDataImportSummary, importMarketData } from "./api/marketData";
 import { MarketRegimeResponse, fetchMarketRegime } from "./api/marketRegime";
 import {
   PaperReplayResult,
+  PaperOrder,
+  PaperPosition,
   PaperSession,
   PaperSessionSummary,
   createPaperSession,
+  fetchPaperOrders,
+  fetchPaperPositions,
   fetchPaperSessionSummary,
   fetchStrategyPaperSessions,
   replayPaperSession,
   startPaperSession,
   stopPaperSession,
+  submitPaperOrder,
 } from "./api/paperTrading";
 import { Strategy, createStrategy, fetchStrategies } from "./api/strategies";
 
@@ -100,11 +105,17 @@ function App() {
     startDate: defaultStart,
     endDate: defaultEnd,
     maxCandles: "250",
+    orderSide: "BUY",
+    orderSymbol: "BTC-USD",
+    orderQuantity: "0.25",
+    orderPrice: "42000",
   });
   const [paperSessions, setPaperSessions] = useState<PaperSession[]>([]);
   const [selectedPaperSessionId, setSelectedPaperSessionId] = useState<number | null>(null);
   const [paperSummary, setPaperSummary] = useState<PaperSessionSummary | null>(null);
   const [paperReplay, setPaperReplay] = useState<PaperReplayResult | null>(null);
+  const [paperOrders, setPaperOrders] = useState<PaperOrder[]>([]);
+  const [paperPositions, setPaperPositions] = useState<PaperPosition[]>([]);
 
   const loadDashboard = useCallback(() => {
     setSummaryState(loadingSummary);
@@ -168,11 +179,25 @@ function App() {
   useEffect(() => {
     if (selectedPaperSessionId === null) {
       setPaperSummary(null);
+      setPaperOrders([]);
+      setPaperPositions([]);
       return;
     }
-    fetchPaperSessionSummary(selectedPaperSessionId)
-      .then(setPaperSummary)
-      .catch(() => setPaperSummary(null));
+    Promise.all([
+      fetchPaperSessionSummary(selectedPaperSessionId),
+      fetchPaperOrders(selectedPaperSessionId),
+      fetchPaperPositions(selectedPaperSessionId),
+    ])
+      .then(([summary, orders, positions]) => {
+        setPaperSummary(summary);
+        setPaperOrders(orders);
+        setPaperPositions(positions);
+      })
+      .catch(() => {
+        setPaperSummary(null);
+        setPaperOrders([]);
+        setPaperPositions([]);
+      });
   }, [selectedPaperSessionId, paperReplay]);
 
   const selectedStrategy = useMemo(() => {
@@ -323,6 +348,26 @@ function App() {
     });
   }
 
+  function handlePaperOrder() {
+    if (selectedPaperSessionId === null) {
+      setNotice({ tone: "error", message: "Create or select a paper session first." });
+      return;
+    }
+    void runAction("paper-order", async () => {
+      const order = await submitPaperOrder(selectedPaperSessionId, {
+        side: paperForm.orderSide === "SELL" ? "SELL" : "BUY",
+        symbol: paperForm.orderSymbol,
+        quantity: Number(paperForm.orderQuantity),
+        price: Number(paperForm.orderPrice),
+      });
+      setPaperOrders(await fetchPaperOrders(selectedPaperSessionId));
+      setPaperPositions(await fetchPaperPositions(selectedPaperSessionId));
+      setPaperSummary(await fetchPaperSessionSummary(selectedPaperSessionId));
+      setNotice({ tone: order.status === "FILLED" ? "success" : "error", message: `Order #${order.id} ${order.status.toLowerCase()}.` });
+      loadDashboard();
+    });
+  }
+
   return (
     <main className="app-shell">
       <header className="dashboard-header">
@@ -373,11 +418,14 @@ function App() {
           sessions={paperSessions}
           summary={paperSummary}
           onCreate={handlePaperCreate}
+          onOrder={handlePaperOrder}
           onReplay={handlePaperReplay}
           onSelect={setSelectedPaperSessionId}
           onStart={() => handlePaperStartStop("start")}
           onStop={() => handlePaperStartStop("stop")}
           onUpdate={setPaperForm}
+          orders={paperOrders}
+          positions={paperPositions}
         />
       </section>
 
@@ -552,11 +600,14 @@ function BacktestWorkflowPanel({
 function PaperTradingPanel({
   busy,
   form,
+  orders,
+  positions,
   replay,
   selectedSessionId,
   sessions,
   summary,
   onCreate,
+  onOrder,
   onReplay,
   onSelect,
   onStart,
@@ -564,17 +615,38 @@ function PaperTradingPanel({
   onUpdate,
 }: {
   busy: boolean;
-  form: { initialBalance: string; startDate: string; endDate: string; maxCandles: string };
+  form: {
+    initialBalance: string;
+    startDate: string;
+    endDate: string;
+    maxCandles: string;
+    orderSide: string;
+    orderSymbol: string;
+    orderQuantity: string;
+    orderPrice: string;
+  };
+  orders: PaperOrder[];
+  positions: PaperPosition[];
   replay: PaperReplayResult | null;
   selectedSessionId: number | null;
   sessions: PaperSession[];
   summary: PaperSessionSummary | null;
   onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  onOrder: () => void;
   onReplay: () => void;
   onSelect: (id: number | null) => void;
   onStart: () => void;
   onStop: () => void;
-  onUpdate: (form: { initialBalance: string; startDate: string; endDate: string; maxCandles: string }) => void;
+  onUpdate: (form: {
+    initialBalance: string;
+    startDate: string;
+    endDate: string;
+    maxCandles: string;
+    orderSide: string;
+    orderSymbol: string;
+    orderQuantity: string;
+    orderPrice: string;
+  }) => void;
 }) {
   return (
     <section className="panel">
@@ -605,6 +677,21 @@ function PaperTradingPanel({
         </button>
       </div>
       <div className="form-grid">
+        <label>
+          Side
+          <select value={form.orderSide} onChange={(event) => onUpdate({ ...form, orderSide: event.target.value })}>
+            <option value="BUY">Buy</option>
+            <option value="SELL">Sell</option>
+          </select>
+        </label>
+        <TextInput label="Symbol" name="orderSymbol" state={form} setState={onUpdate} />
+        <TextInput label="Quantity" name="orderQuantity" state={form} setState={onUpdate} type="number" />
+        <TextInput label="Price" name="orderPrice" state={form} setState={onUpdate} type="number" />
+      </div>
+      <button className="button button-secondary" disabled={busy || !selectedSessionId} onClick={onOrder} type="button">
+        Submit order
+      </button>
+      <div className="form-grid">
         <DateInput label="Replay start" name="startDate" state={form} setState={onUpdate} />
         <DateInput label="Replay end" name="endDate" state={form} setState={onUpdate} />
         <TextInput label="Max candles" name="maxCandles" state={form} setState={onUpdate} type="number" />
@@ -632,6 +719,26 @@ function PaperTradingPanel({
             ["Rejected", replay.rejectedOrders],
           ]}
         />
+      ) : null}
+      {orders.length ? (
+        <div className="mini-table">
+          {orders.slice(0, 4).map((order) => (
+            <div key={order.id}>
+              <span>{order.side}</span>
+              <strong>{order.status}</strong>
+              <small>{formatCurrency(order.notional)}</small>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {positions.length ? (
+        <ul className="compact-list">
+          {positions.slice(0, 4).map((position) => (
+            <li key={position.id}>
+              {position.status} {position.quantity} {position.symbol} at {formatCurrency(position.entryPrice)}
+            </li>
+          ))}
+        </ul>
       ) : null}
     </section>
   );
