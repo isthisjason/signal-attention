@@ -7,6 +7,7 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | ML service tests | `cd ml-service && python3 -m pytest` | Health and strategy-risk tests pass. |
 | Backend unit tests | `cd backend && ./mvnw test` | Spring and service tests pass. Docker-backed Testcontainers tests run when Docker is available and skip when it is not. |
 | Backend persistence integration tests | `cd backend && ./mvnw -Dgroups=integration test` | Flyway/JPA persistence tests pass when Docker is available. |
+| Frontend build | `cd frontend && npm run build` | TypeScript and Vite production build complete. |
 | Compose syntax | `docker compose config` | Compose file renders without errors. |
 | Full local stack | `docker compose up --build` | PostgreSQL, backend, and ML service start. |
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
@@ -22,3 +23,12 @@ Use this checklist from a clean clone or a freshly pulled branch.
 - If Docker is unavailable, backend unit tests still pass and Docker-backed persistence tests are skipped.
 - If Docker is unavailable, ML tests can still be run through the local Python environment.
 - If Java is unavailable, backend compile/test verification remains blocked until Java is installed or the backend is built inside Docker.
+
+## Latest Local Verification
+
+Last checked on May 18, 2026:
+
+- `cd backend && ./mvnw test`: passed, with 82 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable.
+- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 33 tests.
+- `cd frontend && npm run build`: passed.
+- `docker compose config`: blocked because the Docker CLI is not available in this WSL distro.
