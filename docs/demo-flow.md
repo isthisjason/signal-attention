@@ -8,6 +8,8 @@ docker compose up --build
 
 The React dashboard is available at `http://localhost:5173` when the frontend service or local Vite dev server is running.
 
+The dashboard can drive the same flow as the curl commands below: import candles, create the SMA strategy, run the backtest, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
+
 ## 1. Import Sample Candles
 
 ```bash
@@ -151,6 +153,8 @@ curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/positions
 curl http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/summary
 ```
 
+The dashboard paper-trading panel exposes the same manual order path. Select the active paper session, enter side, symbol, quantity, and price, then submit the order to refresh orders, positions, summary, and audit state.
+
 Replay imported candles through the running paper session:
 
 ```bash
@@ -177,6 +181,14 @@ curl http://localhost:8080/api/dashboard/strategy-performance
 ```
 
 Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, strategy performance, market regime status, and recent audit events.
+
+The dashboard also includes workbench controls for the main demo flow:
+
+- Import `data/btc-usd-1h-sample.csv`.
+- Create a default BTC-USD 1h SMA crossover strategy.
+- Run the January 1-10, 2024 backtest.
+- Score the latest backtest with the ML risk endpoint.
+- Create a paper session, start or stop it, submit manual paper orders, and replay imported candles.
 
 ## Market Regime Analysis
 
