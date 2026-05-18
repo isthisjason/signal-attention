@@ -42,6 +42,31 @@ export type PaperReplayResult = {
   endDate: string;
 };
 
+export type PaperOrder = {
+  id: number;
+  paperSessionId: number;
+  side: "BUY" | "SELL";
+  status: string;
+  symbol: string;
+  quantity: number;
+  price: number;
+  notional: number;
+  rejectionReason: string | null;
+  createdAt: string;
+};
+
+export type PaperPosition = {
+  id: number;
+  paperSessionId: number;
+  status: string;
+  symbol: string;
+  quantity: number;
+  entryPrice: number;
+  exitPrice: number | null;
+  openedAt: string;
+  closedAt: string | null;
+};
+
 export function createPaperSession(strategyId: number, initialBalance: number) {
   return postJson<PaperSession>(`/api/strategies/${strategyId}/paper-sessions`, {
     initialBalance,
@@ -69,4 +94,19 @@ export function replayPaperSession(
   payload: { startDate: string; endDate: string; maxCandles: number },
 ) {
   return postJson<PaperReplayResult>(`/api/paper-sessions/${sessionId}/replay`, payload);
+}
+
+export function submitPaperOrder(
+  sessionId: number,
+  payload: { side: "BUY" | "SELL"; symbol: string; quantity: number; price: number },
+) {
+  return postJson<PaperOrder>(`/api/paper-sessions/${sessionId}/orders`, payload);
+}
+
+export function fetchPaperOrders(sessionId: number) {
+  return getJson<PaperOrder[]>(`/api/paper-sessions/${sessionId}/orders`);
+}
+
+export function fetchPaperPositions(sessionId: number) {
+  return getJson<PaperPosition[]>(`/api/paper-sessions/${sessionId}/positions`);
 }
