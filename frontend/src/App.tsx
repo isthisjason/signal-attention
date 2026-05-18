@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
+import {
+  BacktestRun,
+  BacktestTrade,
+  MlRiskScore,
+  fetchBacktest,
+  fetchBacktestTrades,
+  runBacktest,
+  scoreBacktestRisk,
+} from "./api/backtests";
 import { errorMessage } from "./api/client";
 import {
   DashboardSummary,
@@ -7,36 +16,55 @@ import {
   fetchDashboardSummary,
   fetchStrategyPerformance,
 } from "./api/dashboard";
+import { MarketDataImportSummary, importMarketData } from "./api/marketData";
 import { MarketRegimeResponse, fetchMarketRegime } from "./api/marketRegime";
+import {
+  PaperReplayResult,
+  PaperSession,
+  PaperSessionSummary,
+  createPaperSession,
+  fetchPaperSessionSummary,
+  fetchStrategyPaperSessions,
+  replayPaperSession,
+  startPaperSession,
+  stopPaperSession,
+} from "./api/paperTrading";
+import { Strategy, createStrategy, fetchStrategies } from "./api/strategies";
 
 type LoadState<T> =
   | { status: "loading"; data: null; error: null }
   | { status: "success"; data: T; error: null }
   | { status: "error"; data: null; error: string };
 
-const loadingSummary: LoadState<DashboardSummary> = {
-  status: "loading",
-  data: null,
-  error: null,
-};
-
+const loadingSummary: LoadState<DashboardSummary> = { status: "loading", data: null, error: null };
 const loadingStrategies: LoadState<StrategyPerformance[]> = {
   status: "loading",
   data: null,
   error: null,
 };
-
-const loadingAuditEvents: LoadState<AuditEvent[]> = {
-  status: "loading",
-  data: null,
-  error: null,
-};
-
+const loadingAuditEvents: LoadState<AuditEvent[]> = { status: "loading", data: null, error: null };
 const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
   status: "loading",
   data: null,
   error: null,
 };
+const loadingStrategyList: LoadState<Strategy[]> = { status: "loading", data: null, error: null };
+
+type Notice = { tone: "success" | "error"; message: string } | null;
+
+type StrategyFormState = {
+  name: string;
+  symbol: string;
+  timeframe: string;
+  shortWindow: string;
+  longWindow: string;
+  initialBalance: string;
+  feePercent: string;
+  positionSizePercent: string;
+};
+
+const defaultStart = "2024-01-01T00:00";
+const defaultEnd = "2024-01-10T00:00";
 
 function App() {
   const [summaryState, setSummaryState] = useState<LoadState<DashboardSummary>>(loadingSummary);
@@ -45,55 +73,255 @@ function App() {
   const [auditState, setAuditState] = useState<LoadState<AuditEvent[]>>(loadingAuditEvents);
   const [regimeState, setRegimeState] =
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
+  const [strategyListState, setStrategyListState] =
+    useState<LoadState<Strategy[]>>(loadingStrategyList);
+
+  const [selectedStrategyId, setSelectedStrategyId] = useState<number | null>(null);
+  const [notice, setNotice] = useState<Notice>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  const [strategyForm, setStrategyForm] = useState({
+    name: "BTC SMA Crossover",
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    shortWindow: "3",
+    longWindow: "5",
+    initialBalance: "10000",
+    feePercent: "0.1",
+    positionSizePercent: "50",
+  });
+  const [importSummary, setImportSummary] = useState<MarketDataImportSummary | null>(null);
+  const [backtestForm, setBacktestForm] = useState({ startDate: defaultStart, endDate: defaultEnd });
+  const [backtestRun, setBacktestRun] = useState<BacktestRun | null>(null);
+  const [backtestTrades, setBacktestTrades] = useState<BacktestTrade[]>([]);
+  const [riskScore, setRiskScore] = useState<MlRiskScore | null>(null);
+  const [paperForm, setPaperForm] = useState({
+    initialBalance: "100000",
+    startDate: defaultStart,
+    endDate: defaultEnd,
+    maxCandles: "250",
+  });
+  const [paperSessions, setPaperSessions] = useState<PaperSession[]>([]);
+  const [selectedPaperSessionId, setSelectedPaperSessionId] = useState<number | null>(null);
+  const [paperSummary, setPaperSummary] = useState<PaperSessionSummary | null>(null);
+  const [paperReplay, setPaperReplay] = useState<PaperReplayResult | null>(null);
 
   const loadDashboard = useCallback(() => {
     setSummaryState(loadingSummary);
     setStrategiesState(loadingStrategies);
     setAuditState(loadingAuditEvents);
     setRegimeState(loadingMarketRegime);
+    setStrategyListState(loadingStrategyList);
 
     fetchDashboardSummary()
-      .then((data) => {
-        setSummaryState({ status: "success", data, error: null });
-      })
-      .catch((error: unknown) => {
-        setSummaryState({ status: "error", data: null, error: errorMessage(error) });
-      });
-
+      .then((data) => setSummaryState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setSummaryState({ status: "error", data: null, error: errorMessage(error) }),
+      );
     fetchMarketRegime()
-      .then((data) => {
-        setRegimeState({ status: "success", data, error: null });
-      })
-      .catch((error: unknown) => {
-        setRegimeState({ status: "error", data: null, error: errorMessage(error) });
-      });
-
+      .then((data) => setRegimeState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setRegimeState({ status: "error", data: null, error: errorMessage(error) }),
+      );
     fetchAuditEvents()
-      .then((data) => {
-        setAuditState({ status: "success", data, error: null });
-      })
-      .catch((error: unknown) => {
-        setAuditState({ status: "error", data: null, error: errorMessage(error) });
-      });
-
+      .then((data) => setAuditState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setAuditState({ status: "error", data: null, error: errorMessage(error) }),
+      );
     fetchStrategyPerformance()
+      .then((data) => setStrategiesState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setStrategiesState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    fetchStrategies()
       .then((data) => {
-        setStrategiesState({ status: "success", data, error: null });
+        setStrategyListState({ status: "success", data, error: null });
+        setSelectedStrategyId((current) => current ?? data[0]?.id ?? null);
       })
-      .catch((error: unknown) => {
-        setStrategiesState({ status: "error", data: null, error: errorMessage(error) });
-      });
+      .catch((error: unknown) =>
+        setStrategyListState({ status: "error", data: null, error: errorMessage(error) }),
+      );
   }, []);
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
 
+  const loadPaperSessions = useCallback((strategyId: number) => {
+    fetchStrategyPaperSessions(strategyId)
+      .then((sessions) => {
+        setPaperSessions(sessions);
+        setSelectedPaperSessionId((current) => current ?? sessions[0]?.id ?? null);
+      })
+      .catch((error: unknown) => setNotice({ tone: "error", message: errorMessage(error) }));
+  }, []);
+
+  useEffect(() => {
+    if (selectedStrategyId === null) {
+      setPaperSessions([]);
+      setSelectedPaperSessionId(null);
+      return;
+    }
+    loadPaperSessions(selectedStrategyId);
+  }, [loadPaperSessions, selectedStrategyId]);
+
+  useEffect(() => {
+    if (selectedPaperSessionId === null) {
+      setPaperSummary(null);
+      return;
+    }
+    fetchPaperSessionSummary(selectedPaperSessionId)
+      .then(setPaperSummary)
+      .catch(() => setPaperSummary(null));
+  }, [selectedPaperSessionId, paperReplay]);
+
+  const selectedStrategy = useMemo(() => {
+    if (strategyListState.status !== "success" || selectedStrategyId === null) {
+      return null;
+    }
+    return strategyListState.data.find((strategy) => strategy.id === selectedStrategyId) ?? null;
+  }, [selectedStrategyId, strategyListState]);
+
   const loading =
     summaryState.status === "loading" ||
     strategiesState.status === "loading" ||
     auditState.status === "loading" ||
-    regimeState.status === "loading";
+    regimeState.status === "loading" ||
+    strategyListState.status === "loading";
+
+  async function runAction(action: string, work: () => Promise<void>) {
+    setBusyAction(action);
+    setNotice(null);
+    try {
+      await work();
+    } catch (error: unknown) {
+      setNotice({ tone: "error", message: errorMessage(error) });
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function handleStrategySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void runAction("strategy", async () => {
+      const created = await createStrategy({
+        name: strategyForm.name,
+        symbol: strategyForm.symbol,
+        timeframe: strategyForm.timeframe,
+        strategyType: "SMA_CROSSOVER",
+        rules: {
+          shortWindow: Number(strategyForm.shortWindow),
+          longWindow: Number(strategyForm.longWindow),
+          initialBalance: Number(strategyForm.initialBalance),
+          feePercent: Number(strategyForm.feePercent),
+          positionSizePercent: Number(strategyForm.positionSizePercent),
+        },
+      });
+      setSelectedStrategyId(created.id);
+      setNotice({ tone: "success", message: `Created strategy #${created.id}.` });
+      loadDashboard();
+    });
+  }
+
+  function handleImportSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const fileInput = event.currentTarget.elements.namedItem("csv") as HTMLInputElement;
+    const file = fileInput.files?.[0];
+    if (!file) {
+      setNotice({ tone: "error", message: "Choose a CSV file before importing." });
+      return;
+    }
+    void runAction("import", async () => {
+      const summary = await importMarketData(file);
+      setImportSummary(summary);
+      setNotice({ tone: "success", message: `Imported ${summary.rowsImported} candle rows.` });
+      loadDashboard();
+    });
+  }
+
+  function handleBacktestSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedStrategyId === null) {
+      setNotice({ tone: "error", message: "Create or select a strategy first." });
+      return;
+    }
+    void runAction("backtest", async () => {
+      const run = await runBacktest(selectedStrategyId, {
+        startDate: toInstant(backtestForm.startDate),
+        endDate: toInstant(backtestForm.endDate),
+      });
+      const trades = await fetchBacktestTrades(run.id);
+      setBacktestRun(run);
+      setBacktestTrades(trades);
+      setRiskScore(null);
+      setNotice({ tone: "success", message: `Backtest #${run.id} completed.` });
+      loadDashboard();
+    });
+  }
+
+  function handleRiskScore() {
+    if (!backtestRun) {
+      setNotice({ tone: "error", message: "Run a backtest before scoring risk." });
+      return;
+    }
+    void runAction("risk", async () => {
+      const score = await scoreBacktestRisk(backtestRun.id);
+      const refreshed = await fetchBacktest(backtestRun.id);
+      setRiskScore(score);
+      setBacktestRun(refreshed);
+      setNotice({ tone: "success", message: `Risk score saved as ${score.riskLabel}.` });
+      loadDashboard();
+    });
+  }
+
+  function handlePaperCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedStrategyId === null) {
+      setNotice({ tone: "error", message: "Create or select a strategy first." });
+      return;
+    }
+    void runAction("paper-create", async () => {
+      const session = await createPaperSession(selectedStrategyId, Number(paperForm.initialBalance));
+      setSelectedPaperSessionId(session.id);
+      await loadPaperSessions(selectedStrategyId);
+      setNotice({ tone: "success", message: `Created paper session #${session.id}.` });
+      loadDashboard();
+    });
+  }
+
+  function handlePaperStartStop(action: "start" | "stop") {
+    if (selectedPaperSessionId === null || selectedStrategyId === null) {
+      setNotice({ tone: "error", message: "Create or select a paper session first." });
+      return;
+    }
+    void runAction(`paper-${action}`, async () => {
+      const session =
+        action === "start"
+          ? await startPaperSession(selectedPaperSessionId)
+          : await stopPaperSession(selectedPaperSessionId);
+      await loadPaperSessions(selectedStrategyId);
+      setSelectedPaperSessionId(session.id);
+      setNotice({ tone: "success", message: `${action === "start" ? "Started" : "Stopped"} session #${session.id}.` });
+      loadDashboard();
+    });
+  }
+
+  function handlePaperReplay() {
+    if (selectedPaperSessionId === null) {
+      setNotice({ tone: "error", message: "Create or select a paper session first." });
+      return;
+    }
+    void runAction("paper-replay", async () => {
+      const result = await replayPaperSession(selectedPaperSessionId, {
+        startDate: toInstant(paperForm.startDate),
+        endDate: toInstant(paperForm.endDate),
+        maxCandles: Number(paperForm.maxCandles),
+      });
+      setPaperReplay(result);
+      setNotice({ tone: "success", message: `Replay filled ${result.filledOrders} orders.` });
+      loadDashboard();
+    });
+  }
 
   return (
     <main className="app-shell">
@@ -106,11 +334,377 @@ function App() {
           {loading ? "Refreshing" : "Refresh"}
         </button>
       </header>
+
+      {notice ? <div className={`notice notice-${notice.tone}`}>{notice.message}</div> : null}
+
       <SummaryCards state={summaryState} />
+
+      <section className="workflow-grid" aria-label="Research workflow controls">
+        <MarketDataImportPanel
+          busy={busyAction === "import"}
+          importSummary={importSummary}
+          onSubmit={handleImportSubmit}
+        />
+        <StrategyWorkflowPanel
+          busy={busyAction === "strategy"}
+          form={strategyForm}
+          selectedStrategyId={selectedStrategyId}
+          state={strategyListState}
+          onSelect={setSelectedStrategyId}
+          onSubmit={handleStrategySubmit}
+          onUpdate={setStrategyForm}
+        />
+        <BacktestWorkflowPanel
+          backtestRun={backtestRun}
+          busy={busyAction === "backtest" || busyAction === "risk"}
+          form={backtestForm}
+          riskScore={riskScore}
+          selectedStrategy={selectedStrategy}
+          trades={backtestTrades}
+          onRiskScore={handleRiskScore}
+          onSubmit={handleBacktestSubmit}
+          onUpdate={setBacktestForm}
+        />
+        <PaperTradingPanel
+          busy={busyAction?.startsWith("paper") ?? false}
+          form={paperForm}
+          replay={paperReplay}
+          selectedSessionId={selectedPaperSessionId}
+          sessions={paperSessions}
+          summary={paperSummary}
+          onCreate={handlePaperCreate}
+          onReplay={handlePaperReplay}
+          onSelect={setSelectedPaperSessionId}
+          onStart={() => handlePaperStartStop("start")}
+          onStop={() => handlePaperStartStop("stop")}
+          onUpdate={setPaperForm}
+        />
+      </section>
+
       <StrategyTable state={strategiesState} />
       <MarketRegimePanel state={regimeState} />
       <AuditTimeline state={auditState} />
     </main>
+  );
+}
+
+function MarketDataImportPanel({
+  busy,
+  importSummary,
+  onSubmit,
+}: {
+  busy: boolean;
+  importSummary: MarketDataImportSummary | null;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <section className="panel">
+      <h2>Market data</h2>
+      <form className="control-stack" onSubmit={onSubmit}>
+        <label>
+          Candle CSV
+          <input accept=".csv,text/csv" name="csv" type="file" />
+        </label>
+        <button className="button" disabled={busy} type="submit">
+          {busy ? "Importing" : "Import CSV"}
+        </button>
+      </form>
+      {importSummary ? (
+        <ResultGrid
+          items={[
+            ["Rows read", importSummary.totalRows],
+            ["Imported", importSummary.rowsImported],
+            ["Rejected", importSummary.rowsRejected],
+          ]}
+        />
+      ) : null}
+      {importSummary?.errors.length ? (
+        <ul className="compact-list">
+          {importSummary.errors.slice(0, 4).map((error) => (
+            <li key={`${error.rowNumber}-${error.message}`}>Row {error.rowNumber}: {error.message}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+function StrategyWorkflowPanel({
+  busy,
+  form,
+  selectedStrategyId,
+  state,
+  onSelect,
+  onSubmit,
+  onUpdate,
+}: {
+  busy: boolean;
+  form: StrategyFormState;
+  selectedStrategyId: number | null;
+  state: LoadState<Strategy[]>;
+  onSelect: (id: number | null) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdate: (form: StrategyFormState) => void;
+}) {
+  return (
+    <section className="panel">
+      <h2>Strategy</h2>
+      <label>
+        Active strategy
+        <select
+          disabled={state.status !== "success"}
+          value={selectedStrategyId ?? ""}
+          onChange={(event) => onSelect(event.target.value ? Number(event.target.value) : null)}
+        >
+          <option value="">None selected</option>
+          {state.status === "success"
+            ? state.data.map((strategy) => (
+                <option key={strategy.id} value={strategy.id}>
+                  #{strategy.id} {strategy.name}
+                </option>
+              ))
+            : null}
+        </select>
+      </label>
+      <form className="control-stack" onSubmit={onSubmit}>
+        <div className="form-grid">
+          <TextInput label="Name" name="name" state={form} setState={onUpdate} />
+          <TextInput label="Symbol" name="symbol" state={form} setState={onUpdate} />
+          <TextInput label="Timeframe" name="timeframe" state={form} setState={onUpdate} />
+          <TextInput label="Short SMA" name="shortWindow" state={form} setState={onUpdate} type="number" />
+          <TextInput label="Long SMA" name="longWindow" state={form} setState={onUpdate} type="number" />
+          <TextInput label="Initial balance" name="initialBalance" state={form} setState={onUpdate} type="number" />
+          <TextInput label="Fee %" name="feePercent" state={form} setState={onUpdate} type="number" />
+          <TextInput
+            label="Position size %"
+            name="positionSizePercent"
+            state={form}
+            setState={onUpdate}
+            type="number"
+          />
+        </div>
+        <button className="button" disabled={busy} type="submit">
+          {busy ? "Creating" : "Create SMA strategy"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function BacktestWorkflowPanel({
+  backtestRun,
+  busy,
+  form,
+  riskScore,
+  selectedStrategy,
+  trades,
+  onRiskScore,
+  onSubmit,
+  onUpdate,
+}: {
+  backtestRun: BacktestRun | null;
+  busy: boolean;
+  form: { startDate: string; endDate: string };
+  riskScore: MlRiskScore | null;
+  selectedStrategy: Strategy | null;
+  trades: BacktestTrade[];
+  onRiskScore: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdate: (form: { startDate: string; endDate: string }) => void;
+}) {
+  return (
+    <section className="panel">
+      <h2>Backtest</h2>
+      <p>{selectedStrategy ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}` : "Select a strategy first."}</p>
+      <form className="control-stack" onSubmit={onSubmit}>
+        <div className="form-grid">
+          <DateInput label="Start" name="startDate" state={form} setState={onUpdate} />
+          <DateInput label="End" name="endDate" state={form} setState={onUpdate} />
+        </div>
+        <div className="button-row">
+          <button className="button" disabled={busy || !selectedStrategy} type="submit">
+            {busy ? "Working" : "Run backtest"}
+          </button>
+          <button className="button button-secondary" disabled={busy || !backtestRun} onClick={onRiskScore} type="button">
+            Score ML risk
+          </button>
+        </div>
+      </form>
+      {backtestRun ? (
+        <>
+          <ResultGrid
+            items={[
+              ["Run", `#${backtestRun.id}`],
+              ["Return", formatPercent(backtestRun.totalReturn)],
+              ["Drawdown", formatPercent(backtestRun.maxDrawdown)],
+              ["Trades", backtestRun.tradeCount],
+              ["Risk", backtestRun.mlRiskLabel || riskScore?.riskLabel || "Unscored"],
+            ]}
+          />
+          <TradePreview trades={trades} />
+        </>
+      ) : null}
+      {riskScore ? <ul className="compact-list">{riskScore.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}
+    </section>
+  );
+}
+
+function PaperTradingPanel({
+  busy,
+  form,
+  replay,
+  selectedSessionId,
+  sessions,
+  summary,
+  onCreate,
+  onReplay,
+  onSelect,
+  onStart,
+  onStop,
+  onUpdate,
+}: {
+  busy: boolean;
+  form: { initialBalance: string; startDate: string; endDate: string; maxCandles: string };
+  replay: PaperReplayResult | null;
+  selectedSessionId: number | null;
+  sessions: PaperSession[];
+  summary: PaperSessionSummary | null;
+  onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  onReplay: () => void;
+  onSelect: (id: number | null) => void;
+  onStart: () => void;
+  onStop: () => void;
+  onUpdate: (form: { initialBalance: string; startDate: string; endDate: string; maxCandles: string }) => void;
+}) {
+  return (
+    <section className="panel">
+      <h2>Paper trading</h2>
+      <label>
+        Paper session
+        <select value={selectedSessionId ?? ""} onChange={(event) => onSelect(event.target.value ? Number(event.target.value) : null)}>
+          <option value="">None selected</option>
+          {sessions.map((session) => (
+            <option key={session.id} value={session.id}>
+              #{session.id} {session.status}
+            </option>
+          ))}
+        </select>
+      </label>
+      <form className="control-stack" onSubmit={onCreate}>
+        <TextInput label="Initial balance" name="initialBalance" state={form} setState={onUpdate} type="number" />
+        <button className="button" disabled={busy} type="submit">
+          Create session
+        </button>
+      </form>
+      <div className="button-row">
+        <button className="button button-secondary" disabled={busy || !selectedSessionId} onClick={onStart} type="button">
+          Start
+        </button>
+        <button className="button button-secondary" disabled={busy || !selectedSessionId} onClick={onStop} type="button">
+          Stop
+        </button>
+      </div>
+      <div className="form-grid">
+        <DateInput label="Replay start" name="startDate" state={form} setState={onUpdate} />
+        <DateInput label="Replay end" name="endDate" state={form} setState={onUpdate} />
+        <TextInput label="Max candles" name="maxCandles" state={form} setState={onUpdate} type="number" />
+      </div>
+      <button className="button" disabled={busy || !selectedSessionId} onClick={onReplay} type="button">
+        Replay candles
+      </button>
+      {summary ? (
+        <ResultGrid
+          items={[
+            ["Status", summary.status],
+            ["Cash", formatCurrency(summary.cashBalance)],
+            ["Equity", formatCurrency(summary.totalEquity)],
+            ["Open value", formatCurrency(summary.openPositionValue)],
+            ["Unrealized", formatCurrency(summary.unrealizedPnl)],
+          ]}
+        />
+      ) : null}
+      {replay ? (
+        <ResultGrid
+          items={[
+            ["Candles", replay.candlesRead],
+            ["Signals", replay.signalsProcessed],
+            ["Filled", replay.filledOrders],
+            ["Rejected", replay.rejectedOrders],
+          ]}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function TextInput<T extends Record<string, string>>({
+  label,
+  name,
+  state,
+  setState,
+  type = "text",
+}: {
+  label: string;
+  name: keyof T & string;
+  state: T;
+  setState: (state: T) => void;
+  type?: string;
+}) {
+  return (
+    <label>
+      {label}
+      <input
+        min={type === "number" ? "0" : undefined}
+        step={type === "number" ? "any" : undefined}
+        type={type}
+        value={state[name]}
+        onChange={(event) => setState({ ...state, [name]: event.target.value })}
+      />
+    </label>
+  );
+}
+
+function DateInput<T extends Record<string, string>>({
+  label,
+  name,
+  state,
+  setState,
+}: {
+  label: string;
+  name: keyof T & string;
+  state: T;
+  setState: (state: T) => void;
+}) {
+  return <TextInput label={label} name={name} state={state} setState={setState} type="datetime-local" />;
+}
+
+function ResultGrid({ items }: { items: Array<[string, string | number]> }) {
+  return (
+    <dl className="result-grid">
+      {items.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function TradePreview({ trades }: { trades: BacktestTrade[] }) {
+  if (trades.length === 0) {
+    return <p>No trades were generated for this backtest.</p>;
+  }
+  return (
+    <div className="mini-table">
+      {trades.slice(0, 5).map((trade) => (
+        <div key={trade.id}>
+          <span>{trade.side}</span>
+          <strong>{formatCurrency(trade.netPnl)}</strong>
+          <small>{formatPercent(trade.returnPercent)}</small>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -128,9 +722,7 @@ function SummaryCards({ state }: { state: LoadState<DashboardSummary> }) {
     );
   }
   if (state.status === "error") {
-    return (
-      <PanelMessage title="Dashboard summary" tone="error" message={state.error} />
-    );
+    return <PanelMessage title="Dashboard summary" tone="error" message={state.error} />;
   }
 
   const latest = state.data.latestBacktest;
@@ -158,13 +750,6 @@ function SummaryCards({ state }: { state: LoadState<DashboardSummary> }) {
   );
 }
 
-function formatPercent(value: number | null) {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
-  return `${value.toFixed(2)}%`;
-}
-
 function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
   if (state.status === "loading") {
     return <PanelMessage title="Strategy performance" message="Loading strategy performance." />;
@@ -173,12 +758,7 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
     return <PanelMessage title="Strategy performance" tone="error" message={state.error} />;
   }
   if (state.data.length === 0) {
-    return (
-      <PanelMessage
-        title="Strategy performance"
-        message="No strategies have been created yet. Complete the demo flow to populate this table."
-      />
-    );
+    return <PanelMessage title="Strategy performance" message="No strategies have been created yet." />;
   }
 
   return (
@@ -256,20 +836,6 @@ function AuditTimeline({ state }: { state: LoadState<AuditEvent[]> }) {
   );
 }
 
-function formatAction(value: string) {
-  return value.replaceAll("_", " ").toLowerCase();
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "N/A";
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }) {
   if (state.status === "loading") {
     return <PanelMessage title="Market regime" message="Loading BTC-USD 1h market regime." />;
@@ -343,6 +909,42 @@ function PanelMessage({
       <p>{message}</p>
     </section>
   );
+}
+
+function toInstant(value: string) {
+  return new Date(value).toISOString();
+}
+
+function formatAction(value: string) {
+  return value.replaceAll("_", " ").toLowerCase();
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "N/A";
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatPercent(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  return `${Number(value).toFixed(2)}%`;
+}
+
+function formatCurrency(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  return new Intl.NumberFormat(undefined, {
+    currency: "USD",
+    style: "currency",
+    maximumFractionDigits: 2,
+  }).format(Number(value));
 }
 
 export default App;
