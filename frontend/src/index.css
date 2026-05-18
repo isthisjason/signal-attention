@@ -123,6 +123,13 @@ p {
   margin-top: 20px;
 }
 
+.workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
 .panel-message {
   border-style: dashed;
 }
@@ -162,6 +169,131 @@ p {
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.button-secondary {
+  background: #ffffff;
+  color: var(--accent);
+}
+
+.button-secondary:hover {
+  background: var(--surface-muted);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.notice {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+}
+
+.notice-success {
+  background: rgb(15 118 110 / 8%);
+  border-color: rgb(15 118 110 / 30%);
+  color: var(--accent-strong);
+}
+
+.notice-error {
+  background: #fff7f6;
+  border-color: rgb(180 35 24 / 35%);
+  color: var(--danger);
+}
+
+.control-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+label {
+  color: var(--muted);
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 6px;
+}
+
+input,
+select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  min-width: 0;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+  outline: 2px solid rgb(15 118 110 / 16%);
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.result-grid div,
+.mini-table div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.result-grid dt,
+.mini-table span,
+.mini-table small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.result-grid dd {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.compact-list {
+  color: var(--muted);
+  margin: 14px 0 0;
+  padding-left: 18px;
+}
+
+.compact-list li {
+  margin-bottom: 6px;
+}
+
+.mini-table {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.mini-table div {
+  align-items: center;
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 10px;
+}
+
+.mini-table strong {
+  font-size: 0.95rem;
 }
 
 .table-scroll {
@@ -301,6 +433,7 @@ td small {
 @media (max-width: 960px) {
   .dashboard-grid,
   .metric-grid,
+  .workflow-grid,
   .feature-grid {
     grid-template-columns: 1fr;
   }
@@ -318,5 +451,11 @@ td small {
 @media (max-width: 640px) {
   .app-shell {
     padding: 18px;
+  }
+
+  .form-grid,
+  .result-grid,
+  .mini-table div {
+    grid-template-columns: 1fr;
   }
 }
