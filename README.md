@@ -33,7 +33,7 @@ Planned local URLs:
 
 ## Demo Flow
 
-The backend MVP demo flow is:
+The MVP demo flow is available from either Swagger/curl or the local React dashboard:
 
 1. Start the stack with `docker compose up --build`.
 2. Import sample BTC-USD candle data.
@@ -43,7 +43,8 @@ The backend MVP demo flow is:
 6. Request an ML risk score.
 7. Confirm the risk score is persisted and audit events were recorded.
 8. Optionally configure a risk policy and evaluate a simulated order.
-9. Optionally request a CPU-safe market regime classification from recent imported candles.
+9. Optionally create a paper session, submit manual paper orders, replay candles, and review the paper summary.
+10. Optionally request a CPU-safe market regime classification from recent imported candles.
 
 ## Useful Local Commands
 
@@ -84,6 +85,8 @@ npm run dev
 ```
 
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
+
+The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary/audit/regime panels.
 
 ## MVP API Flow
 
@@ -127,7 +130,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - Service-to-service integration between Spring Boot and FastAPI
 - Rule-based ML-style risk scoring with explainable reasons
 - CPU-safe market regime classification from recent candle sequences
-- React dashboard for summary metrics, strategy performance, audit events, and regime status
+- React dashboard for the local research workflow, summary metrics, strategy performance, paper trading, audit events, and regime status
 - Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
 - Docker Compose local orchestration for backend, database, ML service, and frontend
 
@@ -142,4 +145,4 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 
 ## Current Status
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, dashboard summary APIs, and a React dashboard. See `IMPLEMENTATION_PLAN.md` for future phases such as authentication and PyTorch attention-model experiments.
+The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, dashboard summary APIs, and a React dashboard/workbench. Backend, ML service, and frontend checks pass locally; Docker Compose verification still requires Docker Desktop WSL integration in this environment. See `IMPLEMENTATION_PLAN.md` for future phases such as authentication and PyTorch attention-model experiments.
