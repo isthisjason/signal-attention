@@ -2,7 +2,7 @@
 
 SignalAttention is a local-first trading strategy research and risk-scoring lab. The MVP focuses on importing historical OHLCV candles, defining an SMA crossover strategy, running deterministic backtests, and requesting a rule-based risk score from a Python FastAPI service.
 
-The project is intentionally risk-focused rather than profit-prediction-focused. It is designed to demonstrate historical testing, simulation, explainability, service integration, and auditability before any live-trading features are considered.
+The project is intentionally risk-focused rather than profit-prediction-focused. It is designed to demonstrate historical testing, simulation, explainability, service integration, and auditability without ever connecting to brokers, routing orders, holding funds, or providing investment advice.
 
 ## Planned Stack
 
@@ -143,7 +143,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 
 ## Known Limitations
 
-- No real-money trading, broker integration, or live order execution
+- No real-money trading, broker integration, custody, trade recommendations, or live order execution; these are permanent product boundaries
 - No authentication, users, roles, or account isolation yet
 - No trained model or PyTorch Transformer inference path yet
 - Optional Torch dependencies are excluded from the default setup

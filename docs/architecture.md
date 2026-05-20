@@ -46,7 +46,7 @@ The market regime endpoint defaults to `MARKET_REGIME_MODE=rules`. This path use
 
 ## Current Boundaries
 
-- No real-money trading or broker integration.
+- No real-money trading, broker integration, custody, trade recommendations, or live order execution. These are permanent boundaries, not deferred roadmap items.
 - No authentication or multi-user model yet.
 - No trained attention/PyTorch model yet; the current market regime path is deterministic and CPU-safe.
 - The dashboard is local and unauthenticated; account isolation remains future scope.

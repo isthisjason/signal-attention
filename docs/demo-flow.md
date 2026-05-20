@@ -211,7 +211,8 @@ curl "http://localhost:8080/api/audit-events?entityType=BACKTEST&limit=10"
 
 ## Known Simulation Limits
 
-- Paper trading is deterministic simulation only; it does not place real broker orders.
+- Paper trading is deterministic simulation only; it does not place real broker orders and the project is not intended to add live order execution.
+- SignalAttention is a research simulator, not a broker, exchange connector, custody system, investment adviser, or trade recommendation engine.
 - Candle replay is manual and bounded by the request. There is no background scheduler yet.
 - Paper fills use submitted or replay candle close prices and do not model slippage.
 - Position summaries use the latest imported candle for mark-to-market values. If no candle exists for an open position, the position is returned as unpriced.

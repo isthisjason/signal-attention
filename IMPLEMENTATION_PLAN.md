@@ -6,17 +6,17 @@ SignalAttention is a local-first trading strategy research and risk-scoring lab.
 
 The first milestone is intentionally practical and portfolio-focused. It should demonstrate backend engineering, data modeling, service integration, Docker-based local development, testing, and clear documentation.
 
-The MVP is **not** intended to provide live trading, broker integration, real-money execution, high-frequency trading, a frontend dashboard, or an advanced Transformer/attention model. Those are later enhancements after the baseline system is stable.
+The MVP is **not** intended to provide live trading, broker integration, real-money execution, high-frequency trading, a frontend dashboard, or an advanced Transformer/attention model. Live trading, broker integration, real-money execution, account custody, and trade recommendations are permanent exclusions; the frontend and attention-model work are later research/dashboard enhancements after the baseline system is stable.
 
 ---
 
 ## 2. Original Pitch and Positioning
 
-**One-sentence pitch:** SignalAttention lets users create, backtest, paper-trade, and risk-score algorithmic trading strategies using attention-based market analysis before real capital is at risk.
+**One-sentence pitch:** SignalAttention lets users create, backtest, simulate, and risk-score trading strategies using attention-inspired market analysis without connecting to brokers or placing real orders.
 
-SignalAttention should be presented as a research and risk-management platform, not as a price-prediction or profit-guarantee tool. The product story is strongest when it emphasizes safer workflows: historical testing, simulation, risk scoring, regime awareness, explainability, and audit trails.
+SignalAttention should be presented as a research and risk-management simulator, not as a price-prediction, profit-guarantee, investment-advice, or trade-execution tool. The product story is strongest when it emphasizes non-custodial workflows: historical testing, simulation, risk scoring, regime awareness, explainability, and audit trails.
 
-The MVP is intentionally backend-first. The baseline now includes risk-policy and paper-trading simulation APIs, while authentication, a frontend dashboard, live trading, broker integration, and attention-based modeling remain later phases.
+The MVP is intentionally backend-first. The baseline now includes risk-policy and paper-trading simulation APIs, while authentication, a frontend dashboard, and attention-based modeling remain later phases. Live trading and broker integration are intentionally not on the roadmap.
 
 ---
 
@@ -24,8 +24,8 @@ The MVP is intentionally backend-first. The baseline now includes risk-policy an
 
 | Goals | Non-Goals |
 | --- | --- |
-| Backtest strategies on historical candle data. | Do not promise profitable live trading. |
-| Score strategies for risk, overfitting, and fragility. | Do not start with real-money broker integration. |
+| Backtest strategies on historical candle data. | Do not promise profitable trading or investment outcomes. |
+| Score strategies for risk, overfitting, and fragility. | Do not integrate with brokers, exchanges, custody, or real-money execution. |
 | Simulate paper trading in a later phase with audit logs. | Do not attempt high-frequency trading. |
 | Use ML to classify regimes and trade quality over time. | Do not rely on black-box price prediction as the product. |
 | Run locally with minimal cost and reproducible setup. | Do not begin with AWS, Kubernetes, or complex cloud infrastructure. |
@@ -924,9 +924,10 @@ Build the MVP in this order:
 
 Do not include these in the first milestone:
 
-- Real-money trading.
-- Broker API integration.
-- Live or broker-backed trading sessions.
+- Real-money trading, permanently.
+- Broker, exchange, custody, or payment API integration, permanently.
+- Live, automated, recommended, or broker-backed order execution, permanently.
+- Investment advice, trade recommendations, or copy-trading behavior, permanently.
 - Full JWT authentication.
 - Multi-user account management.
 - React frontend.
@@ -944,7 +945,7 @@ After the MVP is stable, consider:
 
 - JWT authentication and users.
 - Risk policies and order approval/rejection.
-- Paper trading simulator.
+- Paper trading simulator features that remain simulated-only.
 - RSI, MACD, Bollinger Bands, breakout, and mean-reversion strategies.
 - Walk-forward testing.
 - Monte Carlo simulation.
@@ -962,6 +963,8 @@ After the MVP is stable, consider:
 ## 23. Extended API Roadmap
 
 These endpoints are part of the broader project vision. Risk controls, baseline paper trading, and dashboard summary are implemented as backend APIs; authentication, market regime/anomaly analysis, richer dashboard views, and frontend work remain future scope.
+
+The extended roadmap must preserve the research/simulation boundary. It may add richer analysis and simulated workflows, but it must not add broker connectivity, live order routing, custody, or investment-advice features.
 
 ### Authentication
 
@@ -1081,7 +1084,7 @@ GPU acceleration belongs with this future attention-model phase, not the Backend
 | ML model gives false confidence | Show reasons/limitations and keep deterministic risk rules separate from ML. |
 | GPU-specific setup makes the project hard to run | Keep the MVP CPU-compatible and add GPU support only as an optional profile for later PyTorch work. |
 | Transformer complexity | Add it only after baseline backtesting and simple ML are complete. |
-| Real-money trading danger | Keep live broker integration out of the first version. |
+| Real-money trading danger | Keep live trading, broker integration, custody, order routing, and trade recommendations permanently out of scope. |
 | Uncontrolled user strategy code | Use structured JSON strategies before allowing custom scripting. |
 
 ---
