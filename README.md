@@ -84,6 +84,13 @@ npm install
 npm run dev
 ```
 
+Run frontend tests:
+
+```bash
+cd frontend
+npm run test
+```
+
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
 
 The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary/audit/regime panels.
