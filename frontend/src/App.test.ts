@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectPaperSessionId } from "./App";
+import { selectPaperSessionId, toInstant } from "./App";
 import { PaperSession } from "./api/paperTrading";
 
 function session(id: number): PaperSession {
@@ -30,5 +30,20 @@ describe("paper session selection", () => {
 
   it("clears the selection when no sessions exist", () => {
     expect(selectPaperSessionId(9, [])).toBeNull();
+  });
+});
+
+describe("date input conversion", () => {
+  it("converts local datetime input to an instant", () => {
+    const instant = toInstant("2024-01-01T00:00");
+
+    expect(instant).toMatch(/2024-01-01T\d{2}:00:00.000Z/);
+    expect(Number.isNaN(Date.parse(instant))).toBe(false);
+  });
+
+  it("raises a user-facing validation message for invalid dates", () => {
+    expect(() => toInstant("", "Backtest start")).toThrow(
+      "Backtest start must be a valid date and time.",
+    );
   });
 });

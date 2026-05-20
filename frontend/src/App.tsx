@@ -275,8 +275,8 @@ function App() {
     }
     void runAction("backtest", async () => {
       const run = await runBacktest(selectedStrategyId, {
-        startDate: toInstant(backtestForm.startDate),
-        endDate: toInstant(backtestForm.endDate),
+        startDate: toInstant(backtestForm.startDate, "Backtest start"),
+        endDate: toInstant(backtestForm.endDate, "Backtest end"),
       });
       const trades = await fetchBacktestTrades(run.id);
       setBacktestRun(run);
@@ -340,8 +340,8 @@ function App() {
     }
     void runAction("paper-replay", async () => {
       const result = await replayPaperSession(selectedPaperSessionId, {
-        startDate: toInstant(paperForm.startDate),
-        endDate: toInstant(paperForm.endDate),
+        startDate: toInstant(paperForm.startDate, "Replay start"),
+        endDate: toInstant(paperForm.endDate, "Replay end"),
         maxCandles: Number(paperForm.maxCandles),
       });
       setPaperReplay(result);
@@ -1020,8 +1020,12 @@ function PanelMessage({
   );
 }
 
-function toInstant(value: string) {
-  return new Date(value).toISOString();
+export function toInstant(value: string, label = "Date") {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) {
+    throw new Error(`${label} must be a valid date and time.`);
+  }
+  return date.toISOString();
 }
 
 export function selectPaperSessionId(
