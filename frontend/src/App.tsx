@@ -158,16 +158,19 @@ function App() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const loadPaperSessions = useCallback((strategyId: number) => {
+  const loadPaperSessions = useCallback((strategyId: number, preferredSessionId?: number) => {
     fetchStrategyPaperSessions(strategyId)
       .then((sessions) => {
         setPaperSessions(sessions);
-        setSelectedPaperSessionId((current) => current ?? sessions[0]?.id ?? null);
+        setSelectedPaperSessionId((current) =>
+          selectPaperSessionId(current, sessions, preferredSessionId),
+        );
       })
       .catch((error: unknown) => setNotice({ tone: "error", message: errorMessage(error) }));
   }, []);
 
   useEffect(() => {
+    setPaperReplay(null);
     if (selectedStrategyId === null) {
       setPaperSessions([]);
       setSelectedPaperSessionId(null);
@@ -307,8 +310,7 @@ function App() {
     }
     void runAction("paper-create", async () => {
       const session = await createPaperSession(selectedStrategyId, Number(paperForm.initialBalance));
-      setSelectedPaperSessionId(session.id);
-      await loadPaperSessions(selectedStrategyId);
+      await loadPaperSessions(selectedStrategyId, session.id);
       setNotice({ tone: "success", message: `Created paper session #${session.id}.` });
       loadDashboard();
     });
@@ -1020,6 +1022,20 @@ function PanelMessage({
 
 function toInstant(value: string) {
   return new Date(value).toISOString();
+}
+
+export function selectPaperSessionId(
+  current: number | null,
+  sessions: PaperSession[],
+  preferred?: number,
+) {
+  if (preferred !== undefined && sessions.some((session) => session.id === preferred)) {
+    return preferred;
+  }
+  if (current !== null && sessions.some((session) => session.id === current)) {
+    return current;
+  }
+  return sessions[0]?.id ?? null;
 }
 
 function formatAction(value: string) {
