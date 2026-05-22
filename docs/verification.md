@@ -29,7 +29,7 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 Last checked on May 21, 2026:
 
-- `cd backend && ./mvnw test`: passed, with 82 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable.
+- `cd backend && ./mvnw test`: passed, with 83 tests run and 4 Docker-backed persistence tests skipped because Java/Testcontainers could not access the Docker socket from the Codex sandbox.
 - `cd ml-service && ../.venv/bin/python -m pytest`: passed, 33 tests.
 - `cd frontend && npm run test`: passed, 17 tests.
 - `cd frontend && npm run build`: passed.
@@ -37,4 +37,5 @@ Last checked on May 21, 2026:
 - `docker compose config`: passed.
 - `docker compose up --build -d`: passed, with PostgreSQL healthy and backend, ML service, and frontend containers running.
 - Container-network checks: ML health returned `{"status":"ok"}`, backend Swagger returned `200`, backend `/api/strategies` returned `200 []`, and frontend Vite returned `200`.
+- Demo flow through the Compose network: imported 48 BTC-USD 1h candles, created strategy `1`, completed backtest `1`, persisted ML risk score `60.00` / `MEDIUM_RISK`, created paper session `1`, filled a manual buy order, replayed 48 candles with 12 filled replay orders, stopped the paper session, and verified dashboard, market-regime, and audit endpoints.
 - Host `localhost` curls from the Codex sandbox could not reach Docker-published ports, so endpoint checks were run from containers on the Compose network.
