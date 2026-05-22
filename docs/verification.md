@@ -27,10 +27,10 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 ## Latest Local Verification
 
-Last checked on May 20, 2026:
+Last checked on May 21, 2026:
 
 - `cd backend && ./mvnw test`: passed, with 82 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable.
 - `cd ml-service && ../.venv/bin/python -m pytest`: passed, 33 tests.
 - `cd frontend && npm run test`: passed, 17 tests.
 - `cd frontend && npm run build`: passed.
-- `docker compose config`: blocked because the Docker CLI is not available in this WSL distro. Docker Desktop WSL integration must be enabled before Compose syntax, Testcontainers, and the full stack can be verified here.
+- `docker compose version` and `docker compose config`: blocked because the Docker CLI is not available in this WSL distro. Docker Desktop WSL integration must be enabled before Compose syntax, Testcontainers, and the full stack can be verified here.
