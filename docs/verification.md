@@ -35,4 +35,6 @@ Last checked on May 21, 2026:
 - `cd frontend && npm run build`: passed.
 - `docker compose version`: passed, Docker Compose version v5.1.3.
 - `docker compose config`: passed.
-- `docker compose up --build`: not yet verified in this environment.
+- `docker compose up --build -d`: passed, with PostgreSQL healthy and backend, ML service, and frontend containers running.
+- Container-network checks: ML health returned `{"status":"ok"}`, backend Swagger returned `200`, backend `/api/strategies` returned `200 []`, and frontend Vite returned `200`.
+- Host `localhost` curls from the Codex sandbox could not reach Docker-published ports, so endpoint checks were run from containers on the Compose network.
