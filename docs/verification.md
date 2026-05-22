@@ -33,4 +33,6 @@ Last checked on May 21, 2026:
 - `cd ml-service && ../.venv/bin/python -m pytest`: passed, 33 tests.
 - `cd frontend && npm run test`: passed, 17 tests.
 - `cd frontend && npm run build`: passed.
-- `docker compose version` and `docker compose config`: blocked because the Docker CLI is not available in this WSL distro. Docker Desktop WSL integration must be enabled before Compose syntax, Testcontainers, and the full stack can be verified here.
+- `docker compose version`: passed, Docker Compose version v5.1.3.
+- `docker compose config`: passed.
+- `docker compose up --build`: not yet verified in this environment.
