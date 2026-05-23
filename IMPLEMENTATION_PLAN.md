@@ -796,7 +796,7 @@ The backend should be resilient if the ML service is temporarily unavailable.
 
 ### Optional GPU Compose Profile
 
-Do not make the default local stack require GPU support. If CUDA-backed PyTorch models are added later, introduce an optional Compose profile such as:
+Do not make the default local stack require GPU support. CUDA-backed PyTorch work must remain behind an optional Compose profile such as:
 
 ```bash
 docker compose --profile gpu up --build
@@ -1069,7 +1069,7 @@ GPU acceleration belongs with this future attention-model phase, not the Backend
 | Phase 3 - Baseline ML Service | FastAPI risk endpoint and Spring Boot ML client. | Backtest result includes ML risk score and classification. |
 | Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Implemented baseline simulated-order approval/rejection with logged reasons. |
 | Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | Implemented baseline sessions, manual orders, positions, summaries, and manual candle replay. |
-| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | CPU-safe market regime foundation is implemented; trained PyTorch model and optional GPU profile remain future work. |
+| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | CPU-safe regime foundation, artifact-backed torch inference, local training/export script, and optional torch Compose profile are implemented; model quality and experiment tracking remain future work. |
 | Phase 7 - Polish | README, tests, seed data, optional dashboard, screenshots. | Portfolio-ready project with clear docs and reproducible local setup. |
 
 ---
@@ -1104,7 +1104,7 @@ The project should eventually include:
 ## 29. Current Project Progress
 
 - Phases 1-5 are implemented as backend-first local MVP capabilities.
-- Phase 6 now has a CPU-safe foundation: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
+- Phase 6 now has a CPU-safe foundation plus an optional torch path: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, artifact-backed PyTorch Transformer inference, a local training/export script, optional torch Compose profile, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
 - Remaining Phase 6 work: improve model quality and experiment tracking for the optional PyTorch Transformer path while preserving CPU reproducibility.
 
 ---
