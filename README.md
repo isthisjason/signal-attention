@@ -70,6 +70,22 @@ cd ml-service
 python3 -m pip install -r requirements-torch.txt
 ```
 
+Train and evaluate an optional local market-regime artifact:
+
+```bash
+cd ml-service
+python scripts/train_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --output models/market-regime.pt \
+  --cpu
+python scripts/evaluate_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --artifact models/market-regime.pt \
+  --output models/market-regime-evaluation.json
+```
+
+Training writes a sidecar `models/market-regime.pt.manifest.json` with dataset, feature, model, split, and training metadata. Evaluation writes JSON metrics for accuracy, per-label precision/recall/F1, confusion matrix, confidence summary, and sample predictions. These commands are optional research tooling; the default service still uses the CPU-safe rule classifier.
+
 Start the full local stack:
 
 ```bash
@@ -138,6 +154,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - Rule-based ML-style risk scoring with explainable reasons
 - CPU-safe market regime classification from recent candle sequences
 - React dashboard for the local research workflow, summary metrics, strategy performance, paper trading, audit events, and regime status
+- Optional torch artifact provenance and evaluation reports for local market-regime experiments
 - Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
 - Docker Compose local orchestration for backend, database, ML service, and frontend
 

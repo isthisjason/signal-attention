@@ -60,8 +60,15 @@ cd ml-service
 pip install -r requirements-torch.txt
 python scripts/train_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
-  --output models/market-regime.pt
+  --output models/market-regime.pt \
+  --cpu
+python scripts/evaluate_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --artifact models/market-regime.pt \
+  --output models/market-regime-evaluation.json
 ```
+
+The training command saves `models/market-regime.pt.manifest.json` beside the artifact. The evaluation command saves accuracy, per-label metrics, confusion matrix, confidence summary, and sample predictions. Torch-mode API responses include optional provenance fields so the dashboard can identify mode, model version, feature version, sequence length, and artifact name.
 
 The optional Compose profile exposes a torch-enabled ML service on port `8001`:
 

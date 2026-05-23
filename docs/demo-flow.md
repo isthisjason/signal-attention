@@ -200,6 +200,22 @@ curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=
 
 The response includes a regime label, confidence, reasons, and derived features. The default service uses deterministic rule-based analysis. Optional torch-backed inference can be enabled only when a compatible local artifact is provided.
 
+For optional torch experiments, install `ml-service/requirements-torch.txt`, train an artifact, and evaluate it before enabling torch mode:
+
+```bash
+cd ml-service
+python scripts/train_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --output models/market-regime.pt \
+  --cpu
+python scripts/evaluate_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --artifact models/market-regime.pt \
+  --output models/market-regime-evaluation.json
+```
+
+The optional evaluation report contains accuracy, per-label metrics, a confusion matrix, confidence summary, and sample predictions. Torch-mode regime responses also include provenance fields for the dashboard; rule mode remains the default demo path.
+
 ## Audit Events
 
 Review recent audit events, or filter by entity:
