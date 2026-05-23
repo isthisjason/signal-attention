@@ -62,4 +62,55 @@ describe("dashboard render states", () => {
     expect(screen.getByRole("button", { name: "Submit order" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Replay candles" })).toBeDisabled();
   });
+
+  it("renders market regime provenance when it is present", async () => {
+    mocks.fetchMarketRegime.mockResolvedValue({
+      regimeLabel: "TRENDING_UP",
+      confidence: 81.25,
+      reasons: ["Torch sequence model selected TRENDING_UP."],
+      features: {
+        latestReturnPercent: 0.5,
+        averageReturnPercent: 0.25,
+        volatilityPercent: 0.1,
+        trendSlopePercent: 0.2,
+        smaDistancePercent: 1.5,
+        volumeZScore: 0,
+      },
+      classifierSource: "torch",
+      mode: "torch",
+      modelVersion: "local-transformer-v1",
+      featureVersion: "torch-market-regime-features/v1",
+      sequenceLength: 20,
+      artifactIdentifier: "market-regime.pt",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("local-transformer-v1")).toBeInTheDocument();
+    expect(screen.getByText("market-regime.pt")).toBeInTheDocument();
+    expect(screen.getByText("torch-market-regime-features/v1")).toBeInTheDocument();
+  });
+
+  it("renders market regime without provenance when optional fields are absent", async () => {
+    mocks.fetchMarketRegime.mockResolvedValue({
+      regimeLabel: "SIDEWAYS",
+      confidence: 65,
+      reasons: ["Trend and volatility signals are muted."],
+      features: {
+        latestReturnPercent: 0,
+        averageReturnPercent: 0,
+        volatilityPercent: 0.1,
+        trendSlopePercent: 0,
+        smaDistancePercent: 0,
+        volumeZScore: 0,
+      },
+      classifierSource: "rules",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("sideways")).toBeInTheDocument();
+    expect(screen.queryByText("Model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Artifact")).not.toBeInTheDocument();
+  });
 });
