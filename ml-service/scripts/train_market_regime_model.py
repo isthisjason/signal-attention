@@ -1,5 +1,6 @@
 import argparse
 import csv
+import json
 import sys
 from datetime import datetime
 from decimal import Decimal
@@ -9,6 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
+from app.services.market_regime_experiment import build_experiment_manifest
 from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
@@ -63,6 +65,7 @@ def main() -> None:
         },
         args.output,
     )
+    write_experiment_manifest(args, windows, str(device))
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,6 +75,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sequence-length", type=int, default=20)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--learning-rate", type=float, default=0.001)
+    parser.add_argument("--validation-ratio", type=float, default=0.2)
     parser.add_argument("--cpu", action="store_true")
     return parser.parse_args()
 
@@ -143,6 +147,29 @@ def normalize_window(
     stds: list[float],
 ) -> list[list[float]]:
     return [[(value - means[index]) / stds[index] for index, value in enumerate(row)] for row in window]
+
+
+def write_experiment_manifest(args: argparse.Namespace, windows: list[list[list[float]]], device: str) -> None:
+    manifest = build_experiment_manifest(
+        csv_path=args.csv_path,
+        output_path=args.output,
+        sequence_length=args.sequence_length,
+        feature_order=TORCH_MARKET_REGIME_FEATURE_ORDER,
+        labels=LABELS,
+        split={
+            "method": "chronological_holdout",
+            "validationRatio": args.validation_ratio,
+        },
+        training={
+            "epochs": args.epochs,
+            "learningRate": args.learning_rate,
+            "model": DEFAULT_TORCH_MODEL_CONFIG,
+        },
+        window_count=len(windows),
+        device=device,
+    )
+    manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
