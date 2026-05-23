@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeResponse
 from app.services.market_regime_classifier import MarketRegimeClassifier
 from app.services.market_regime_config import MarketRegimeSettings, get_market_regime_settings
+from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION
 from app.services.market_regime_features import build_market_regime_features
 from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
@@ -51,6 +52,9 @@ class RuleBasedMarketRegimeClassifier:
             reasons=reasons,
             features=features,
             classifierSource="rules",
+            mode="rules",
+            featureVersion=MARKET_REGIME_FEATURE_VERSION,
+            sequenceLength=len(request.candles),
         )
 
 def trend_confidence(trend_slope: Decimal, sma_distance: Decimal) -> Decimal:

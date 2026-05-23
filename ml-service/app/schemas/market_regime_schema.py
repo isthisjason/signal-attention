@@ -50,3 +50,8 @@ class MarketRegimeResponse(BaseModel):
     reasons: list[str]
     features: MarketRegimeFeatures
     classifierSource: str | None = None
+    mode: str | None = None
+    modelVersion: str | None = None
+    featureVersion: str | None = None
+    sequenceLength: int | None = None
+    artifactIdentifier: str | None = None

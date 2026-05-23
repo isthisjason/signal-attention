@@ -10,7 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
-from app.services.market_regime_experiment import build_experiment_manifest
+from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, build_experiment_manifest
 from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
@@ -55,6 +55,8 @@ def main() -> None:
     torch.save(
         {
             "metadata": {
+                "modelVersion": args.model_version,
+                "featureVersion": MARKET_REGIME_FEATURE_VERSION,
                 "sequenceLength": args.sequence_length,
                 "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
                 "labels": LABELS,
@@ -76,6 +78,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument("--validation-ratio", type=float, default=0.2)
+    parser.add_argument("--model-version", default="local-transformer-v1")
     parser.add_argument("--cpu", action="store_true")
     return parser.parse_args()
 
@@ -163,6 +166,7 @@ def write_experiment_manifest(args: argparse.Namespace, windows: list[list[list[
         training={
             "epochs": args.epochs,
             "learningRate": args.learning_rate,
+            "modelVersion": args.model_version,
             "model": DEFAULT_TORCH_MODEL_CONFIG,
         },
         window_count=len(windows),

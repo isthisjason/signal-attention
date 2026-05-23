@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeResponse
 from app.services.market_regime_config import MarketRegimeSettings
+from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION
 from app.services.market_regime_features import build_market_regime_features
 from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
@@ -64,6 +65,11 @@ class TorchMarketRegimeClassifier:
             ],
             features=build_market_regime_features(request.candles),
             classifierSource="torch",
+            mode="torch",
+            modelVersion=str(metadata.get("modelVersion", "local-artifact")),
+            featureVersion=str(metadata.get("featureVersion", MARKET_REGIME_FEATURE_VERSION)),
+            sequenceLength=sequence_length,
+            artifactIdentifier=artifact_path.name,
         )
 
 
