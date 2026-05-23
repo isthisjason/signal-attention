@@ -22,8 +22,26 @@ services:
     container_name: signalattention-ml-service
     environment:
       ML_SERVICE_PORT: ${ML_SERVICE_PORT:-8000}
+      MARKET_REGIME_MODE: ${MARKET_REGIME_MODE:-rules}
+      MARKET_REGIME_ARTIFACT_PATH: ${MARKET_REGIME_ARTIFACT_PATH:-}
     ports:
       - "8000:8000"
+
+  ml-service-torch:
+    profiles: ["torch"]
+    build:
+      context: ./ml-service
+      args:
+        INSTALL_TORCH: "true"
+    container_name: signalattention-ml-service-torch
+    environment:
+      ML_SERVICE_PORT: 8000
+      MARKET_REGIME_MODE: torch
+      MARKET_REGIME_ARTIFACT_PATH: /models/market-regime.pt
+    volumes:
+      - ./ml-service/models:/models:ro
+    ports:
+      - "8001:8000"
 
   backend:
     build:
