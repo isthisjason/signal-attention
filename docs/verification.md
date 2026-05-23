@@ -15,6 +15,8 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | ML health | `curl http://localhost:8000/health` | Returns `{"status":"ok"}`. |
 | Demo flow | Follow `docs/demo-flow.md` | Import, strategy, backtest, ML score, paper replay, dashboard, and audit flow works. |
 | Market regime flow | `curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"` | Returns a regime label, confidence, reasons, and derived features after candles are imported. |
+| Optional torch training metadata | `cd ml-service && python scripts/train_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --output models/market-regime.pt --cpu` | Writes `models/market-regime.pt` and `models/market-regime.pt.manifest.json`. |
+| Optional torch evaluation report | `cd ml-service && python scripts/evaluate_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --artifact models/market-regime.pt --output models/market-regime-evaluation.json` | Writes accuracy, per-label metrics, confusion matrix, confidence summary, and sample predictions. |
 
 ## Local Tooling Notes
 
@@ -27,15 +29,12 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 ## Latest Local Verification
 
-Last checked on May 21, 2026:
+Last checked on May 23, 2026:
 
-- `cd backend && ./mvnw test`: passed, with 83 tests run and 4 Docker-backed persistence tests skipped because Java/Testcontainers could not access the Docker socket from the Codex sandbox.
-- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 33 tests.
-- `cd frontend && npm run test`: passed, 17 tests.
+- `cd backend && ./mvnw test`: passed, with 84 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
+- `.venv/bin/python -m pytest ml-service/tests`: passed, 40 tests.
+- `cd frontend && npm run test`: passed, 19 tests.
 - `cd frontend && npm run build`: passed.
-- `docker compose version`: passed, Docker Compose version v5.1.3.
-- `docker compose config`: passed.
-- `docker compose up --build -d`: passed, with PostgreSQL healthy and backend, ML service, and frontend containers running.
-- Container-network checks: ML health returned `{"status":"ok"}`, backend Swagger returned `200`, backend `/api/strategies` returned `200 []`, and frontend Vite returned `200`.
-- Demo flow through the Compose network: imported 48 BTC-USD 1h candles, created strategy `1`, completed backtest `1`, persisted ML risk score `60.00` / `MEDIUM_RISK`, created paper session `1`, filled a manual buy order, replayed 48 candles with 12 filled replay orders, stopped the paper session, and verified dashboard, market-regime, and audit endpoints.
-- Host `localhost` curls from the Codex sandbox could not reach Docker-published ports, so endpoint checks were run from containers on the Compose network.
+- `docker compose config`: blocked because the `docker` command was not available in this WSL distro.
+- Focused implementation checks passed for ML torch artifact validation, backend market-regime provenance mapping, and dashboard provenance rendering.
+- Optional torch train/evaluate commands were documented but not run during this check because torch dependencies are intentionally optional.
