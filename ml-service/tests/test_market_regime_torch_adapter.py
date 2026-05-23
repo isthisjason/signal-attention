@@ -56,7 +56,15 @@ def test_missing_torch_artifact_file_error_is_clear(tmp_path) -> None:
 
 
 def test_invalid_artifact_metadata_error_is_clear() -> None:
-    artifact = {"metadata": {"sequenceLength": 20, "featureOrder": ["close"]}, "modelStateDict": {}}
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": ["close"],
+            "labels": ["SIDEWAYS"],
+            "model": {},
+        },
+        "modelStateDict": {"weight": "value"},
+    }
 
     try:
         validate_artifact_metadata(artifact)
@@ -64,6 +72,79 @@ def test_invalid_artifact_metadata_error_is_clear() -> None:
         assert "metadata.featureOrder does not match" in str(exc)
     else:
         raise AssertionError("Expected invalid artifact metadata to fail")
+
+
+def test_missing_model_state_dict_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS"],
+            "model": {},
+        },
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact modelStateDict is required."
+    else:
+        raise AssertionError("Expected missing model state to fail")
+
+
+def test_invalid_sequence_length_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 0,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS"],
+            "model": {},
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert "metadata.sequenceLength must be a positive int" in str(exc)
+    else:
+        raise AssertionError("Expected invalid sequence length to fail")
+
+
+def test_missing_labels_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "model": {},
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact metadata.labels must be a non-empty string list."
+    else:
+        raise AssertionError("Expected missing labels to fail")
+
+
+def test_missing_model_config_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS"],
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact metadata.model must be an object."
+    else:
+        raise AssertionError("Expected missing model config to fail")
 
 
 def test_normalizes_features_from_artifact_metadata() -> None:
@@ -88,6 +169,7 @@ def test_torch_classifier_returns_model_label(tmp_path, monkeypatch) -> None:
             "sequenceLength": 20,
             "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
             "labels": ["SIDEWAYS", "TRENDING_UP", "TRENDING_DOWN", "HIGH_VOLATILITY"],
+            "model": {},
         },
         "modelStateDict": {"weight": "value"},
     }
