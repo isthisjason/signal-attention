@@ -198,7 +198,7 @@ After importing candles, request a CPU-safe regime classification for the latest
 curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"
 ```
 
-The response includes a regime label, confidence, reasons, and derived features. This is deterministic rule-based analysis, not trained PyTorch Transformer inference.
+The response includes a regime label, confidence, reasons, and derived features. The default service uses deterministic rule-based analysis. Optional torch-backed inference can be enabled only when a compatible local artifact is provided.
 
 ## Audit Events
 
@@ -216,4 +216,4 @@ curl "http://localhost:8080/api/audit-events?entityType=BACKTEST&limit=10"
 - Candle replay is manual and bounded by the request. There is no background scheduler yet.
 - Paper fills use submitted or replay candle close prices and do not model slippage.
 - Position summaries use the latest imported candle for mark-to-market values. If no candle exists for an open position, the position is returned as unpriced.
-- Market regime classification is CPU-safe and rule-based; trained attention-model inference remains future scope.
+- Market regime classification defaults to the CPU-safe rules path; torch-backed inference is optional and remains a local research workflow.

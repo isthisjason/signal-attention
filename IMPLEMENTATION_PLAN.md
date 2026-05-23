@@ -1105,7 +1105,7 @@ The project should eventually include:
 
 - Phases 1-5 are implemented as backend-first local MVP capabilities.
 - Phase 6 now has a CPU-safe foundation: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
-- Remaining Phase 6 work: introduce a trained sequence model path, PyTorch Transformer experiment/inference modules, model artifact loading, and optional GPU Compose profile while preserving CPU reproducibility.
+- Remaining Phase 6 work: improve model quality and experiment tracking for the optional PyTorch Transformer path while preserving CPU reproducibility.
 
 ---
 

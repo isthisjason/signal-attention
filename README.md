@@ -145,11 +145,11 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 
 - No real-money trading, broker integration, custody, trade recommendations, or live order execution; these are permanent product boundaries
 - No authentication, users, roles, or account isolation yet
-- No trained model or PyTorch Transformer inference path yet
+- PyTorch Transformer inference is optional and requires a local artifact plus optional Torch dependencies
 - Optional Torch dependencies are excluded from the default setup
 - Paper trading is deterministic simulation and manual candle replay only
 - The frontend is a local unauthenticated dashboard; user accounts and access control are not implemented
 
 ## Current Status
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, dashboard summary APIs, and a React dashboard/workbench. Backend, ML service, frontend, Docker Compose startup, and the MVP demo flow were verified locally on May 21, 2026. See `IMPLEMENTATION_PLAN.md` for future phases such as authentication and PyTorch attention-model experiments.
+The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, an optional artifact-backed PyTorch market-regime inference path, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, dashboard summary APIs, and a React dashboard/workbench. Backend, ML service, frontend, Docker Compose startup, and the MVP demo flow were verified locally on May 21, 2026. See `IMPLEMENTATION_PLAN.md` for future phases such as authentication and richer attention-model experiments.
