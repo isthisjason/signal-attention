@@ -8,6 +8,8 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -60,6 +62,59 @@ class MlRiskClientTests {
 
         assertThat(response.riskLabel()).isEqualTo("MEDIUM_RISK");
         assertThat(response.riskScore()).isEqualByComparingTo("60.00");
+        server.verify();
+    }
+
+    @Test
+    void predictMarketRegimeMapsProvenanceFields() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MlRiskClient client = new MlRiskClient(builder.build());
+
+        server.expect(requestTo("http://ml-service:8000/predict/market-regime"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {
+                          "regimeLabel": "TRENDING_UP",
+                          "confidence": "81.25",
+                          "reasons": ["Torch sequence model selected TRENDING_UP."],
+                          "features": {
+                            "latestReturnPercent": "0.50",
+                            "averageReturnPercent": "0.25",
+                            "volatilityPercent": "0.10",
+                            "trendSlopePercent": "0.20",
+                            "smaDistancePercent": "1.50",
+                            "volumeZScore": "0.00"
+                          },
+                          "classifierSource": "torch",
+                          "mode": "torch",
+                          "modelVersion": "local-transformer-v1",
+                          "featureVersion": "torch-market-regime-features/v1",
+                          "sequenceLength": 20,
+                          "artifactIdentifier": "market-regime.pt"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MlMarketRegimeResponse response = client.predictMarketRegime(new MlMarketRegimeRequest(
+                "BTC-USD",
+                "1h",
+                List.of(new MlMarketRegimeCandle(
+                        Instant.parse("2024-01-01T00:00:00Z"),
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.ONE
+                ))
+        ));
+
+        assertThat(response.mode()).isEqualTo("torch");
+        assertThat(response.modelVersion()).isEqualTo("local-transformer-v1");
+        assertThat(response.featureVersion()).isEqualTo("torch-market-regime-features/v1");
+        assertThat(response.sequenceLength()).isEqualTo(20);
+        assertThat(response.artifactIdentifier()).isEqualTo("market-regime.pt");
         server.verify();
     }
 }

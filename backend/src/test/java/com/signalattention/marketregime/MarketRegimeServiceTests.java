@@ -51,6 +51,10 @@ class MarketRegimeServiceTests {
         MlMarketRegimeResponse response = service.predictMarketRegime(" BTC-USD ", " 1h ", 20);
 
         assertThat(response.regimeLabel()).isEqualTo("TRENDING_UP");
+        assertThat(response.mode()).isEqualTo("rules");
+        assertThat(response.featureVersion()).isEqualTo("torch-market-regime-features/v1");
+        assertThat(response.sequenceLength()).isEqualTo(20);
+        assertThat(response.artifactIdentifier()).isNull();
         ArgumentCaptor<MlMarketRegimeRequest> requestCaptor = ArgumentCaptor.forClass(MlMarketRegimeRequest.class);
         org.mockito.Mockito.verify(mlRiskClient).predictMarketRegime(requestCaptor.capture());
         MlMarketRegimeRequest request = requestCaptor.getValue();
