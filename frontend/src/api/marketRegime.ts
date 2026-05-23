@@ -15,6 +15,11 @@ export type MarketRegimeResponse = {
   reasons: string[];
   features: MarketRegimeFeatures;
   classifierSource: string;
+  mode?: string | null;
+  modelVersion?: string | null;
+  featureVersion?: string | null;
+  sequenceLength?: number | null;
+  artifactIdentifier?: string | null;
 };
 
 export function fetchMarketRegime(symbol = "BTC-USD", timeframe = "1h", limit = 128) {

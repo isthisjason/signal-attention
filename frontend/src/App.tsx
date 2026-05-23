@@ -960,6 +960,7 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
   }
 
   const { features } = state.data;
+  const provenance = marketRegimeProvenanceItems(state.data);
 
   return (
     <section className="panel">
@@ -986,9 +987,20 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
         <Feature label="SMA distance" value={features.smaDistancePercent} suffix="%" />
         <Feature label="Volume z-score" value={features.volumeZScore} />
       </div>
+      {provenance.length ? <ResultGrid items={provenance} /> : null}
       <p className="muted">Classifier source: {state.data.classifierSource}</p>
     </section>
   );
+}
+
+function marketRegimeProvenanceItems(regime: MarketRegimeResponse): Array<[string, string | number]> {
+  return [
+    ["Mode", regime.mode],
+    ["Model", regime.modelVersion],
+    ["Features", regime.featureVersion],
+    ["Sequence", regime.sequenceLength],
+    ["Artifact", regime.artifactIdentifier],
+  ].filter((item): item is [string, string | number] => item[1] !== null && item[1] !== undefined && item[1] !== "");
 }
 
 function Feature({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
