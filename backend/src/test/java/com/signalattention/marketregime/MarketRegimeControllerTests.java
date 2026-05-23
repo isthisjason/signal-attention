@@ -38,7 +38,12 @@ class MarketRegimeControllerTests {
                         BigDecimal.ONE,
                         BigDecimal.ZERO
                 ),
-                "rules"
+                "rules",
+                "rules",
+                null,
+                "torch-market-regime-features/v1",
+                128,
+                null
         );
     }
 }

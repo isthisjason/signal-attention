@@ -8,6 +8,11 @@ public record MlMarketRegimeResponse(
         BigDecimal confidence,
         List<String> reasons,
         MlMarketRegimeFeatures features,
-        String classifierSource
+        String classifierSource,
+        String mode,
+        String modelVersion,
+        String featureVersion,
+        Integer sequenceLength,
+        String artifactIdentifier
 ) {
 }

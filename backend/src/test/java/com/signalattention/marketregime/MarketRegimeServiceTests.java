@@ -131,7 +131,12 @@ class MarketRegimeServiceTests {
                         BigDecimal.ONE,
                         BigDecimal.ZERO
                 ),
-                "rules"
+                "rules",
+                "rules",
+                null,
+                "torch-market-regime-features/v1",
+                20,
+                null
         );
     }
 }
