@@ -51,6 +51,7 @@ def main() -> None:
         "featureOrder": metadata["featureOrder"],
         "labels": metadata["labels"],
         "windowCount": len(examples),
+        "metrics": calculate_metrics(predictions, metadata["labels"]),
         "samples": predictions[: args.sample_count],
     }
     write_report(args.output, report)
@@ -119,6 +120,53 @@ def predict_examples(torch, model, metadata: dict[str, Any], examples: list[dict
                 }
             )
     return predictions
+
+
+def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> dict[str, Any]:
+    if not predictions:
+        return {
+            "accuracy": 0,
+            "perLabel": {},
+            "confusionMatrix": {label: {inner: 0 for inner in labels} for label in labels},
+            "confidence": {"min": 0, "max": 0, "average": 0},
+        }
+
+    correct = sum(1 for prediction in predictions if prediction["expectedLabel"] == prediction["predictedLabel"])
+    confusion_matrix = {label: {inner: 0 for inner in labels} for label in labels}
+    for prediction in predictions:
+        confusion_matrix[prediction["expectedLabel"]][prediction["predictedLabel"]] += 1
+
+    per_label = {}
+    for label in labels:
+        true_positive = confusion_matrix[label][label]
+        false_positive = sum(confusion_matrix[other][label] for other in labels if other != label)
+        false_negative = sum(confusion_matrix[label][other] for other in labels if other != label)
+        precision = ratio(true_positive, true_positive + false_positive)
+        recall = ratio(true_positive, true_positive + false_negative)
+        per_label[label] = {
+            "precision": precision,
+            "recall": recall,
+            "f1": ratio(2 * precision * recall, precision + recall),
+            "support": sum(confusion_matrix[label].values()),
+        }
+
+    confidences = [float(prediction["confidence"]) for prediction in predictions]
+    return {
+        "accuracy": ratio(correct, len(predictions)),
+        "perLabel": per_label,
+        "confusionMatrix": confusion_matrix,
+        "confidence": {
+            "min": round(min(confidences), 4),
+            "max": round(max(confidences), 4),
+            "average": round(sum(confidences) / len(confidences), 4),
+        },
+    }
+
+
+def ratio(numerator: float, denominator: float) -> float:
+    if denominator == 0:
+        return 0
+    return round(numerator / denominator, 4)
 
 
 def write_report(output: Path | None, report: dict[str, Any]) -> None:
