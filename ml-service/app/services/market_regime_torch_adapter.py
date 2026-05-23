@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 from decimal import Decimal, ROUND_HALF_UP
+from collections.abc import Mapping
 
 from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeResponse
 from app.services.market_regime_config import MarketRegimeSettings
@@ -10,9 +11,6 @@ from app.services.market_regime_torch_features import (
     build_torch_feature_matrix,
 )
 from app.services.market_regime_torch_model import build_transformer_model
-
-
-DEFAULT_MARKET_REGIME_LABELS = ["SIDEWAYS", "TRENDING_UP", "TRENDING_DOWN", "HIGH_VOLATILITY"]
 
 
 class TorchMarketRegimeClassifier:
@@ -109,7 +107,8 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(metadata, dict):
         raise RuntimeError("Market regime artifact metadata is required.")
 
-    if "modelStateDict" not in artifact:
+    model_state = artifact.get("modelStateDict")
+    if not isinstance(model_state, Mapping) or not model_state:
         raise RuntimeError("Market regime artifact modelStateDict is required.")
 
     sequence_length = metadata.get("sequenceLength")
@@ -122,10 +121,14 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
             "Market regime artifact metadata.featureOrder does not match the service feature order."
         )
 
-    labels = metadata.get("labels", DEFAULT_MARKET_REGIME_LABELS)
+    labels = metadata.get("labels")
     if not isinstance(labels, list) or not labels or not all(isinstance(label, str) for label in labels):
         raise RuntimeError("Market regime artifact metadata.labels must be a non-empty string list.")
     metadata["labels"] = labels
+
+    model_config = metadata.get("model")
+    if not isinstance(model_config, dict):
+        raise RuntimeError("Market regime artifact metadata.model must be an object.")
 
     normalization = metadata.get("normalization")
     if normalization is not None:
