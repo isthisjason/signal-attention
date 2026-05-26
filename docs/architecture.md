@@ -13,6 +13,7 @@ flowchart LR
     backend --> risk[Risk Policy Engine]
     backend --> paper[Paper Trading Simulation]
     backend --> dashboard[Dashboard Summary API]
+    backend --> alerts[Dashboard Risk Alerts]
     backend --> regime[Market Regime API]
     backend --> audit[Audit Events]
     backend --> mlclient[ML Risk Client]
@@ -23,6 +24,7 @@ flowchart LR
     risk --> postgres
     paper --> postgres
     dashboard --> postgres
+    alerts --> postgres
     regime --> postgres
     audit --> postgres
 
@@ -34,9 +36,9 @@ flowchart LR
 ## Runtime Services
 
 - `postgres`: Stores strategies, candles, backtests, trades, risk policies, paper sessions, positions, orders, and audit events.
-- `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, risk evaluation, paper trading, dashboard aggregation, and market regime proxying.
+- `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, risk evaluation, paper trading, dashboard aggregation, derived risk alerts, and market regime proxying.
 - `ml-service`: Provides CPU-first rule-based strategy risk scoring and market regime classification.
-- `frontend`: Provides a local React dashboard/workbench for importing candles, creating SMA strategies, running backtests, scoring ML risk, managing paper sessions, and reviewing summary, strategy performance, audit, and market regime status.
+- `frontend`: Provides a local React dashboard/workbench for importing candles, creating SMA strategies, running backtests, scoring ML risk, managing paper sessions, and reviewing summary, risk alerts, strategy performance, audit, and market regime status.
 
 ## Market Regime Modes
 

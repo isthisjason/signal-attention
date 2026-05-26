@@ -178,9 +178,10 @@ curl -X PATCH http://localhost:8080/api/paper-sessions/PAPER_SESSION_ID/stop
 ```bash
 curl http://localhost:8080/api/dashboard/summary
 curl http://localhost:8080/api/dashboard/strategy-performance
+curl http://localhost:8080/api/dashboard/risk-alerts
 ```
 
-Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, strategy performance, market regime status, and recent audit events.
+Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, derived risk alerts, strategy performance, market regime status, and recent audit events.
 
 The dashboard also includes workbench controls for the main demo flow:
 

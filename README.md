@@ -111,7 +111,7 @@ npm run test
 
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
 
-The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary/audit/regime panels.
+The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary/risk-alert/audit/regime panels.
 
 ## MVP API Flow
 
@@ -141,6 +141,7 @@ After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` o
 - `GET /api/audit-events`
 - `GET /api/dashboard/summary`
 - `GET /api/dashboard/strategy-performance`
+- `GET /api/dashboard/risk-alerts`
 - `GET /api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
@@ -155,7 +156,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - Service-to-service integration between Spring Boot and FastAPI
 - Rule-based ML-style risk scoring with explainable reasons
 - CPU-safe market regime classification from recent candle sequences
-- React dashboard for the local research workflow, summary metrics, strategy performance, paper trading, audit events, and regime status
+- React dashboard for the local research workflow, summary metrics, risk alerts, strategy performance, paper trading, audit events, and regime status
 - Optional torch artifact provenance, split-aware training manifests, experiment registry entries, and evaluation reports for local market-regime experiments
 - Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
 - Docker Compose local orchestration for backend, database, ML service, and frontend
