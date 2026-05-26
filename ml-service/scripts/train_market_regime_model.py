@@ -32,15 +32,18 @@ def main() -> None:
     train_labels, validation_labels = split_training_windows(labels, args.validation_ratio)
 
     means, stds = normalization_stats(train_windows)
-    normalized_windows = [normalize_window(window, means, stds) for window in windows]
+    normalized_train_windows = [
+        normalize_window(window, means, stds)
+        for window in train_windows
+    ]
     normalized_validation_windows = [
         normalize_window(window, means, stds)
         for window in validation_windows
     ]
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
 
-    inputs = torch.tensor(normalized_windows, dtype=torch.float32, device=device)
-    targets = torch.tensor(labels, dtype=torch.long, device=device)
+    inputs = torch.tensor(normalized_train_windows, dtype=torch.float32, device=device)
+    targets = torch.tensor(train_labels, dtype=torch.long, device=device)
     model = build_transformer_model(
         torch,
         feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),

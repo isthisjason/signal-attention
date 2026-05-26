@@ -53,3 +53,10 @@ def test_training_normalization_stats_exclude_validation_windows() -> None:
     assert means == [2.0 for _ in range(10)]
     assert stds == [1.0 for _ in range(10)]
     assert normalize_window(validation_window, means, stds) == [[98.0 for _ in range(10)]]
+
+
+def test_split_training_windows_excludes_validation_items_from_training() -> None:
+    train_labels, validation_labels = split_training_windows([0, 1, 2, 3, 4], 0.4)
+
+    assert train_labels == [0, 1, 2]
+    assert validation_labels == [3, 4]
