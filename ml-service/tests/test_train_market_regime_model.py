@@ -3,6 +3,7 @@ import pytest
 from app.services.market_regime_experiment import (
     build_experiment_manifest,
     load_experiment_registry,
+    upsert_experiment_entry,
     write_experiment_registry,
 )
 from scripts.train_market_regime_model import (
@@ -138,6 +139,28 @@ def test_write_experiment_registry_creates_parent_directories(tmp_path) -> None:
     write_experiment_registry(registry_path, {"experiments": [{"name": "baseline"}]})
 
     assert registry_path.read_text(encoding="utf-8") == '{\n  "experiments": [\n    {\n      "name": "baseline"\n    }\n  ]\n}\n'
+
+
+def test_upsert_experiment_entry_inserts_new_entry() -> None:
+    registry = upsert_experiment_entry({"experiments": []}, {"name": "baseline", "artifactPath": "model.pt"})
+
+    assert registry["experiments"] == [{"name": "baseline", "artifactPath": "model.pt"}]
+
+
+def test_upsert_experiment_entry_updates_matching_entry_and_preserves_others() -> None:
+    registry = {
+        "experiments": [
+            {"name": "baseline", "artifactPath": "old.pt", "createdBy": "train"},
+            {"name": "other", "artifactPath": "other.pt"},
+        ]
+    }
+
+    updated = upsert_experiment_entry(registry, {"name": "baseline", "artifactPath": "new.pt"})
+
+    assert updated["experiments"] == [
+        {"name": "baseline", "artifactPath": "new.pt", "createdBy": "train"},
+        {"name": "other", "artifactPath": "other.pt"},
+    ]
 
 
 class FakeScalar:

@@ -18,6 +18,16 @@ def write_experiment_registry(registry_path: Path, registry: dict[str, Any]) -> 
     registry_path.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
 
 
+def upsert_experiment_entry(registry: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
+    experiments = list(registry.get("experiments", []))
+    entry_name = entry["name"]
+    for index, existing in enumerate(experiments):
+        if existing.get("name") == entry_name:
+            experiments[index] = {**existing, **entry}
+            return {**registry, "experiments": experiments}
+    return {**registry, "experiments": [*experiments, entry]}
+
+
 def build_experiment_manifest(
     *,
     csv_path: Path,
