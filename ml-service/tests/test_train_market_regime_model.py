@@ -1,6 +1,10 @@
 import pytest
 
-from scripts.train_market_regime_model import chronological_split_index, validate_validation_ratio
+from scripts.train_market_regime_model import (
+    chronological_split_index,
+    split_training_windows,
+    validate_validation_ratio,
+)
 
 
 @pytest.mark.parametrize("validation_ratio", [0, -0.1, 1, 1.1])
@@ -29,3 +33,10 @@ def test_chronological_split_index_rounds_validation_size() -> None:
 def test_chronological_split_index_rejects_too_few_windows() -> None:
     with pytest.raises(ValueError, match="at least two windows"):
         chronological_split_index(1, 0.2)
+
+
+def test_split_training_windows_preserves_chronological_order() -> None:
+    train, validation = split_training_windows([1, 2, 3, 4, 5], 0.4)
+
+    assert train == [1, 2, 3]
+    assert validation == [4, 5]

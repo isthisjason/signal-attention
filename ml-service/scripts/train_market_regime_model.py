@@ -28,6 +28,8 @@ def main() -> None:
     windows, labels = build_training_windows(candles, args.sequence_length)
     if not windows:
         raise SystemExit("not enough candles to build training windows")
+    train_windows, validation_windows = split_training_windows(windows, args.validation_ratio)
+    train_labels, validation_labels = split_training_windows(labels, args.validation_ratio)
 
     means, stds = normalization_stats(windows)
     normalized_windows = [normalize_window(window, means, stds) for window in windows]
@@ -98,6 +100,11 @@ def chronological_split_index(item_count: int, validation_ratio: float) -> int:
     if validation_count >= item_count:
         validation_count = item_count - 1
     return item_count - validation_count
+
+
+def split_training_windows(items: list, validation_ratio: float) -> tuple[list, list]:
+    split_index = chronological_split_index(len(items), validation_ratio)
+    return items[:split_index], items[split_index:]
 
 
 def load_torch():
