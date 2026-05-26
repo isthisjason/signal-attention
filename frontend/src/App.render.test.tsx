@@ -4,6 +4,7 @@ import App from "./App";
 
 const mocks = vi.hoisted(() => ({
   fetchAuditEvents: vi.fn(),
+  fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
   fetchMarketRegime: vi.fn(),
   fetchStrategies: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("./api/audit", () => ({
 }));
 
 vi.mock("./api/dashboard", () => ({
+  fetchDashboardRiskAlerts: mocks.fetchDashboardRiskAlerts,
   fetchDashboardSummary: mocks.fetchDashboardSummary,
   fetchStrategyPerformance: mocks.fetchStrategyPerformance,
 }));
@@ -41,6 +43,7 @@ beforeEach(() => {
     recentAuditEvents: [],
   });
   mocks.fetchStrategyPerformance.mockResolvedValue([]);
+  mocks.fetchDashboardRiskAlerts.mockResolvedValue([]);
   mocks.fetchAuditEvents.mockResolvedValue([]);
   mocks.fetchMarketRegime.mockRejectedValue(new Error("Not enough candles"));
   mocks.fetchStrategies.mockResolvedValue([]);
@@ -52,6 +55,7 @@ describe("dashboard render states", () => {
     render(<App />);
 
     expect(await screen.findByText("No strategies have been created yet.")).toBeInTheDocument();
+    expect(screen.getByText("No risk alerts are active.")).toBeInTheDocument();
     expect(screen.getByText("No audit events have been recorded yet.")).toBeInTheDocument();
     expect(screen.getByText(/Import at least 20 BTC-USD 1h candles/)).toBeInTheDocument();
 

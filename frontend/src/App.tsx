@@ -401,6 +401,7 @@ function App() {
       {notice ? <div className={`notice notice-${notice.tone}`}>{notice.message}</div> : null}
 
       <SummaryCards state={summaryState} />
+      <RiskAlertsPanel state={riskAlertsState} />
 
       <section className="workflow-grid" aria-label="Research workflow controls">
         <MarketDataImportPanel
@@ -871,6 +872,24 @@ function SummaryCards({ state }: { state: LoadState<DashboardSummary> }) {
         <strong>{latest ? formatPercent(latest.totalReturn) : "None"}</strong>
         {latest ? <small>{latest.mlRiskLabel || "No ML score"}</small> : null}
       </article>
+    </section>
+  );
+}
+
+function RiskAlertsPanel({ state }: { state: LoadState<DashboardRiskAlert[]> }) {
+  if (state.status === "loading") {
+    return <PanelMessage title="Risk alerts" message="Loading risk alerts." />;
+  }
+  if (state.status === "error") {
+    return <PanelMessage title="Risk alerts" tone="error" message={state.error} />;
+  }
+  if (state.data.length === 0) {
+    return <PanelMessage title="Risk alerts" message="No risk alerts are active." />;
+  }
+
+  return (
+    <section className="panel">
+      <h2>Risk alerts</h2>
     </section>
   );
 }
