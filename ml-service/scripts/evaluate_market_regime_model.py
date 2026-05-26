@@ -17,6 +17,11 @@ from app.services.market_regime_torch_adapter import (
     normalize_features,
     validate_artifact_metadata,
 )
+from app.services.market_regime_experiment import (
+    load_experiment_registry,
+    upsert_experiment_entry,
+    write_experiment_registry,
+)
 from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
@@ -55,6 +60,8 @@ def main() -> None:
         "samples": predictions[: args.sample_count],
     }
     write_report(args.output, report)
+    if args.experiment_name:
+        register_evaluation_report(args, report)
 
 
 def parse_args() -> argparse.Namespace:
@@ -178,6 +185,26 @@ def write_report(output: Path | None, report: dict[str, Any]) -> None:
         return
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(payload, encoding="utf-8")
+
+
+def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, Any]) -> dict[str, Any]:
+    metrics = report["metrics"]
+    return {
+        "name": args.experiment_name,
+        "evaluation": {
+            "reportPath": str(args.output) if args.output is not None else None,
+            "accuracy": metrics["accuracy"],
+            "perLabel": metrics["perLabel"],
+            "confidence": metrics["confidence"],
+        },
+    }
+
+
+def register_evaluation_report(args: argparse.Namespace, report: dict[str, Any]) -> None:
+    registry_path = args.experiments_dir / "index.json"
+    registry = load_experiment_registry(registry_path)
+    registry = upsert_experiment_entry(registry, build_evaluation_registry_entry(args, report))
+    write_experiment_registry(registry_path, registry)
 
 
 if __name__ == "__main__":
