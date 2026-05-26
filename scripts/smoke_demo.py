@@ -243,10 +243,16 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
 
 def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) -> None:
     summary = request_json(f"{config.backend_url}/api/dashboard/summary")
+    require_keys(
+        summary,
+        ("strategyCount", "backtestCount", "activePaperSessionCount", "recentAuditEvents"),
+        "Dashboard summary",
+    )
     check(summary["strategyCount"] >= 1, "Dashboard summary did not include created strategies.")
     check(summary["backtestCount"] >= 1, "Dashboard summary did not include created backtests.")
 
     performance = request_json(f"{config.backend_url}/api/dashboard/strategy-performance")
+    check(isinstance(performance, list), "Strategy performance response was not a list.")
     check(
         any(item["strategyId"] == strategy_id for item in performance),
         "Strategy performance did not include the smoke strategy.",
@@ -256,10 +262,23 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
     check(isinstance(alerts, list), "Risk alerts response was not a list.")
 
     regime = request_json(f"{config.backend_url}/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128")
-    check("regimeLabel" in regime and "confidence" in regime, "Market regime response was incomplete.")
+    require_keys(regime, ("regimeLabel", "confidence", "reasons", "features", "classifierSource"), "Market regime")
+    require_keys(
+        regime["features"],
+        (
+            "latestReturnPercent",
+            "averageReturnPercent",
+            "volatilityPercent",
+            "trendSlopePercent",
+            "smaDistancePercent",
+            "volumeZScore",
+        ),
+        "Market regime features",
+    )
 
     audit_events = request_json(f"{config.backend_url}/api/audit-events?limit=25")
     check(isinstance(audit_events, list) and audit_events, "Audit events response was empty.")
+    require_keys(audit_events[0], ("id", "entityType", "entityId", "action", "message", "createdAt"), "Audit event")
     check(
         any(event["entityType"] == "BACKTEST" and str(event["entityId"]) == str(backtest_id) for event in audit_events),
         "Audit events did not include the smoke backtest.",
