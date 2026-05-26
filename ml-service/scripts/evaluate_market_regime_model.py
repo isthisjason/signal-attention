@@ -63,6 +63,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--sample-count", type=int, default=10)
+    parser.add_argument("--experiment-name")
+    parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
     return parser.parse_args()
 
 
