@@ -8,6 +8,7 @@ import com.signalattention.papertrading.PaperSessionStatus;
 import com.signalattention.strategies.Strategy;
 import com.signalattention.strategies.StrategyRepository;
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
@@ -61,6 +62,9 @@ public class DashboardService {
         return backtestRunRepository.findAll().stream()
                 .flatMap(run -> Stream.of(drawdownAlert(run), mlRiskAlert(run)))
                 .filter(alert -> alert != null)
+                .sorted(Comparator
+                        .comparing(DashboardRiskAlertResponse::severity)
+                        .thenComparing(DashboardRiskAlertResponse::createdAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 

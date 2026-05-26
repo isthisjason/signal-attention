@@ -187,15 +187,31 @@ class DashboardServiceTests {
         assertThat(response.message()).contains("LIKELY_OVERFIT");
     }
 
+    @Test
+    void getRiskAlertsSortsBySeverityThenNewestFirst() {
+        BacktestRun olderHigh = backtestRun(10L, "2024-01-01T00:00:00Z", new BigDecimal("20"), "LOW_RISK");
+        BacktestRun newerMedium = backtestRun(11L, "2024-01-03T00:00:00Z", new BigDecimal("10"), "LOW_RISK");
+        BacktestRun newerHigh = backtestRun(12L, "2024-01-04T00:00:00Z", new BigDecimal("20"), "LOW_RISK");
+        when(backtestRunRepository.findAll()).thenReturn(List.of(newerMedium, olderHigh, newerHigh));
+
+        List<DashboardRiskAlertResponse> responses = service.getRiskAlerts();
+
+        assertThat(responses).extracting(DashboardRiskAlertResponse::entityId).containsExactly("12", "10", "11");
+    }
+
     private BacktestRun backtestRun() {
+        return backtestRun(10L, "2024-01-02T00:00:00Z", new BigDecimal("1.2"), "LOW_RISK");
+    }
+
+    private BacktestRun backtestRun(Long id, String createdAt, BigDecimal maxDrawdown, String mlRiskLabel) {
         BacktestRun run = new BacktestRun(strategy(), Instant.parse("2024-01-01T00:00:00Z"), Instant.parse("2024-01-02T00:00:00Z"), new BigDecimal("10000"), BacktestStatus.COMPLETED);
-        ReflectionTestUtils.setField(run, "id", 10L);
-        ReflectionTestUtils.setField(run, "createdAt", Instant.parse("2024-01-02T00:00:00Z"));
+        ReflectionTestUtils.setField(run, "id", id);
+        ReflectionTestUtils.setField(run, "createdAt", Instant.parse(createdAt));
         run.setTotalReturn(new BigDecimal("5.5"));
-        run.setMaxDrawdown(new BigDecimal("1.2"));
+        run.setMaxDrawdown(maxDrawdown);
         run.setTradeCount(4);
         run.setMlRiskScore(new BigDecimal("20"));
-        run.setMlRiskLabel("LOW_RISK");
+        run.setMlRiskLabel(mlRiskLabel);
         return run;
     }
 
