@@ -7,7 +7,7 @@ import {
   scoreBacktestRisk,
 } from "./backtests";
 import { errorMessage, getJson } from "./client";
-import { fetchDashboardSummary, fetchStrategyPerformance } from "./dashboard";
+import { fetchDashboardRiskAlerts, fetchDashboardSummary, fetchStrategyPerformance } from "./dashboard";
 import { importMarketData } from "./marketData";
 import { fetchMarketRegime } from "./marketRegime";
 import {
@@ -195,6 +195,9 @@ describe("dashboard and analysis clients", () => {
 
     await fetchStrategyPerformance();
     expect(latestFetchCall().url).toBe("http://api.test/api/dashboard/strategy-performance");
+
+    await fetchDashboardRiskAlerts();
+    expect(latestFetchCall().url).toBe("http://api.test/api/dashboard/risk-alerts");
 
     await fetchAuditEvents();
     expect(latestFetchCall().url).toBe("http://api.test/api/audit-events?limit=12");

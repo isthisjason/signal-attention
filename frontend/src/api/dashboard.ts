@@ -45,10 +45,23 @@ export type StrategyPerformance = {
   paperSessionCount: number;
 };
 
+export type DashboardRiskAlert = {
+  severity: "HIGH" | "MEDIUM" | "LOW";
+  category: string;
+  entityType: string;
+  entityId: string;
+  message: string;
+  createdAt: string;
+};
+
 export function fetchDashboardSummary() {
   return getJson<DashboardSummary>("/api/dashboard/summary");
 }
 
 export function fetchStrategyPerformance() {
   return getJson<StrategyPerformance[]>("/api/dashboard/strategy-performance");
+}
+
+export function fetchDashboardRiskAlerts() {
+  return getJson<DashboardRiskAlert[]>("/api/dashboard/risk-alerts");
 }
