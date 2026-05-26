@@ -1,6 +1,10 @@
 import pytest
 
-from app.services.market_regime_experiment import build_experiment_manifest, load_experiment_registry
+from app.services.market_regime_experiment import (
+    build_experiment_manifest,
+    load_experiment_registry,
+    write_experiment_registry,
+)
 from scripts.train_market_regime_model import (
     chronological_split_index,
     label_distribution,
@@ -126,6 +130,14 @@ def test_load_experiment_registry_reads_existing_json(tmp_path) -> None:
     registry_path.write_text('{"experiments": [{"name": "baseline"}]}', encoding="utf-8")
 
     assert load_experiment_registry(registry_path) == {"experiments": [{"name": "baseline"}]}
+
+
+def test_write_experiment_registry_creates_parent_directories(tmp_path) -> None:
+    registry_path = tmp_path / "models" / "experiments" / "index.json"
+
+    write_experiment_registry(registry_path, {"experiments": [{"name": "baseline"}]})
+
+    assert registry_path.read_text(encoding="utf-8") == '{\n  "experiments": [\n    {\n      "name": "baseline"\n    }\n  ]\n}\n'
 
 
 class FakeScalar:

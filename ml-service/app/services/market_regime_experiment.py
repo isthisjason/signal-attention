@@ -13,6 +13,11 @@ def load_experiment_registry(registry_path: Path) -> dict[str, Any]:
     return json.loads(registry_path.read_text(encoding="utf-8"))
 
 
+def write_experiment_registry(registry_path: Path, registry: dict[str, Any]) -> None:
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
+
+
 def build_experiment_manifest(
     *,
     csv_path: Path,
