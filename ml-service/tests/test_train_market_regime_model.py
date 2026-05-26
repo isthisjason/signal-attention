@@ -2,6 +2,8 @@ import pytest
 
 from scripts.train_market_regime_model import (
     chronological_split_index,
+    normalize_window,
+    normalization_stats,
     split_training_windows,
     validate_validation_ratio,
 )
@@ -40,3 +42,14 @@ def test_split_training_windows_preserves_chronological_order() -> None:
 
     assert train == [1, 2, 3]
     assert validation == [4, 5]
+
+
+def test_training_normalization_stats_exclude_validation_windows() -> None:
+    train_windows = [[[1.0 for _ in range(10)], [3.0 for _ in range(10)]]]
+    validation_window = [[100.0 for _ in range(10)]]
+
+    means, stds = normalization_stats(train_windows)
+
+    assert means == [2.0 for _ in range(10)]
+    assert stds == [1.0 for _ in range(10)]
+    assert normalize_window(validation_window, means, stds) == [[98.0 for _ in range(10)]]

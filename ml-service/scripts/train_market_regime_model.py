@@ -31,8 +31,12 @@ def main() -> None:
     train_windows, validation_windows = split_training_windows(windows, args.validation_ratio)
     train_labels, validation_labels = split_training_windows(labels, args.validation_ratio)
 
-    means, stds = normalization_stats(windows)
+    means, stds = normalization_stats(train_windows)
     normalized_windows = [normalize_window(window, means, stds) for window in windows]
+    normalized_validation_windows = [
+        normalize_window(window, means, stds)
+        for window in validation_windows
+    ]
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
 
     inputs = torch.tensor(normalized_windows, dtype=torch.float32, device=device)
