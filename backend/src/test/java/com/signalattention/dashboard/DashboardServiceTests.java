@@ -108,6 +108,42 @@ class DashboardServiceTests {
         assertThat(response.latestMlRiskLabel()).isEqualTo("LOW_RISK");
     }
 
+    @Test
+    void getRiskAlertsReturnsEmptyListWhenBacktestsHaveLowDrawdown() {
+        BacktestRun run = backtestRun();
+        run.setMaxDrawdown(new BigDecimal("9.99"));
+        when(backtestRunRepository.findAll()).thenReturn(List.of(run));
+
+        List<DashboardRiskAlertResponse> responses = service.getRiskAlerts();
+
+        assertThat(responses).isEmpty();
+    }
+
+    @Test
+    void getRiskAlertsIncludesMediumDrawdownAlerts() {
+        BacktestRun run = backtestRun();
+        run.setMaxDrawdown(new BigDecimal("10"));
+        when(backtestRunRepository.findAll()).thenReturn(List.of(run));
+
+        DashboardRiskAlertResponse response = service.getRiskAlerts().get(0);
+
+        assertThat(response.severity()).isEqualTo(DashboardAlertSeverity.MEDIUM);
+        assertThat(response.category()).isEqualTo("DRAWDOWN");
+        assertThat(response.entityId()).isEqualTo("10");
+    }
+
+    @Test
+    void getRiskAlertsIncludesHighDrawdownAlerts() {
+        BacktestRun run = backtestRun();
+        run.setMaxDrawdown(new BigDecimal("20"));
+        when(backtestRunRepository.findAll()).thenReturn(List.of(run));
+
+        DashboardRiskAlertResponse response = service.getRiskAlerts().get(0);
+
+        assertThat(response.severity()).isEqualTo(DashboardAlertSeverity.HIGH);
+        assertThat(response.message()).contains("20%");
+    }
+
     private BacktestRun backtestRun() {
         BacktestRun run = new BacktestRun(strategy(), Instant.parse("2024-01-01T00:00:00Z"), Instant.parse("2024-01-02T00:00:00Z"), new BigDecimal("10000"), BacktestStatus.COMPLETED);
         ReflectionTestUtils.setField(run, "id", 10L);
