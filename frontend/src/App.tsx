@@ -398,7 +398,11 @@ function App() {
         </button>
       </header>
 
-      {notice ? <div className={`notice notice-${notice.tone}`}>{notice.message}</div> : null}
+      {notice ? (
+        <div aria-live="polite" className={`notice notice-${notice.tone}`}>
+          {notice.message}
+        </div>
+      ) : null}
 
       <SummaryCards state={summaryState} />
       <RiskAlertsPanel state={riskAlertsState} />
@@ -484,7 +488,9 @@ function MarketDataImportPanel({
             ["Rejected", importSummary.rowsRejected],
           ]}
         />
-      ) : null}
+      ) : (
+        <p className="muted">No import has run in this browser session.</p>
+      )}
       {importSummary?.errors.length ? (
         <ul className="compact-list">
           {importSummary.errors.slice(0, 4).map((error) => (
@@ -533,6 +539,11 @@ function StrategyWorkflowPanel({
             : null}
         </select>
       </label>
+      {state.status === "loading" ? <p className="muted">Loading saved strategies.</p> : null}
+      {state.status === "error" ? <p className="muted">{state.error}</p> : null}
+      {state.status === "success" && state.data.length === 0 ? (
+        <p className="muted">No saved strategies yet.</p>
+      ) : null}
       <form className="control-stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <TextInput label="Name" name="name" state={form} setState={onUpdate} />
@@ -612,6 +623,7 @@ function BacktestWorkflowPanel({
         </>
       ) : null}
       {riskScore ? <ul className="compact-list">{riskScore.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}
+      {!backtestRun ? <p className="muted">No backtest has run in this browser session.</p> : null}
     </section>
   );
 }
@@ -681,10 +693,11 @@ function PaperTradingPanel({
           ))}
         </select>
       </label>
+      {sessions.length === 0 ? <p className="muted">No paper sessions for the selected strategy.</p> : null}
       <form className="control-stack" onSubmit={onCreate}>
         <TextInput label="Initial balance" name="initialBalance" state={form} setState={onUpdate} type="number" />
         <button className="button" disabled={busy} type="submit">
-          Create session
+          {busy ? "Working" : "Create session"}
         </button>
       </form>
       <div className="button-row">
@@ -708,7 +721,7 @@ function PaperTradingPanel({
         <TextInput label="Price" name="orderPrice" state={form} setState={onUpdate} type="number" />
       </div>
       <button className="button button-secondary" disabled={busy || !selectedSessionId} onClick={onOrder} type="button">
-        Submit order
+        {busy ? "Working" : "Submit order"}
       </button>
       <div className="form-grid">
         <DateInput label="Replay start" name="startDate" state={form} setState={onUpdate} />
@@ -716,7 +729,7 @@ function PaperTradingPanel({
         <TextInput label="Max candles" name="maxCandles" state={form} setState={onUpdate} type="number" />
       </div>
       <button className="button" disabled={busy || !selectedSessionId} onClick={onReplay} type="button">
-        Replay candles
+        {busy ? "Working" : "Replay candles"}
       </button>
       {summary ? (
         <ResultGrid
@@ -749,7 +762,9 @@ function PaperTradingPanel({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <p className="muted">No paper orders for the selected session.</p>
+      )}
       {positions.length ? (
         <ul className="compact-list">
           {positions.slice(0, 4).map((position) => (
@@ -758,7 +773,9 @@ function PaperTradingPanel({
             </li>
           ))}
         </ul>
-      ) : null}
+      ) : (
+        <p className="muted">No paper positions for the selected session.</p>
+      )}
     </section>
   );
 }
