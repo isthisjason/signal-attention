@@ -107,6 +107,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument("--validation-ratio", type=float, default=0.2)
     parser.add_argument("--model-version", default="local-transformer-v1")
+    parser.add_argument("--experiment-name")
+    parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
     parser.add_argument("--cpu", action="store_true")
     args = parser.parse_args()
     validate_validation_ratio(args.validation_ratio)

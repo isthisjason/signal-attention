@@ -1,5 +1,6 @@
 import pytest
 
+import scripts.train_market_regime_model as training_script
 from app.services.market_regime_experiment import (
     build_experiment_manifest,
     load_experiment_registry,
@@ -26,6 +27,32 @@ def test_validate_validation_ratio_rejects_invalid_values(validation_ratio: floa
 
 def test_validate_validation_ratio_accepts_fractional_values() -> None:
     validate_validation_ratio(0.2)
+
+
+def test_parse_args_accepts_experiment_registry_options(monkeypatch, tmp_path) -> None:
+    output_path = tmp_path / "model.pt"
+    csv_path = tmp_path / "candles.csv"
+    experiments_dir = tmp_path / "experiments"
+    monkeypatch.setattr(
+        training_script.sys,
+        "argv",
+        [
+            "train_market_regime_model.py",
+            "--csv-path",
+            str(csv_path),
+            "--output",
+            str(output_path),
+            "--experiment-name",
+            "baseline",
+            "--experiments-dir",
+            str(experiments_dir),
+        ],
+    )
+
+    args = training_script.parse_args()
+
+    assert args.experiment_name == "baseline"
+    assert args.experiments_dir == experiments_dir
 
 
 def test_chronological_split_index_uses_validation_ratio() -> None:
