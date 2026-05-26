@@ -90,6 +90,16 @@ def validate_validation_ratio(validation_ratio: float) -> None:
         raise SystemExit("--validation-ratio must be greater than 0 and less than 1")
 
 
+def chronological_split_index(item_count: int, validation_ratio: float) -> int:
+    validate_validation_ratio(validation_ratio)
+    if item_count < 2:
+        raise ValueError("at least two windows are required for a train/validation split")
+    validation_count = max(1, round(item_count * validation_ratio))
+    if validation_count >= item_count:
+        validation_count = item_count - 1
+    return item_count - validation_count
+
+
 def load_torch():
     try:
         import torch
