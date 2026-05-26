@@ -77,14 +77,16 @@ cd ml-service
 python scripts/train_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --output models/market-regime.pt \
-  --cpu
+  --cpu \
+  --experiment-name btc-sample-v1
 python scripts/evaluate_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --artifact models/market-regime.pt \
-  --output models/market-regime-evaluation.json
+  --output models/market-regime-evaluation.json \
+  --experiment-name btc-sample-v1
 ```
 
-Training writes a sidecar `models/market-regime.pt.manifest.json` with dataset, feature, model, split, and training metadata. Evaluation writes JSON metrics for accuracy, per-label precision/recall/F1, confusion matrix, confidence summary, and sample predictions. These commands are optional research tooling; the default service still uses the CPU-safe rule classifier.
+Training uses a chronological validation split, fits normalization on the training windows, and writes a sidecar `models/market-regime.pt.manifest.json` with dataset, feature, model, split counts, label distributions, final train loss, and validation accuracy. Passing `--experiment-name` also updates `models/experiments/index.json` with the artifact, manifest, and headline metrics. Evaluation writes JSON metrics for accuracy, per-label precision/recall/F1, confusion matrix, confidence summary, sample predictions, and the matching registry entry. These commands are optional research tooling; the default service still uses the CPU-safe rule classifier.
 
 Start the full local stack:
 
@@ -154,7 +156,7 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 - Rule-based ML-style risk scoring with explainable reasons
 - CPU-safe market regime classification from recent candle sequences
 - React dashboard for the local research workflow, summary metrics, strategy performance, paper trading, audit events, and regime status
-- Optional torch artifact provenance and evaluation reports for local market-regime experiments
+- Optional torch artifact provenance, split-aware training manifests, experiment registry entries, and evaluation reports for local market-regime experiments
 - Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
 - Docker Compose local orchestration for backend, database, ML service, and frontend
 

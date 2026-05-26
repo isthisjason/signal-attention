@@ -15,8 +15,8 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | ML health | `curl http://localhost:8000/health` | Returns `{"status":"ok"}`. |
 | Demo flow | Follow `docs/demo-flow.md` | Import, strategy, backtest, ML score, paper replay, dashboard, and audit flow works. |
 | Market regime flow | `curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"` | Returns a regime label, confidence, reasons, and derived features after candles are imported. |
-| Optional torch training metadata | `cd ml-service && python scripts/train_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --output models/market-regime.pt --cpu` | Writes `models/market-regime.pt` and `models/market-regime.pt.manifest.json`. |
-| Optional torch evaluation report | `cd ml-service && python scripts/evaluate_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --artifact models/market-regime.pt --output models/market-regime-evaluation.json` | Writes accuracy, per-label metrics, confusion matrix, confidence summary, and sample predictions. |
+| Optional torch training metadata | `cd ml-service && python scripts/train_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --output models/market-regime.pt --cpu --experiment-name btc-sample-v1` | Writes `models/market-regime.pt`, `models/market-regime.pt.manifest.json`, and updates `models/experiments/index.json` with split-aware training metrics. |
+| Optional torch evaluation report | `cd ml-service && python scripts/evaluate_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --artifact models/market-regime.pt --output models/market-regime-evaluation.json --experiment-name btc-sample-v1` | Writes accuracy, per-label metrics, confusion matrix, confidence summary, sample predictions, and updates the experiment registry. |
 
 ## Local Tooling Notes
 
@@ -37,4 +37,4 @@ Last checked on May 23, 2026:
 - `cd frontend && npm run build`: passed.
 - `docker compose config`: blocked because the `docker` command was not available in this WSL distro.
 - Focused implementation checks passed for ML torch artifact validation, backend market-regime provenance mapping, and dashboard provenance rendering.
-- Optional torch train/evaluate commands were documented but not run during this check because torch dependencies are intentionally optional.
+- Optional torch train/evaluate commands remain optional because torch dependencies are intentionally optional.
