@@ -85,7 +85,15 @@ def main() -> None:
         },
         args.output,
     )
-    write_experiment_manifest(args, windows, train_windows, validation_windows, str(device))
+    write_experiment_manifest(
+        args,
+        windows,
+        train_windows,
+        validation_windows,
+        train_labels,
+        validation_labels,
+        str(device),
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -121,6 +129,13 @@ def chronological_split_index(item_count: int, validation_ratio: float) -> int:
 def split_training_windows(items: list, validation_ratio: float) -> tuple[list, list]:
     split_index = chronological_split_index(len(items), validation_ratio)
     return items[:split_index], items[split_index:]
+
+
+def label_distribution(labels: list[int], label_names: list[str]) -> dict[str, int]:
+    return {
+        label_name: labels.count(index)
+        for index, label_name in enumerate(label_names)
+    }
 
 
 def load_torch():
@@ -213,6 +228,8 @@ def write_experiment_manifest(
     windows: list[list[list[float]]],
     train_windows: list[list[list[float]]],
     validation_windows: list[list[list[float]]],
+    train_labels: list[int],
+    validation_labels: list[int],
     device: str,
 ) -> None:
     manifest = build_experiment_manifest(
@@ -235,6 +252,8 @@ def write_experiment_manifest(
         train_window_count=len(train_windows),
         validation_window_count=len(validation_windows),
         validation_ratio=args.validation_ratio,
+        train_label_distribution=label_distribution(train_labels, LABELS),
+        validation_label_distribution=label_distribution(validation_labels, LABELS),
         device=device,
     )
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")

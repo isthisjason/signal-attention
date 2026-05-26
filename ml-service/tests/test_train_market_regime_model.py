@@ -3,6 +3,7 @@ import pytest
 from app.services.market_regime_experiment import build_experiment_manifest
 from scripts.train_market_regime_model import (
     chronological_split_index,
+    label_distribution,
     normalize_window,
     normalization_stats,
     predict_validation_labels,
@@ -83,6 +84,8 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
         train_window_count=8,
         validation_window_count=2,
         validation_ratio=0.2,
+        train_label_distribution={"SIDEWAYS": 7, "TRENDING_UP": 1},
+        validation_label_distribution={"SIDEWAYS": 1, "TRENDING_UP": 1},
         device="cpu",
     )
 
@@ -90,6 +93,17 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
     assert manifest["trainWindowCount"] == 8
     assert manifest["validationWindowCount"] == 2
     assert manifest["validationRatio"] == 0.2
+
+
+def test_label_distribution_formats_counts_by_label_name() -> None:
+    distribution = label_distribution([0, 1, 1, 3], ["SIDEWAYS", "TRENDING_UP", "TRENDING_DOWN", "HIGH_VOLATILITY"])
+
+    assert distribution == {
+        "SIDEWAYS": 1,
+        "TRENDING_UP": 2,
+        "TRENDING_DOWN": 0,
+        "HIGH_VOLATILITY": 1,
+    }
 
 
 class FakeScalar:

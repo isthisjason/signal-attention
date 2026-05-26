@@ -19,6 +19,8 @@ def build_experiment_manifest(
     train_window_count: int | None = None,
     validation_window_count: int | None = None,
     validation_ratio: float | None = None,
+    train_label_distribution: dict[str, int] | None = None,
+    validation_label_distribution: dict[str, int] | None = None,
     device: str,
 ) -> dict[str, Any]:
     return {
@@ -42,5 +44,7 @@ def build_experiment_manifest(
         "trainWindowCount": train_window_count,
         "validationWindowCount": validation_window_count,
         "validationRatio": validation_ratio,
+        "trainLabelDistribution": train_label_distribution,
+        "validationLabelDistribution": validation_label_distribution,
         "device": device,
     }
