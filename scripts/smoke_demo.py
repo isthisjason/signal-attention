@@ -105,6 +105,11 @@ def check(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def require_keys(payload: dict[str, Any], keys: tuple[str, ...], context: str) -> None:
+    missing = [key for key in keys if key not in payload]
+    check(not missing, f"{context} response missing keys: {', '.join(missing)}.")
+
+
 def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
     errors = import_summary.get("errors", [])
     return bool(errors) and all("Duplicate candle already exists" in error["message"] for error in errors)
@@ -129,6 +134,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
         "file",
         config.sample_csv,
     )
+    require_keys(import_summary, ("totalRows", "rowsImported", "rowsRejected", "errors"), "Market data import")
     check(import_summary["totalRows"] > 0, "Market data import did not read any rows.")
     check(
         import_summary["rowsImported"] > 0 or only_duplicate_rejections(import_summary),
@@ -151,7 +157,9 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
             },
         },
     )
+    require_keys(strategy, ("id", "symbol", "timeframe", "strategyType"), "Strategy create")
     strategy_id = int(strategy["id"])
+    check(strategy["symbol"] == "BTC-USD" and strategy["timeframe"] == "1h", "Strategy create returned the wrong market.")
 
     backtest = post_json(
         f"{config.backend_url}/api/strategies/{strategy_id}/backtests",
@@ -160,19 +168,23 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
             "endDate": "2024-01-10T00:00:00Z",
         },
     )
+    require_keys(backtest, ("id", "status", "tradeCount", "totalReturn", "maxDrawdown"), "Backtest")
     backtest_id = int(backtest["id"])
     check(backtest["status"] == "COMPLETED", "Backtest did not complete.")
 
     metrics = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/metrics")
-    check("totalReturn" in metrics, "Backtest metrics did not include totalReturn.")
+    require_keys(metrics, ("totalReturn", "maxDrawdown", "winRate", "tradeCount"), "Backtest metrics")
+    check(metrics["tradeCount"] == backtest["tradeCount"], "Backtest metrics trade count did not match run response.")
 
     trades = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/trades")
     check(isinstance(trades, list), "Backtest trades response was not a list.")
 
     risk = post_json(f"{config.backend_url}/api/backtests/{backtest_id}/ml-risk-score")
-    check("riskScore" in risk and "riskLabel" in risk, "ML risk score response was incomplete.")
+    require_keys(risk, ("riskScore", "riskLabel", "reasons"), "ML risk score")
+    check(isinstance(risk["reasons"], list) and risk["reasons"], "ML risk score did not include reasons.")
 
     refreshed = request_json(f"{config.backend_url}/api/backtests/{backtest_id}")
+    require_keys(refreshed, ("id", "mlRiskScore", "mlRiskLabel"), "Refreshed backtest")
     check(refreshed["mlRiskLabel"] == risk["riskLabel"], "ML risk label was not persisted.")
 
     return strategy_id, backtest_id
