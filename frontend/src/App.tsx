@@ -11,8 +11,10 @@ import {
 } from "./api/backtests";
 import { errorMessage } from "./api/client";
 import {
+  DashboardRiskAlert,
   DashboardSummary,
   StrategyPerformance,
+  fetchDashboardRiskAlerts,
   fetchDashboardSummary,
   fetchStrategyPerformance,
 } from "./api/dashboard";
@@ -48,6 +50,11 @@ const loadingStrategies: LoadState<StrategyPerformance[]> = {
   error: null,
 };
 const loadingAuditEvents: LoadState<AuditEvent[]> = { status: "loading", data: null, error: null };
+const loadingRiskAlerts: LoadState<DashboardRiskAlert[]> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
 const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
   status: "loading",
   data: null,
@@ -76,6 +83,8 @@ function App() {
   const [strategiesState, setStrategiesState] =
     useState<LoadState<StrategyPerformance[]>>(loadingStrategies);
   const [auditState, setAuditState] = useState<LoadState<AuditEvent[]>>(loadingAuditEvents);
+  const [riskAlertsState, setRiskAlertsState] =
+    useState<LoadState<DashboardRiskAlert[]>>(loadingRiskAlerts);
   const [regimeState, setRegimeState] =
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
   const [strategyListState, setStrategyListState] =
@@ -121,6 +130,7 @@ function App() {
     setSummaryState(loadingSummary);
     setStrategiesState(loadingStrategies);
     setAuditState(loadingAuditEvents);
+    setRiskAlertsState(loadingRiskAlerts);
     setRegimeState(loadingMarketRegime);
     setStrategyListState(loadingStrategyList);
 
@@ -138,6 +148,11 @@ function App() {
       .then((data) => setAuditState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setAuditState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    fetchDashboardRiskAlerts()
+      .then((data) => setRiskAlertsState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setRiskAlertsState({ status: "error", data: null, error: errorMessage(error) }),
       );
     fetchStrategyPerformance()
       .then((data) => setStrategiesState({ status: "success", data, error: null }))
@@ -214,6 +229,7 @@ function App() {
     summaryState.status === "loading" ||
     strategiesState.status === "loading" ||
     auditState.status === "loading" ||
+    riskAlertsState.status === "loading" ||
     regimeState.status === "loading" ||
     strategyListState.status === "loading";
 
