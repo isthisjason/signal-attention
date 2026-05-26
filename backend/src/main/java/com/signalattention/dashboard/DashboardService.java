@@ -9,6 +9,7 @@ import com.signalattention.strategies.Strategy;
 import com.signalattention.strategies.StrategyRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,9 +59,8 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public List<DashboardRiskAlertResponse> getRiskAlerts() {
         return backtestRunRepository.findAll().stream()
-                .filter(run -> run.getMaxDrawdown() != null)
-                .filter(run -> run.getMaxDrawdown().compareTo(MEDIUM_DRAWDOWN_THRESHOLD) >= 0)
-                .map(this::drawdownAlert)
+                .flatMap(run -> Stream.of(drawdownAlert(run), mlRiskAlert(run)))
+                .filter(alert -> alert != null)
                 .toList();
     }
 
@@ -74,6 +74,9 @@ public class DashboardService {
     }
 
     private DashboardRiskAlertResponse drawdownAlert(BacktestRun run) {
+        if (run.getMaxDrawdown() == null || run.getMaxDrawdown().compareTo(MEDIUM_DRAWDOWN_THRESHOLD) < 0) {
+            return null;
+        }
         DashboardAlertSeverity severity = run.getMaxDrawdown().compareTo(HIGH_DRAWDOWN_THRESHOLD) >= 0
                 ? DashboardAlertSeverity.HIGH
                 : DashboardAlertSeverity.MEDIUM;
@@ -83,6 +86,25 @@ public class DashboardService {
                 "BACKTEST",
                 String.valueOf(run.getId()),
                 "Backtest drawdown reached " + run.getMaxDrawdown().stripTrailingZeros().toPlainString() + "%.",
+                run.getCreatedAt()
+        );
+    }
+
+    private DashboardRiskAlertResponse mlRiskAlert(BacktestRun run) {
+        DashboardAlertSeverity severity = switch (String.valueOf(run.getMlRiskLabel())) {
+            case "LIKELY_OVERFIT", "HIGH_RISK" -> DashboardAlertSeverity.HIGH;
+            case "MEDIUM_RISK" -> DashboardAlertSeverity.MEDIUM;
+            default -> null;
+        };
+        if (severity == null) {
+            return null;
+        }
+        return new DashboardRiskAlertResponse(
+                severity,
+                "ML_RISK",
+                "BACKTEST",
+                String.valueOf(run.getId()),
+                "Backtest ML risk label is " + run.getMlRiskLabel() + ".",
                 run.getCreatedAt()
         );
     }

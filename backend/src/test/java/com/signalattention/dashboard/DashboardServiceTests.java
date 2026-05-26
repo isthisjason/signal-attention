@@ -144,6 +144,49 @@ class DashboardServiceTests {
         assertThat(response.message()).contains("20%");
     }
 
+    @Test
+    void getRiskAlertsIncludesMediumMlRiskAlerts() {
+        BacktestRun run = backtestRun();
+        run.setMlRiskLabel("MEDIUM_RISK");
+        when(backtestRunRepository.findAll()).thenReturn(List.of(run));
+
+        DashboardRiskAlertResponse response = service.getRiskAlerts().stream()
+                .filter(alert -> alert.category().equals("ML_RISK"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(response.severity()).isEqualTo(DashboardAlertSeverity.MEDIUM);
+    }
+
+    @Test
+    void getRiskAlertsIncludesHighMlRiskAlerts() {
+        BacktestRun run = backtestRun();
+        run.setMlRiskLabel("HIGH_RISK");
+        when(backtestRunRepository.findAll()).thenReturn(List.of(run));
+
+        DashboardRiskAlertResponse response = service.getRiskAlerts().stream()
+                .filter(alert -> alert.category().equals("ML_RISK"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(response.severity()).isEqualTo(DashboardAlertSeverity.HIGH);
+    }
+
+    @Test
+    void getRiskAlertsIncludesLikelyOverfitAlerts() {
+        BacktestRun run = backtestRun();
+        run.setMlRiskLabel("LIKELY_OVERFIT");
+        when(backtestRunRepository.findAll()).thenReturn(List.of(run));
+
+        DashboardRiskAlertResponse response = service.getRiskAlerts().stream()
+                .filter(alert -> alert.category().equals("ML_RISK"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(response.severity()).isEqualTo(DashboardAlertSeverity.HIGH);
+        assertThat(response.message()).contains("LIKELY_OVERFIT");
+    }
+
     private BacktestRun backtestRun() {
         BacktestRun run = new BacktestRun(strategy(), Instant.parse("2024-01-01T00:00:00Z"), Instant.parse("2024-01-02T00:00:00Z"), new BigDecimal("10000"), BacktestStatus.COMPLETED);
         ReflectionTestUtils.setField(run, "id", 10L);
