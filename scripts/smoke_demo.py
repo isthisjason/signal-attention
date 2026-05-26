@@ -50,6 +50,13 @@ def request_text(url: str) -> str:
         return response.read().decode("utf-8")
 
 
+def request_json_method(url: str, method: str) -> Any:
+    request = Request(url, headers={"Accept": "application/json"}, method=method)
+    with urlopen(request, timeout=20) as response:
+        payload = response.read().decode("utf-8")
+    return json.loads(payload) if payload else None
+
+
 def post_json(url: str, body: dict[str, Any] | None = None) -> Any:
     payload = json.dumps(body or {}).encode("utf-8")
     request = Request(
@@ -163,16 +170,67 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
     return strategy_id, backtest_id
 
 
+def check_paper_workflow(config: Config, strategy_id: int) -> int:
+    session = post_json(
+        f"{config.backend_url}/api/strategies/{strategy_id}/paper-sessions",
+        {"initialBalance": 100000},
+    )
+    session_id = int(session["id"])
+    check(session["status"] == "CREATED", "Paper session was not created.")
+
+    started = request_json_method(f"{config.backend_url}/api/paper-sessions/{session_id}/start", "PATCH")
+    check(started["status"] == "RUNNING", "Paper session did not start.")
+
+    order = post_json(
+        f"{config.backend_url}/api/paper-sessions/{session_id}/orders",
+        {
+            "side": "BUY",
+            "symbol": "BTC-USD",
+            "quantity": 0.25,
+            "price": 42000,
+        },
+    )
+    check(order["status"] in {"FILLED", "REJECTED"}, "Paper order did not return a terminal status.")
+
+    orders = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/orders")
+    check(isinstance(orders, list) and orders, "Paper orders response did not include the submitted order.")
+
+    positions = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/positions")
+    check(isinstance(positions, list), "Paper positions response was not a list.")
+
+    summary = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/summary")
+    check("totalEquity" in summary, "Paper summary did not include totalEquity.")
+
+    replay = post_json(
+        f"{config.backend_url}/api/paper-sessions/{session_id}/replay",
+        {
+            "startDate": "2024-01-01T00:00:00Z",
+            "endDate": "2024-01-10T00:00:00Z",
+            "maxCandles": 250,
+        },
+    )
+    check("candlesRead" in replay, "Paper replay did not include candlesRead.")
+
+    stopped = request_json_method(f"{config.backend_url}/api/paper-sessions/{session_id}/stop", "PATCH")
+    check(stopped["status"] == "STOPPED", "Paper session did not stop.")
+
+    return session_id
+
+
 def main() -> int:
     config = parse_args()
     try:
         check_stack(config)
         strategy_id, backtest_id = check_core_workflow(config)
+        session_id = check_paper_workflow(config, strategy_id)
     except (HTTPError, URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as error:
         print(f"smoke check failed: {error}", file=sys.stderr)
         return 1
 
-    print(f"stack and core workflow smoke checks passed for strategy #{strategy_id}, backtest #{backtest_id}")
+    print(
+        "stack, core, and paper workflow smoke checks passed "
+        f"for strategy #{strategy_id}, backtest #{backtest_id}, session #{session_id}"
+    )
     return 0
 
 
