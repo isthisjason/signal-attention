@@ -147,6 +147,52 @@ p {
   color: var(--danger);
 }
 
+.risk-alert-list {
+  display: grid;
+  gap: 10px;
+}
+
+.risk-alert {
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto 1fr;
+  padding: 12px;
+}
+
+.risk-alert p {
+  margin: 4px 0;
+}
+
+.risk-alert small {
+  color: var(--muted);
+}
+
+.severity-badge {
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.severity-high {
+  background: #fff7f6;
+  color: var(--danger);
+}
+
+.severity-medium {
+  background: #fff7ed;
+  color: var(--warning);
+}
+
+.severity-low {
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
 .muted {
   color: var(--muted);
 }

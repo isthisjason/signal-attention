@@ -95,6 +95,25 @@ describe("dashboard render states", () => {
     expect(screen.getByText("torch-market-regime-features/v1")).toBeInTheDocument();
   });
 
+  it("renders dashboard risk alerts when present", async () => {
+    mocks.fetchDashboardRiskAlerts.mockResolvedValue([
+      {
+        severity: "HIGH",
+        category: "DRAWDOWN",
+        entityType: "BACKTEST",
+        entityId: "10",
+        message: "Backtest drawdown reached 20%.",
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ]);
+
+    render(<App />);
+
+    expect(await screen.findByText("Backtest drawdown reached 20%.")).toBeInTheDocument();
+    expect(screen.getByText("high")).toBeInTheDocument();
+    expect(screen.getByText(/BACKTEST #10/)).toBeInTheDocument();
+  });
+
   it("renders market regime without provenance when optional fields are absent", async () => {
     mocks.fetchMarketRegime.mockResolvedValue({
       regimeLabel: "SIDEWAYS",

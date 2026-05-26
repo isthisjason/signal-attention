@@ -888,8 +888,22 @@ function RiskAlertsPanel({ state }: { state: LoadState<DashboardRiskAlert[]> }) 
   }
 
   return (
-    <section className="panel">
+    <section className="panel risk-alerts-panel">
       <h2>Risk alerts</h2>
+      <div className="risk-alert-list">
+        {state.data.map((alert) => (
+          <article className="risk-alert" key={`${alert.category}-${alert.entityType}-${alert.entityId}-${alert.createdAt}`}>
+            <span className={`severity-badge severity-${alert.severity.toLowerCase()}`}>{alert.severity.toLowerCase()}</span>
+            <div>
+              <strong>{formatAction(alert.category)}</strong>
+              <p>{alert.message}</p>
+              <small>
+                {alert.entityType} #{alert.entityId} · {formatDateTime(alert.createdAt)}
+              </small>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
