@@ -22,4 +22,9 @@ public class DashboardController {
     public List<DashboardStrategyPerformanceResponse> getStrategyPerformance() {
         return dashboardService.getStrategyPerformance();
     }
+
+    @GetMapping("/api/dashboard/risk-alerts")
+    public List<DashboardRiskAlertResponse> getRiskAlerts() {
+        return dashboardService.getRiskAlerts();
+    }
 }
