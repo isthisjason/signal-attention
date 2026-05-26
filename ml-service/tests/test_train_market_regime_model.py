@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.market_regime_experiment import build_experiment_manifest
+from app.services.market_regime_experiment import build_experiment_manifest, load_experiment_registry
 from scripts.train_market_regime_model import (
     chronological_split_index,
     label_distribution,
@@ -115,6 +115,17 @@ def test_validation_accuracy_compares_predictions_to_expected_labels() -> None:
     predictions = [{"labelIndex": 1, "confidence": 75.0}, {"labelIndex": 0, "confidence": 60.0}]
 
     assert validation_accuracy(predictions, [1, 2]) == 0.5
+
+
+def test_load_experiment_registry_returns_empty_registry_when_missing(tmp_path) -> None:
+    assert load_experiment_registry(tmp_path / "index.json") == {"experiments": []}
+
+
+def test_load_experiment_registry_reads_existing_json(tmp_path) -> None:
+    registry_path = tmp_path / "index.json"
+    registry_path.write_text('{"experiments": [{"name": "baseline"}]}', encoding="utf-8")
+
+    assert load_experiment_registry(registry_path) == {"experiments": [{"name": "baseline"}]}
 
 
 class FakeScalar:

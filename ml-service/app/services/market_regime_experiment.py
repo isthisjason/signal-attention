@@ -1,9 +1,16 @@
 from datetime import UTC, datetime
+import json
 from pathlib import Path
 from typing import Any
 
 EXPERIMENT_SCHEMA_VERSION = "market-regime-experiment/v1"
 MARKET_REGIME_FEATURE_VERSION = "torch-market-regime-features/v1"
+
+
+def load_experiment_registry(registry_path: Path) -> dict[str, Any]:
+    if not registry_path.exists():
+        return {"experiments": []}
+    return json.loads(registry_path.read_text(encoding="utf-8"))
 
 
 def build_experiment_manifest(
