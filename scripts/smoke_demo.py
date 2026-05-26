@@ -217,18 +217,44 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     return session_id
 
 
+def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) -> None:
+    summary = request_json(f"{config.backend_url}/api/dashboard/summary")
+    check(summary["strategyCount"] >= 1, "Dashboard summary did not include created strategies.")
+    check(summary["backtestCount"] >= 1, "Dashboard summary did not include created backtests.")
+
+    performance = request_json(f"{config.backend_url}/api/dashboard/strategy-performance")
+    check(
+        any(item["strategyId"] == strategy_id for item in performance),
+        "Strategy performance did not include the smoke strategy.",
+    )
+
+    alerts = request_json(f"{config.backend_url}/api/dashboard/risk-alerts")
+    check(isinstance(alerts, list), "Risk alerts response was not a list.")
+
+    regime = request_json(f"{config.backend_url}/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128")
+    check("regimeLabel" in regime and "confidence" in regime, "Market regime response was incomplete.")
+
+    audit_events = request_json(f"{config.backend_url}/api/audit-events?limit=25")
+    check(isinstance(audit_events, list) and audit_events, "Audit events response was empty.")
+    check(
+        any(event["entityType"] == "BACKTEST" and str(event["entityId"]) == str(backtest_id) for event in audit_events),
+        "Audit events did not include the smoke backtest.",
+    )
+
+
 def main() -> int:
     config = parse_args()
     try:
         check_stack(config)
         strategy_id, backtest_id = check_core_workflow(config)
         session_id = check_paper_workflow(config, strategy_id)
+        check_analysis_workflow(config, strategy_id, backtest_id)
     except (HTTPError, URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as error:
         print(f"smoke check failed: {error}", file=sys.stderr)
         return 1
 
     print(
-        "stack, core, and paper workflow smoke checks passed "
+        "stack, core, paper, and analysis workflow smoke checks passed "
         f"for strategy #{strategy_id}, backtest #{backtest_id}, session #{session_id}"
     )
     return 0
