@@ -1,5 +1,6 @@
 import pytest
 
+from app.services.market_regime_experiment import build_experiment_manifest
 from scripts.train_market_regime_model import (
     chronological_split_index,
     normalize_window,
@@ -67,6 +68,28 @@ def test_predict_validation_labels_returns_label_indexes_and_confidence() -> Non
     predictions = predict_validation_labels(FakeTorch(), FakeModel(), [[[1.0 for _ in range(10)]]], "cpu")
 
     assert predictions == [{"labelIndex": 1, "confidence": 75.0}]
+
+
+def test_experiment_manifest_records_split_fields(tmp_path) -> None:
+    manifest = build_experiment_manifest(
+        csv_path=tmp_path / "candles.csv",
+        output_path=tmp_path / "market-regime.pt",
+        sequence_length=20,
+        feature_order=["close"],
+        labels=["SIDEWAYS"],
+        split={"method": "chronological_holdout"},
+        training={"epochs": 1},
+        window_count=10,
+        train_window_count=8,
+        validation_window_count=2,
+        validation_ratio=0.2,
+        device="cpu",
+    )
+
+    assert manifest["windowCount"] == 10
+    assert manifest["trainWindowCount"] == 8
+    assert manifest["validationWindowCount"] == 2
+    assert manifest["validationRatio"] == 0.2
 
 
 class FakeScalar:

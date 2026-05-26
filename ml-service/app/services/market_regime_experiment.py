@@ -16,6 +16,9 @@ def build_experiment_manifest(
     split: dict[str, Any],
     training: dict[str, Any],
     window_count: int,
+    train_window_count: int | None = None,
+    validation_window_count: int | None = None,
+    validation_ratio: float | None = None,
     device: str,
 ) -> dict[str, Any]:
     return {
@@ -36,5 +39,8 @@ def build_experiment_manifest(
         "split": split,
         "training": training,
         "windowCount": window_count,
+        "trainWindowCount": train_window_count,
+        "validationWindowCount": validation_window_count,
+        "validationRatio": validation_ratio,
         "device": device,
     }

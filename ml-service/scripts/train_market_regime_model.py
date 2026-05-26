@@ -85,7 +85,7 @@ def main() -> None:
         },
         args.output,
     )
-    write_experiment_manifest(args, windows, str(device))
+    write_experiment_manifest(args, windows, train_windows, validation_windows, str(device))
 
 
 def parse_args() -> argparse.Namespace:
@@ -208,7 +208,13 @@ def predict_validation_labels(torch, model, validation_windows: list[list[list[f
     return predictions
 
 
-def write_experiment_manifest(args: argparse.Namespace, windows: list[list[list[float]]], device: str) -> None:
+def write_experiment_manifest(
+    args: argparse.Namespace,
+    windows: list[list[list[float]]],
+    train_windows: list[list[list[float]]],
+    validation_windows: list[list[list[float]]],
+    device: str,
+) -> None:
     manifest = build_experiment_manifest(
         csv_path=args.csv_path,
         output_path=args.output,
@@ -226,6 +232,9 @@ def write_experiment_manifest(args: argparse.Namespace, windows: list[list[list[
             "model": DEFAULT_TORCH_MODEL_CONFIG,
         },
         window_count=len(windows),
+        train_window_count=len(train_windows),
+        validation_window_count=len(validation_windows),
+        validation_ratio=args.validation_ratio,
         device=device,
     )
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
