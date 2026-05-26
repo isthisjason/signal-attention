@@ -105,6 +105,11 @@ def check(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
+    errors = import_summary.get("errors", [])
+    return bool(errors) and all("Duplicate candle already exists" in error["message"] for error in errors)
+
+
 def check_stack(config: Config) -> None:
     ml_health = request_json(f"{config.ml_url}/health")
     check(ml_health == {"status": "ok"}, "ML service health check did not return ok.")
@@ -125,7 +130,10 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
         config.sample_csv,
     )
     check(import_summary["totalRows"] > 0, "Market data import did not read any rows.")
-    check(import_summary["rowsRejected"] == 0, "Market data import rejected sample rows.")
+    check(
+        import_summary["rowsImported"] > 0 or only_duplicate_rejections(import_summary),
+        "Market data import neither imported rows nor found existing sample candles.",
+    )
 
     strategy = post_json(
         f"{config.backend_url}/api/strategies",
