@@ -4,6 +4,7 @@ from scripts.train_market_regime_model import (
     chronological_split_index,
     normalize_window,
     normalization_stats,
+    predict_validation_labels,
     split_training_windows,
     validate_validation_ratio,
 )
@@ -60,3 +61,51 @@ def test_split_training_windows_excludes_validation_items_from_training() -> Non
 
     assert train_labels == [0, 1, 2]
     assert validation_labels == [3, 4]
+
+
+def test_predict_validation_labels_returns_label_indexes_and_confidence() -> None:
+    predictions = predict_validation_labels(FakeTorch(), FakeModel(), [[[1.0 for _ in range(10)]]], "cpu")
+
+    assert predictions == [{"labelIndex": 1, "confidence": 75.0}]
+
+
+class FakeScalar:
+    def __init__(self, value: float | int) -> None:
+        self.value = value
+
+    def item(self) -> float | int:
+        return self.value
+
+
+class FakeProbabilities:
+    def __getitem__(self, index: int) -> "FakeProbabilities":
+        return self
+
+    def max(self, dim: int) -> tuple[FakeScalar, FakeScalar]:
+        return FakeScalar(0.75), FakeScalar(1)
+
+
+class FakeNoGrad:
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+
+class FakeTorch:
+    float32 = "float32"
+
+    def no_grad(self) -> FakeNoGrad:
+        return FakeNoGrad()
+
+    def tensor(self, values, dtype, device):
+        return values
+
+    def softmax(self, logits, dim: int) -> FakeProbabilities:
+        return FakeProbabilities()
+
+
+class FakeModel:
+    def __call__(self, input_tensor):
+        return input_tensor

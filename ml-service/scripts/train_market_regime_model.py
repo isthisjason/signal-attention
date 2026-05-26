@@ -59,6 +59,15 @@ def main() -> None:
         loss = loss_function(model(inputs), targets)
         loss.backward()
         optimizer.step()
+    final_train_loss = float(loss.item())
+
+    model.eval()
+    validation_predictions = predict_validation_labels(
+        torch,
+        model,
+        normalized_validation_windows,
+        device,
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -181,6 +190,22 @@ def normalize_window(
     stds: list[float],
 ) -> list[list[float]]:
     return [[(value - means[index]) / stds[index] for index, value in enumerate(row)] for row in window]
+
+
+def predict_validation_labels(torch, model, validation_windows: list[list[list[float]]], device) -> list[dict[str, float | int]]:
+    predictions: list[dict[str, float | int]] = []
+    with torch.no_grad():
+        for window in validation_windows:
+            input_tensor = torch.tensor([window], dtype=torch.float32, device=device)
+            probabilities = torch.softmax(model(input_tensor), dim=-1)[0]
+            confidence, label_index = probabilities.max(dim=0)
+            predictions.append(
+                {
+                    "labelIndex": int(label_index.item()),
+                    "confidence": round(float(confidence.item()) * 100, 4),
+                }
+            )
+    return predictions
 
 
 def write_experiment_manifest(args: argparse.Namespace, windows: list[list[list[float]]], device: str) -> None:
