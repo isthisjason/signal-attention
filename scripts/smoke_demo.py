@@ -195,10 +195,12 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
         f"{config.backend_url}/api/strategies/{strategy_id}/paper-sessions",
         {"initialBalance": 100000},
     )
+    require_keys(session, ("id", "status", "cashBalance"), "Paper session create")
     session_id = int(session["id"])
     check(session["status"] == "CREATED", "Paper session was not created.")
 
     started = request_json_method(f"{config.backend_url}/api/paper-sessions/{session_id}/start", "PATCH")
+    require_keys(started, ("id", "status", "startedAt"), "Paper session start")
     check(started["status"] == "RUNNING", "Paper session did not start.")
 
     order = post_json(
@@ -210,6 +212,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
             "price": 42000,
         },
     )
+    require_keys(order, ("id", "status", "side", "notional"), "Paper order")
     check(order["status"] in {"FILLED", "REJECTED"}, "Paper order did not return a terminal status.")
 
     orders = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/orders")
@@ -219,7 +222,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     check(isinstance(positions, list), "Paper positions response was not a list.")
 
     summary = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/summary")
-    check("totalEquity" in summary, "Paper summary did not include totalEquity.")
+    require_keys(summary, ("status", "cashBalance", "totalEquity", "positionMarks"), "Paper summary")
 
     replay = post_json(
         f"{config.backend_url}/api/paper-sessions/{session_id}/replay",
@@ -229,9 +232,10 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
             "maxCandles": 250,
         },
     )
-    check("candlesRead" in replay, "Paper replay did not include candlesRead.")
+    require_keys(replay, ("candlesRead", "signalsProcessed", "filledOrders", "rejectedOrders"), "Paper replay")
 
     stopped = request_json_method(f"{config.backend_url}/api/paper-sessions/{session_id}/stop", "PATCH")
+    require_keys(stopped, ("id", "status", "stoppedAt"), "Paper session stop")
     check(stopped["status"] == "STOPPED", "Paper session did not stop.")
 
     return session_id
