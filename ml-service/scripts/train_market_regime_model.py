@@ -11,6 +11,11 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
 from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, build_experiment_manifest
+from app.services.market_regime_experiment import (
+    load_experiment_registry,
+    upsert_experiment_entry,
+    write_experiment_registry,
+)
 from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
@@ -85,7 +90,7 @@ def main() -> None:
         },
         args.output,
     )
-    write_experiment_manifest(
+    manifest_path, manifest = write_experiment_manifest(
         args,
         windows,
         train_windows,
@@ -96,6 +101,8 @@ def main() -> None:
         validation_accuracy(validation_predictions, validation_labels),
         str(device),
     )
+    if args.experiment_name:
+        register_training_experiment(args, manifest_path, manifest)
 
 
 def parse_args() -> argparse.Namespace:
@@ -248,7 +255,7 @@ def write_experiment_manifest(
     final_train_loss: float,
     validation_accuracy_value: float,
     device: str,
-) -> None:
+) -> tuple[Path, dict]:
     manifest = build_experiment_manifest(
         csv_path=args.csv_path,
         output_path=args.output,
@@ -277,6 +284,33 @@ def write_experiment_manifest(
     )
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return manifest_path, manifest
+
+
+def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path, manifest: dict) -> dict:
+    return {
+        "name": args.experiment_name,
+        "datasetPath": str(args.csv_path),
+        "artifactPath": str(args.output),
+        "manifestPath": str(manifest_path),
+        "modelVersion": args.model_version,
+        "featureVersion": manifest["featureVersion"],
+        "sequenceLength": args.sequence_length,
+        "training": {
+            "trainWindowCount": manifest["trainWindowCount"],
+            "validationWindowCount": manifest["validationWindowCount"],
+            "validationRatio": manifest["validationRatio"],
+            "finalTrainLoss": manifest["finalTrainLoss"],
+            "validationAccuracy": manifest["validationAccuracy"],
+        },
+    }
+
+
+def register_training_experiment(args: argparse.Namespace, manifest_path: Path, manifest: dict) -> None:
+    registry_path = args.experiments_dir / "index.json"
+    registry = load_experiment_registry(registry_path)
+    registry = upsert_experiment_entry(registry, build_training_registry_entry(args, manifest_path, manifest))
+    write_experiment_registry(registry_path, registry)
 
 
 if __name__ == "__main__":

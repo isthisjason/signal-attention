@@ -1,4 +1,5 @@
 import pytest
+from argparse import Namespace
 
 import scripts.train_market_regime_model as training_script
 from app.services.market_regime_experiment import (
@@ -8,6 +9,7 @@ from app.services.market_regime_experiment import (
     write_experiment_registry,
 )
 from scripts.train_market_regime_model import (
+    build_training_registry_entry,
     chronological_split_index,
     label_distribution,
     normalize_window,
@@ -53,6 +55,29 @@ def test_parse_args_accepts_experiment_registry_options(monkeypatch, tmp_path) -
 
     assert args.experiment_name == "baseline"
     assert args.experiments_dir == experiments_dir
+
+
+def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
+    args = Namespace(
+        experiment_name="baseline",
+        csv_path=tmp_path / "candles.csv",
+        output=tmp_path / "market-regime.pt",
+        model_version="local-transformer-v1",
+        sequence_length=20,
+    )
+    manifest = {
+        "featureVersion": "torch-market-regime-features/v1",
+        "trainWindowCount": 8,
+        "validationWindowCount": 2,
+        "validationRatio": 0.2,
+        "finalTrainLoss": 0.12,
+        "validationAccuracy": 0.75,
+    }
+
+    entry = build_training_registry_entry(args, tmp_path / "market-regime.pt.manifest.json", manifest)
+
+    assert entry["name"] == "baseline"
+    assert entry["training"]["validationAccuracy"] == 0.75
 
 
 def test_chronological_split_index_uses_validation_ratio() -> None:
