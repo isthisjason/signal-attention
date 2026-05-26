@@ -92,6 +92,8 @@ def main() -> None:
         validation_windows,
         train_labels,
         validation_labels,
+        final_train_loss,
+        validation_accuracy(validation_predictions, validation_labels),
         str(device),
     )
 
@@ -223,6 +225,17 @@ def predict_validation_labels(torch, model, validation_windows: list[list[list[f
     return predictions
 
 
+def validation_accuracy(predictions: list[dict[str, float | int]], expected_labels: list[int]) -> float:
+    if not expected_labels:
+        return 0
+    correct = sum(
+        1
+        for prediction, expected_label in zip(predictions, expected_labels, strict=True)
+        if prediction["labelIndex"] == expected_label
+    )
+    return round(correct / len(expected_labels), 4)
+
+
 def write_experiment_manifest(
     args: argparse.Namespace,
     windows: list[list[list[float]]],
@@ -230,6 +243,8 @@ def write_experiment_manifest(
     validation_windows: list[list[list[float]]],
     train_labels: list[int],
     validation_labels: list[int],
+    final_train_loss: float,
+    validation_accuracy_value: float,
     device: str,
 ) -> None:
     manifest = build_experiment_manifest(
@@ -254,6 +269,8 @@ def write_experiment_manifest(
         validation_ratio=args.validation_ratio,
         train_label_distribution=label_distribution(train_labels, LABELS),
         validation_label_distribution=label_distribution(validation_labels, LABELS),
+        final_train_loss=round(final_train_loss, 6),
+        validation_accuracy=validation_accuracy_value,
         device=device,
     )
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")

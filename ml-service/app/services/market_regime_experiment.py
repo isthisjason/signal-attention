@@ -21,6 +21,8 @@ def build_experiment_manifest(
     validation_ratio: float | None = None,
     train_label_distribution: dict[str, int] | None = None,
     validation_label_distribution: dict[str, int] | None = None,
+    final_train_loss: float | None = None,
+    validation_accuracy: float | None = None,
     device: str,
 ) -> dict[str, Any]:
     return {
@@ -46,5 +48,7 @@ def build_experiment_manifest(
         "validationRatio": validation_ratio,
         "trainLabelDistribution": train_label_distribution,
         "validationLabelDistribution": validation_label_distribution,
+        "finalTrainLoss": final_train_loss,
+        "validationAccuracy": validation_accuracy,
         "device": device,
     }

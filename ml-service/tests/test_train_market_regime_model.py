@@ -8,6 +8,7 @@ from scripts.train_market_regime_model import (
     normalization_stats,
     predict_validation_labels,
     split_training_windows,
+    validation_accuracy,
     validate_validation_ratio,
 )
 
@@ -86,6 +87,8 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
         validation_ratio=0.2,
         train_label_distribution={"SIDEWAYS": 7, "TRENDING_UP": 1},
         validation_label_distribution={"SIDEWAYS": 1, "TRENDING_UP": 1},
+        final_train_loss=0.123456,
+        validation_accuracy=0.75,
         device="cpu",
     )
 
@@ -93,6 +96,8 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
     assert manifest["trainWindowCount"] == 8
     assert manifest["validationWindowCount"] == 2
     assert manifest["validationRatio"] == 0.2
+    assert manifest["finalTrainLoss"] == 0.123456
+    assert manifest["validationAccuracy"] == 0.75
 
 
 def test_label_distribution_formats_counts_by_label_name() -> None:
@@ -104,6 +109,12 @@ def test_label_distribution_formats_counts_by_label_name() -> None:
         "TRENDING_DOWN": 0,
         "HIGH_VOLATILITY": 1,
     }
+
+
+def test_validation_accuracy_compares_predictions_to_expected_labels() -> None:
+    predictions = [{"labelIndex": 1, "confidence": 75.0}, {"labelIndex": 0, "confidence": 60.0}]
+
+    assert validation_accuracy(predictions, [1, 2]) == 0.5
 
 
 class FakeScalar:
