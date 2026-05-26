@@ -80,7 +80,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--validation-ratio", type=float, default=0.2)
     parser.add_argument("--model-version", default="local-transformer-v1")
     parser.add_argument("--cpu", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    validate_validation_ratio(args.validation_ratio)
+    return args
+
+
+def validate_validation_ratio(validation_ratio: float) -> None:
+    if validation_ratio <= 0 or validation_ratio >= 1:
+        raise SystemExit("--validation-ratio must be greater than 0 and less than 1")
 
 
 def load_torch():
