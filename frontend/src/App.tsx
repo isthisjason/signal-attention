@@ -922,14 +922,41 @@ function TradePreview({ trades }: { trades: BacktestTrade[] }) {
     return <p>No trades were generated for this backtest.</p>;
   }
   return (
-    <div className="mini-table">
-      {trades.slice(0, 5).map((trade) => (
-        <div key={trade.id}>
-          <span>{trade.side}</span>
-          <strong>{formatCurrency(trade.netPnl)}</strong>
-          <small>{formatPercent(trade.returnPercent)}</small>
-        </div>
-      ))}
+    <div className="trade-detail">
+      <h3>Trades</h3>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Side</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>Fees</th>
+              <th>Net P&L</th>
+              <th>Return</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.slice(0, 8).map((trade) => (
+              <tr key={trade.id}>
+                <td>{trade.side}</td>
+                <td>
+                  {formatCurrency(trade.entryPrice)}
+                  <small>{formatDateTime(trade.entryTime)}</small>
+                </td>
+                <td>
+                  {trade.exitPrice === null ? "Open" : formatCurrency(trade.exitPrice)}
+                  {trade.exitTime ? <small>{formatDateTime(trade.exitTime)}</small> : null}
+                </td>
+                <td>{formatCurrency(trade.fees)}</td>
+                <td>{formatCurrency(trade.netPnl)}</td>
+                <td>{formatPercent(trade.returnPercent)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {trades.length > 8 ? <p className="muted">Showing 8 of {trades.length} trades.</p> : null}
     </div>
   );
 }

@@ -387,6 +387,19 @@ select:focus {
   margin-top: 6px;
 }
 
+.trade-detail {
+  margin-top: 14px;
+}
+
+.trade-detail h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.trade-detail table {
+  min-width: 720px;
+}
+
 .table-scroll {
   overflow-x: auto;
 }
