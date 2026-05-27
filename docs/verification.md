@@ -9,6 +9,8 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | Backend persistence integration tests | `cd backend && ./mvnw -Dgroups=integration test` | Flyway/JPA persistence tests pass when Docker is available. |
 | Frontend tests | `cd frontend && npm run test` | API client and dashboard state tests pass. |
 | Frontend build | `cd frontend && npm run build` | TypeScript and Vite production build complete. |
+| Smoke helper tests | `python3 -m unittest scripts/smoke_demo_test.py` | Smoke script validation helpers pass. |
+| Running-stack smoke demo | `python3 scripts/smoke_demo.py` | Service reachability, import, strategy, backtest, ML score, paper trading, dashboard, regime, and audit checks pass when the stack is running. |
 | Compose syntax | `docker compose config` | Compose file renders without errors. |
 | Full local stack | `docker compose up --build` | PostgreSQL, backend, and ML service start. |
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
@@ -30,12 +32,14 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 ## Latest Local Verification
 
-Last checked on May 23, 2026:
+Last checked on May 26, 2026:
 
-- `cd backend && ./mvnw test`: passed, with 84 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
-- `.venv/bin/python -m pytest ml-service/tests`: passed, 40 tests.
-- `cd frontend && npm run test`: passed, 19 tests.
+- `cd backend && ./mvnw test`: passed, with 92 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
+- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 65 tests.
+- `cd frontend && npm run test`: passed, 20 tests.
 - `cd frontend && npm run build`: passed.
+- `python3 -m unittest scripts/smoke_demo_test.py`: passed, 3 tests.
 - `docker compose config`: blocked because the `docker` command was not available in this WSL distro.
-- Focused implementation checks passed for ML torch artifact validation, backend market-regime provenance mapping, and dashboard provenance rendering.
+- `python3 scripts/smoke_demo.py`: blocked in this WSL distro because the local stack cannot be started without Docker.
+- Focused implementation checks passed for smoke script helper validation, ML torch artifact validation, backend market-regime provenance mapping, and dashboard provenance rendering.
 - Optional torch train/evaluate commands remain optional because torch dependencies are intentionally optional.
