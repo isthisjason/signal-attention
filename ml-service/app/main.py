@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routes import market_regime, strategy_risk
+from app.routes import anomaly, market_regime, strategy_risk
 
 app = FastAPI(
     title="SignalAttention ML Service",
@@ -16,3 +16,4 @@ def health() -> dict[str, str]:
 
 app.include_router(strategy_risk.router)
 app.include_router(market_regime.router)
+app.include_router(anomaly.router)
