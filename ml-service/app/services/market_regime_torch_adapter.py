@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any
 from decimal import Decimal, ROUND_HALF_UP
 from collections.abc import Mapping
+import math
 
 from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeResponse
 from app.services.market_regime_config import MarketRegimeSettings
@@ -102,7 +103,10 @@ def select_device(torch):
 
 
 def load_artifact(torch, artifact_path: Path, device) -> dict[str, Any]:
-    artifact = torch.load(artifact_path, map_location=device)
+    try:
+        artifact = torch.load(artifact_path, map_location=device)
+    except Exception as exc:
+        raise RuntimeError(f"Unable to load market regime artifact: {artifact_path}") from exc
     if not isinstance(artifact, dict):
         raise RuntimeError("Market regime artifact must be a dictionary.")
     return artifact
@@ -130,7 +134,17 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
     labels = metadata.get("labels")
     if not isinstance(labels, list) or not labels or not all(isinstance(label, str) for label in labels):
         raise RuntimeError("Market regime artifact metadata.labels must be a non-empty string list.")
+    if len(labels) != len(set(labels)):
+        raise RuntimeError("Market regime artifact metadata.labels must not contain duplicates.")
     metadata["labels"] = labels
+
+    model_version = metadata.get("modelVersion")
+    if model_version is not None and not isinstance(model_version, str):
+        raise RuntimeError("Market regime artifact metadata.modelVersion must be a string when provided.")
+
+    feature_version = metadata.get("featureVersion")
+    if feature_version is not None and not isinstance(feature_version, str):
+        raise RuntimeError("Market regime artifact metadata.featureVersion must be a string when provided.")
 
     model_config = metadata.get("model")
     if not isinstance(model_config, dict):
@@ -153,9 +167,20 @@ def validate_normalization(normalization: Any) -> None:
             raise RuntimeError(
                 f"Market regime artifact metadata.normalization.{key} must match feature count."
             )
+        if not all(is_finite_number(value) for value in values):
+            raise RuntimeError(
+                f"Market regime artifact metadata.normalization.{key} must contain only finite numbers."
+            )
 
     if any(float(value) == 0.0 for value in normalization["std"]):
         raise RuntimeError("Market regime artifact normalization std values must be non-zero.")
+
+
+def is_finite_number(value: Any) -> bool:
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
 
 
 def normalize_features(feature_matrix: list[list[float]], metadata: dict[str, Any]) -> list[list[float]]:

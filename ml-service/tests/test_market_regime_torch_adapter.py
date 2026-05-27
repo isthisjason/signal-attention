@@ -6,6 +6,7 @@ import app.services.market_regime_torch_adapter as adapter
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_config import MarketRegimeSettings
 from app.services.market_regime_torch_adapter import (
+    load_artifact,
     load_torch,
     normalize_features,
     validate_artifact_metadata,
@@ -129,6 +130,45 @@ def test_missing_labels_error_is_clear() -> None:
         raise AssertionError("Expected missing labels to fail")
 
 
+def test_duplicate_labels_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS", "SIDEWAYS"],
+            "model": {},
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact metadata.labels must not contain duplicates."
+    else:
+        raise AssertionError("Expected duplicate labels to fail")
+
+
+def test_invalid_model_version_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS"],
+            "modelVersion": 1,
+            "model": {},
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact metadata.modelVersion must be a string when provided."
+    else:
+        raise AssertionError("Expected invalid model version to fail")
+
+
 def test_missing_model_config_error_is_clear() -> None:
     artifact = {
         "metadata": {
@@ -147,6 +187,29 @@ def test_missing_model_config_error_is_clear() -> None:
         raise AssertionError("Expected missing model config to fail")
 
 
+def test_invalid_normalization_values_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS"],
+            "model": {},
+            "normalization": {
+                "mean": ["bad" for _ in TORCH_MARKET_REGIME_FEATURE_ORDER],
+                "std": [1 for _ in TORCH_MARKET_REGIME_FEATURE_ORDER],
+            },
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact metadata.normalization.mean must contain only finite numbers."
+    else:
+        raise AssertionError("Expected invalid normalization values to fail")
+
+
 def test_normalizes_features_from_artifact_metadata() -> None:
     metadata = {
         "normalization": {
@@ -159,6 +222,17 @@ def test_normalizes_features_from_artifact_metadata() -> None:
     normalized = normalize_features(feature_matrix, metadata)
 
     assert normalized == [[1.0 for _ in TORCH_MARKET_REGIME_FEATURE_ORDER]]
+
+
+def test_load_artifact_wraps_torch_load_errors(tmp_path) -> None:
+    artifact_path = tmp_path / "bad.pt"
+
+    try:
+        load_artifact(FailingTorch(), artifact_path, "cpu")
+    except RuntimeError as exc:
+        assert str(exc) == f"Unable to load market regime artifact: {artifact_path}"
+    else:
+        raise AssertionError("Expected torch load failure to be wrapped")
 
 
 def test_torch_classifier_returns_model_label(tmp_path, monkeypatch) -> None:
@@ -259,6 +333,11 @@ class FakeTorch:
 
     def softmax(self, logits, dim: int) -> FakeProbabilities:
         return FakeProbabilities()
+
+
+class FailingTorch:
+    def load(self, artifact_path, map_location):
+        raise ValueError("bad artifact")
 
 
 class FakeModel:
