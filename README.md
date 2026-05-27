@@ -1,17 +1,27 @@
 # SignalAttention
 
-SignalAttention is a local-first trading strategy research and risk-scoring lab. The MVP focuses on importing historical OHLCV candles, defining an SMA crossover strategy, running deterministic backtests, and requesting a rule-based risk score from a Python FastAPI service.
+SignalAttention is a local trading strategy sandbox I built to practice backend API work, service boundaries, testing, and a little bit of ML-style analysis. It lets me import candle data, create a simple SMA crossover strategy, run a deterministic backtest, and ask a separate Python service for a risk score.
 
-The project is intentionally risk-focused rather than profit-prediction-focused. It is designed to demonstrate historical testing, simulation, explainability, service integration, and auditability without ever connecting to brokers, routing orders, holding funds, or providing investment advice.
+This is not a trading bot. It does not connect to brokers, it does not place real orders, and it should not be read as investment advice. The point is to explore strategy behavior, risk, simulation, and audit trails in a local app.
 
-## Planned Stack
+## What this is
+
+The project is split into three pieces:
+
+- `backend` is the Spring Boot API. It owns the database, strategy rules, candle imports, backtesting, paper trading, audit logs, and calls to the ML service.
+- `ml-service` is a FastAPI app. I kept it separate because I wanted the project to feel like a real backend talking to a separate analysis service, even though everything runs locally.
+- `frontend` is a React dashboard/workbench. It is not trying to be a polished trading terminal. It is mostly there so the demo flow is easier to click through.
+
+The first version was deliberately simple: one strategy type, one sample dataset, deterministic rules, and a local Docker setup. Later work adds risk policies, paper trading, market regime analysis, and optional torch experiments, but the default path is still meant to run on a normal CPU.
+
+## Stack
 
 - Java 21 and Spring Boot 3 for the backend API
-- PostgreSQL 16 for strategy, market data, backtest, trade, and audit persistence
-- Python FastAPI for the risk-scoring service
+- PostgreSQL 16 for strategies, market data, backtests, trades, paper sessions, and audit events
+- Python FastAPI for the risk and market-regime service
 - React and TypeScript for the local dashboard
-- Docker Compose for local orchestration
-- Swagger/OpenAPI for the initial API UI
+- Docker Compose for running the whole thing locally
+- Swagger/OpenAPI for poking at the backend API
 
 ## Local Prerequisites
 
