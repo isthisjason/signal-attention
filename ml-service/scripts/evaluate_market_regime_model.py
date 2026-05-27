@@ -18,6 +18,7 @@ from app.services.market_regime_torch_adapter import (
     validate_artifact_metadata,
 )
 from app.services.market_regime_experiment import (
+    describe_path,
     load_experiment_registry,
     upsert_experiment_entry,
     write_experiment_registry,
@@ -50,12 +51,14 @@ def main() -> None:
 
     predictions = predict_examples(torch, model, metadata, examples, device)
     report = {
-        "artifact": str(args.artifact),
-        "dataset": str(args.csv_path),
+        "artifact": describe_path(args.artifact),
+        "dataset": describe_path(args.csv_path),
         "sequenceLength": metadata["sequenceLength"],
         "featureOrder": metadata["featureOrder"],
         "labels": metadata["labels"],
         "windowCount": len(examples),
+        "windowRanges": window_ranges_from_predictions(predictions),
+        "labelDistribution": label_distribution_from_predictions(predictions, metadata["labels"]),
         "metrics": calculate_metrics(predictions, metadata["labels"]),
         "samples": predictions[: args.sample_count],
     }
@@ -125,6 +128,7 @@ def predict_examples(torch, model, metadata: dict[str, Any], examples: list[dict
                     "openTime": example["openTime"],
                     "expectedLabel": example["expectedLabel"],
                     "predictedLabel": predicted_label,
+                    "isCorrect": example["expectedLabel"] == predicted_label,
                     "confidence": round(float(confidence_value.item()) * 100, 4),
                 }
             )
@@ -135,6 +139,8 @@ def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> d
     if not predictions:
         return {
             "accuracy": 0,
+            "correctCount": 0,
+            "totalCount": 0,
             "perLabel": {},
             "confusionMatrix": {label: {inner: 0 for inner in labels} for label in labels},
             "confidence": {"min": 0, "max": 0, "average": 0},
@@ -162,12 +168,36 @@ def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> d
     confidences = [float(prediction["confidence"]) for prediction in predictions]
     return {
         "accuracy": ratio(correct, len(predictions)),
+        "correctCount": correct,
+        "totalCount": len(predictions),
         "perLabel": per_label,
         "confusionMatrix": confusion_matrix,
         "confidence": {
             "min": round(min(confidences), 4),
             "max": round(max(confidences), 4),
             "average": round(sum(confidences) / len(confidences), 4),
+        },
+    }
+
+
+def window_ranges_from_predictions(predictions: list[dict[str, Any]]) -> dict[str, str | None]:
+    if not predictions:
+        return {"firstWindowEnd": None, "lastWindowEnd": None}
+    return {
+        "firstWindowEnd": predictions[0]["openTime"],
+        "lastWindowEnd": predictions[-1]["openTime"],
+    }
+
+
+def label_distribution_from_predictions(predictions: list[dict[str, Any]], labels: list[str]) -> dict[str, dict[str, int]]:
+    return {
+        "expected": {
+            label: sum(1 for prediction in predictions if prediction["expectedLabel"] == label)
+            for label in labels
+        },
+        "predicted": {
+            label: sum(1 for prediction in predictions if prediction["predictedLabel"] == label)
+            for label in labels
         },
     }
 
@@ -192,10 +222,16 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
     return {
         "name": args.experiment_name,
         "evaluation": {
+            "dataset": report["dataset"],
+            "artifact": report["artifact"],
             "reportPath": str(args.output) if args.output is not None else None,
             "accuracy": metrics["accuracy"],
+            "correctCount": metrics["correctCount"],
+            "totalCount": metrics["totalCount"],
             "perLabel": metrics["perLabel"],
             "confidence": metrics["confidence"],
+            "labelDistribution": report["labelDistribution"],
+            "windowRanges": report["windowRanges"],
         },
     }
 
