@@ -170,28 +170,38 @@ See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthr
 See [docs/architecture.md](docs/architecture.md) for the current service and data-flow diagram.
 See [docs/verification.md](docs/verification.md) for the local verification checklist.
 
-## What This Demonstrates
+## What I was trying to practice
 
-- Spring Boot REST API design with validation and consistent error responses
-- PostgreSQL persistence with JPA entities, repositories, and Flyway migrations
-- Deterministic backtesting and risk metrics for a constrained SMA strategy
-- Service-to-service integration between Spring Boot and FastAPI
-- Rule-based ML-style risk scoring with explainable reasons
-- CPU-safe market regime classification from recent candle sequences
-- React dashboard for the local research workflow, summary metrics, risk alerts, strategy performance, paper trading, audit events, and regime status
-- Optional torch artifact provenance, split-aware training manifests, experiment registry entries, and evaluation reports for local market-regime experiments
-- Auditability for strategy, import, backtest, ML, risk, and paper-trading actions
-- Docker Compose local orchestration for backend, database, ML service, and frontend
+The main goal was to build something that touches a few real backend problems without pretending to be a real trading platform.
 
-## Known Limitations
+- Spring Boot REST APIs with validation and consistent error responses
+- PostgreSQL persistence with JPA repositories and Flyway migrations
+- A deterministic backtest flow that is boring in a good way
+- A backend calling a separate FastAPI service
+- Rule-based risk scoring with reasons instead of a mystery number
+- Audit events for important actions
+- A small React workbench that can drive the demo without copying curl commands all day
+- Optional torch experiments without making the default setup painful
 
-- No real-money trading, broker integration, custody, trade recommendations, or live order execution; these are permanent product boundaries
+The ML part is intentionally conservative. The default risk score and market regime classifier are rules-based because that is easier to inspect and much easier to demo honestly. The torch path is there for experiments, but it is not required for the normal app.
+
+## What is not included
+
+This does not place real trades. That is intentional.
+
+- No broker or exchange integration
+- No custody, payments, or real-money order routing
+- No trade recommendations or copy-trading behavior
 - No authentication, users, roles, or account isolation yet
-- PyTorch Transformer inference is optional and requires a local artifact plus optional Torch dependencies
-- Optional Torch dependencies are excluded from the default setup
-- Paper trading is deterministic simulation and manual candle replay only
-- The frontend is a local unauthenticated dashboard; user accounts and access control are not implemented
+- No background live trading scheduler
+- No custom user-submitted strategy code
 
-## Current Status
+Paper trading here means simulated orders and manual candle replay. It is useful for testing the shape of the workflow, but it is still fake trading.
 
-The repository now includes the backend foundation, strategy CRUD, CSV candle import, SMA indicators, deterministic SMA crossover backtesting, append-only audit events, rule-based ML risk scoring through FastAPI, CPU-safe market regime classification from candle sequences, an optional artifact-backed PyTorch market-regime inference path, a baseline risk engine for policy-based simulated order approval, paper-trading sessions with manual orders and candle replay, paper session summaries, dashboard summary APIs, a React dashboard/workbench, and an end-to-end smoke script for a running stack. Backend, ML service, frontend, and smoke-helper tests were verified locally on May 26, 2026; Docker Compose startup remains blocked in the current WSL distro until Docker Desktop WSL integration is available. See `IMPLEMENTATION_PLAN.md` for future phases such as authentication and richer attention-model experiments.
+## Current status
+
+The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, baseline risk policies, paper-trading sessions, dashboard summary APIs, a React workbench, and a smoke script for the running stack.
+
+Backend, ML service, frontend, and smoke-helper tests were verified locally on May 26, 2026. Docker Compose startup was still blocked in this WSL distro because Docker Desktop WSL integration was not available here. The Compose setup is still the intended normal way to run the app.
+
+The next work I would do is mostly polish and research depth: verify the full Compose demo in a Docker-enabled environment, improve the optional market-regime experiment tracking, add better chart views in the dashboard, and maybe add anomaly analysis as another simulated research endpoint.
