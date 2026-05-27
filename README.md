@@ -109,6 +109,14 @@ cd frontend
 npm run test
 ```
 
+Run the end-to-end smoke checks against a running local stack:
+
+```bash
+python3 scripts/smoke_demo.py
+```
+
+The smoke script checks service reachability, imports the sample CSV, creates an SMA strategy, runs a backtest, persists an ML risk score, exercises paper trading, and verifies dashboard, market-regime, and audit endpoints. It is safe to rerun against an existing local database; duplicate sample candles are accepted as evidence that the dataset is already loaded.
+
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
 
 The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary/risk-alert/audit/regime panels.

@@ -10,6 +10,14 @@ The React dashboard is available at `http://localhost:5173` when the frontend se
 
 The dashboard can drive the same flow as the curl commands below: import candles, create the SMA strategy, run the backtest, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
 
+To run the same workflow as an automated smoke check:
+
+```bash
+python3 scripts/smoke_demo.py
+```
+
+The smoke script assumes the stack is already running and uses `http://localhost:8080`, `http://localhost:5173`, and `http://localhost:8000` by default. Use `--backend-url`, `--frontend-url`, `--ml-url`, or `--sample-csv` to point it at different local endpoints or data.
+
 ## 1. Import Sample Candles
 
 ```bash
