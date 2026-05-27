@@ -467,6 +467,7 @@ function App() {
       </section>
 
       <StrategyTable state={strategiesState} />
+      <StrategyComparisonPanel state={strategiesState} />
       <MarketRegimePanel state={regimeState} />
       <AuditTimeline state={auditState} />
     </main>
@@ -1087,6 +1088,61 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
       </div>
     </section>
   );
+}
+
+function StrategyComparisonPanel({ state }: { state: LoadState<StrategyPerformance[]> }) {
+  if (state.status !== "success" || state.data.length < 2) {
+    return null;
+  }
+
+  const strategiesWithRuns = state.data.filter((strategy) => strategy.latestBacktestId !== null);
+  if (strategiesWithRuns.length < 2) {
+    return null;
+  }
+
+  const bestReturn = maxBy(strategiesWithRuns, (strategy) => strategy.latestTotalReturn ?? Number.NEGATIVE_INFINITY);
+  const lowestDrawdown = minBy(strategiesWithRuns, (strategy) => strategy.latestMaxDrawdown ?? Number.POSITIVE_INFINITY);
+  const mostTrades = maxBy(strategiesWithRuns, (strategy) => strategy.latestTradeCount ?? Number.NEGATIVE_INFINITY);
+
+  return (
+    <section className="panel">
+      <h2>Strategy comparison</h2>
+      <div className="comparison-grid">
+        <ComparisonCard title="Best return" strategy={bestReturn} value={formatPercent(bestReturn.latestTotalReturn)} />
+        <ComparisonCard title="Lowest drawdown" strategy={lowestDrawdown} value={formatPercent(lowestDrawdown.latestMaxDrawdown)} />
+        <ComparisonCard title="Most trades" strategy={mostTrades} value={mostTrades.latestTradeCount ?? "N/A"} />
+      </div>
+    </section>
+  );
+}
+
+function ComparisonCard({
+  title,
+  strategy,
+  value,
+}: {
+  title: string;
+  strategy: StrategyPerformance;
+  value: string | number;
+}) {
+  return (
+    <article className="comparison-card">
+      <span>{title}</span>
+      <strong>{value}</strong>
+      <p>{strategy.name}</p>
+      <small>
+        {strategy.symbol} {strategy.timeframe} · {strategy.latestMlRiskLabel || "unscored"}
+      </small>
+    </article>
+  );
+}
+
+function maxBy<T>(items: T[], valueFor: (item: T) => number): T {
+  return items.reduce((best, item) => (valueFor(item) > valueFor(best) ? item : best));
+}
+
+function minBy<T>(items: T[], valueFor: (item: T) => number): T {
+  return items.reduce((best, item) => (valueFor(item) < valueFor(best) ? item : best));
 }
 
 function AuditTimeline({ state }: { state: LoadState<AuditEvent[]> }) {

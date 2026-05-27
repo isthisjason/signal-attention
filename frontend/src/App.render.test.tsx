@@ -120,6 +120,48 @@ describe("dashboard render states", () => {
     expect(screen.getByText(/BACKTEST #10/)).toBeInTheDocument();
   });
 
+  it("renders strategy comparison when multiple backtested strategies exist", async () => {
+    mocks.fetchStrategyPerformance.mockResolvedValue([
+      {
+        strategyId: 1,
+        name: "BTC SMA",
+        symbol: "BTC-USD",
+        timeframe: "1h",
+        status: "ACTIVE",
+        latestBacktestId: 10,
+        latestTotalReturn: 12,
+        latestMaxDrawdown: 4,
+        latestTradeCount: 5,
+        latestMlRiskScore: 40,
+        latestMlRiskLabel: "MEDIUM_RISK",
+        latestBacktestCreatedAt: "2024-01-01T00:00:00Z",
+        paperSessionCount: 1,
+      },
+      {
+        strategyId: 2,
+        name: "ETH SMA",
+        symbol: "ETH-USD",
+        timeframe: "1h",
+        status: "ACTIVE",
+        latestBacktestId: 11,
+        latestTotalReturn: 8,
+        latestMaxDrawdown: 2,
+        latestTradeCount: 9,
+        latestMlRiskScore: 20,
+        latestMlRiskLabel: "LOW_RISK",
+        latestBacktestCreatedAt: "2024-01-02T00:00:00Z",
+        paperSessionCount: 0,
+      },
+    ]);
+
+    render(<App />);
+
+    expect(await screen.findByText("Strategy comparison")).toBeInTheDocument();
+    expect(screen.getByText("Best return")).toBeInTheDocument();
+    expect(screen.getByText("Lowest drawdown")).toBeInTheDocument();
+    expect(screen.getByText("Most trades")).toBeInTheDocument();
+  });
+
   it("renders market regime without provenance when optional fields are absent", async () => {
     mocks.fetchMarketRegime.mockResolvedValue({
       regimeLabel: "SIDEWAYS",
