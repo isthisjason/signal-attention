@@ -55,3 +55,43 @@ class MarketRegimeResponse(BaseModel):
     featureVersion: str | None = None
     sequenceLength: int | None = None
     artifactIdentifier: str | None = None
+
+
+class RegimeRunRequest(BaseModel):
+    symbol: str = Field(min_length=1)
+    timeframe: str = Field(min_length=1)
+    candles: list[MarketRegimeCandle] = Field(min_length=MIN_MARKET_REGIME_CANDLES)
+    windowSize: int = Field(ge=MIN_MARKET_REGIME_CANDLES, le=500)
+    stride: int = Field(ge=1, le=100)
+    includeAnomalies: bool = True
+
+    @model_validator(mode="after")
+    def validate_window_inputs(self) -> "RegimeRunRequest":
+        for previous, current in zip(self.candles, self.candles[1:]):
+            if current.openTime <= previous.openTime:
+                raise ValueError("candles must be ordered by openTime ascending")
+        if self.windowSize > len(self.candles):
+            raise ValueError("windowSize must be less than or equal to candle count")
+        return self
+
+
+class RegimeRunPoint(BaseModel):
+    windowStart: datetime
+    windowEnd: datetime
+    regimeLabel: str
+    confidence: Decimal
+    reasons: list[str]
+    features: MarketRegimeFeatures
+    anomalyScore: Decimal | None = None
+    anomalyLabel: str | None = None
+    anomalyReasons: list[str] | None = None
+
+
+class RegimeRunResponse(BaseModel):
+    symbol: str
+    timeframe: str
+    windowSize: int
+    stride: int
+    includeAnomalies: bool
+    pointCount: int
+    points: list[RegimeRunPoint]

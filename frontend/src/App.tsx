@@ -24,7 +24,7 @@ import {
   fetchStrategyPerformance,
 } from "./api/dashboard";
 import { MarketDataImportSummary, importMarketData } from "./api/marketData";
-import { MarketRegimeResponse, fetchMarketRegime } from "./api/marketRegime";
+import { MarketRegimeResponse, RegimeRunResponse, fetchMarketRegime, runRegimeReplay } from "./api/marketRegime";
 import {
   PaperReplayResult,
   PaperOrder,
@@ -133,6 +133,7 @@ function App() {
   const [paperOrders, setPaperOrders] = useState<PaperOrder[]>([]);
   const [paperPositions, setPaperPositions] = useState<PaperPosition[]>([]);
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
+  const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
 
   const loadDashboard = useCallback(() => {
     setSummaryState(loadingSummary);
@@ -408,6 +409,27 @@ function App() {
     });
   }
 
+  function handleRegimeReplay() {
+    if (!selectedStrategy) {
+      setNotice({ tone: "error", message: "Select a strategy first." });
+      return;
+    }
+    void runAction("regime-replay", async () => {
+      const replay = await runRegimeReplay({
+        symbol: selectedStrategy.symbol,
+        timeframe: selectedStrategy.timeframe,
+        startDate: toInstant(backtestForm.startDate, "Replay start"),
+        endDate: toInstant(backtestForm.endDate, "Replay end"),
+        windowSize: 64,
+        stride: 8,
+        includeAnomalies: true,
+        backtestId: backtestRun?.id ?? null,
+      });
+      setRegimeReplay(replay);
+      setNotice({ tone: "success", message: `Regime replay loaded ${replay.pointCount} windows.` });
+    });
+  }
+
   return (
     <main className="app-shell">
       <header className="dashboard-header">
@@ -479,9 +501,87 @@ function App() {
       <StrategyTable state={strategiesState} />
       <StrategyComparisonPanel state={strategiesState} />
       <MarketRegimePanel state={regimeState} />
+      <RegimeReplayPanel
+        busy={busyAction === "regime-replay"}
+        replay={regimeReplay}
+        selectedStrategy={selectedStrategy}
+        onReplay={handleRegimeReplay}
+      />
       <AnomalyPanel anomaly={anomaly} busy={busyAction === "anomaly"} onCheck={handleAnomalyCheck} />
       <AuditTimeline state={auditState} />
     </main>
+  );
+}
+
+function RegimeReplayPanel({
+  busy,
+  replay,
+  selectedStrategy,
+  onReplay,
+}: {
+  busy: boolean;
+  replay: RegimeRunResponse | null;
+  selectedStrategy: Strategy | null;
+  onReplay: () => void;
+}) {
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Regime replay</h2>
+          <p>{selectedStrategy ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}` : "Select a strategy first."}</p>
+        </div>
+        <button className="button" disabled={busy || !selectedStrategy} onClick={onReplay} type="button">
+          {busy ? "Loading" : "Run replay"}
+        </button>
+      </div>
+      {replay ? <CandlestickReplayChart replay={replay} /> : <p className="muted">Run replay to visualize regime windows and trades.</p>}
+    </section>
+  );
+}
+
+function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
+  if (!replay.candles.length) return null;
+  const width = 900;
+  const height = 280;
+  const pad = 20;
+  const highs = replay.candles.map((c) => c.high);
+  const lows = replay.candles.map((c) => c.low);
+  const min = Math.min(...lows);
+  const max = Math.max(...highs);
+  const span = max - min || 1;
+  const x = (i: number) => pad + (i / Math.max(1, replay.candles.length - 1)) * (width - pad * 2);
+  const y = (p: number) => height - pad - ((p - min) / span) * (height - pad * 2);
+  const midByTime = new Map(replay.points.map((p) => [p.windowEnd, p]));
+  const colorFor = (label: string) => (label.includes("DOWN") ? "#cc3b3b" : label.includes("SIDE") ? "#9f7a28" : "#2a8f54");
+
+  return (
+    <div className="series-card">
+      <svg className="series-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Regime replay candlestick chart">
+        {replay.candles.map((c, i) => {
+          const wickX = x(i);
+          const o = y(c.openPrice);
+          const cl = y(c.close);
+          const hi = y(c.high);
+          const lo = y(c.low);
+          const up = c.close >= c.openPrice;
+          const point = midByTime.get(c.openTime);
+          return (
+            <g key={c.openTime}>
+              <line x1={wickX} x2={wickX} y1={hi} y2={lo} stroke="#7c8796" strokeWidth="1" />
+              <rect x={wickX - 2.5} y={Math.min(o, cl)} width="5" height={Math.max(1, Math.abs(cl - o))} fill={up ? "#28a745" : "#d73a49"} />
+              {point ? <circle cx={wickX} cy={y(c.high) - 6} r="2.5" fill={colorFor(point.regimeLabel)} /> : null}
+            </g>
+          );
+        })}
+        {replay.tradeMarkers.map((t) => {
+          const idx = replay.candles.findIndex((c) => c.openTime === t.entryTime);
+          if (idx < 0) return null;
+          return <circle key={t.tradeId} cx={x(idx)} cy={y(t.entryPrice)} r="3.5" fill={t.side === "BUY" ? "#2d6cdf" : "#e65a00"} />;
+        })}
+      </svg>
+      <p className="muted">Dots above candles show regime windows, blue or orange markers show trade entries.</p>
+    </div>
   );
 }
 

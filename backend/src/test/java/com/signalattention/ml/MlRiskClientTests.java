@@ -162,4 +162,41 @@ class MlRiskClientTests {
         assertThat(response.anomalyScore()).isEqualByComparingTo("42.00");
         server.verify();
     }
+
+    @Test
+    void predictRegimeRunPostsReplayPayload() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MlRiskClient client = new MlRiskClient(builder.build());
+
+        server.expect(requestTo("http://ml-service:8000/predict/regime-run"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {
+                          "pointCount": 1,
+                          "points": []
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MlRegimeRunResponse response = client.predictRegimeRun(new MlRegimeRunRequest(
+                "BTC-USD",
+                "1h",
+                List.of(new MlMarketRegimeCandle(
+                        Instant.parse("2024-01-01T00:00:00Z"),
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.ONE
+                )),
+                20,
+                4,
+                true
+        ));
+
+        assertThat(response.pointCount()).isEqualTo(1);
+        server.verify();
+    }
 }

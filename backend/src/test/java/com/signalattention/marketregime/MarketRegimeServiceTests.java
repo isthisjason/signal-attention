@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 
 import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ExternalServiceException;
+import com.signalattention.backtesting.BacktestRunRepository;
+import com.signalattention.backtesting.BacktestTradeRepository;
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlMarketRegimeFeatures;
@@ -32,12 +34,21 @@ class MarketRegimeServiceTests {
 
     @Mock
     private MlRiskClient mlRiskClient;
+    @Mock
+    private BacktestRunRepository backtestRunRepository;
+    @Mock
+    private BacktestTradeRepository backtestTradeRepository;
 
     private MarketRegimeService service;
 
     @BeforeEach
     void setUp() {
-        service = new MarketRegimeService(marketCandleRepository, mlRiskClient);
+        service = new MarketRegimeService(
+                marketCandleRepository,
+                mlRiskClient,
+                backtestRunRepository,
+                backtestTradeRepository
+        );
     }
 
     @Test

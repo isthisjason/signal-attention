@@ -1,6 +1,14 @@
 from decimal import Decimal, ROUND_HALF_UP
 
-from app.schemas.market_regime_schema import MarketRegimeRequest, MarketRegimeResponse
+from app.schemas.market_regime_schema import (
+    MarketRegimeRequest,
+    MarketRegimeResponse,
+    RegimeRunPoint,
+    RegimeRunRequest,
+    RegimeRunResponse,
+)
+from app.services.anomaly_service import detect_anomaly
+from app.schemas.anomaly_schema import AnomalyRequest
 from app.services.market_regime_classifier import MarketRegimeClassifier
 from app.services.market_regime_config import MarketRegimeSettings, get_market_regime_settings
 from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION
@@ -10,6 +18,49 @@ from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
     return get_market_regime_classifier().classify(request)
+
+
+def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
+    classifier = get_market_regime_classifier()
+    points: list[RegimeRunPoint] = []
+    for end_index in range(request.windowSize, len(request.candles) + 1, request.stride):
+        window = request.candles[end_index - request.windowSize : end_index]
+        regime = classifier.classify(
+            MarketRegimeRequest(symbol=request.symbol, timeframe=request.timeframe, candles=window)
+        )
+        anomaly_score = None
+        anomaly_label = None
+        anomaly_reasons = None
+        if request.includeAnomalies:
+            anomaly = detect_anomaly(
+                AnomalyRequest(symbol=request.symbol, timeframe=request.timeframe, candles=window)
+            )
+            anomaly_score = anomaly.anomalyScore
+            anomaly_label = anomaly.anomalyLabel
+            anomaly_reasons = anomaly.reasons
+        points.append(
+            RegimeRunPoint(
+                windowStart=window[0].openTime,
+                windowEnd=window[-1].openTime,
+                regimeLabel=regime.regimeLabel,
+                confidence=regime.confidence,
+                reasons=regime.reasons,
+                features=regime.features,
+                anomalyScore=anomaly_score,
+                anomalyLabel=anomaly_label,
+                anomalyReasons=anomaly_reasons,
+            )
+        )
+
+    return RegimeRunResponse(
+        symbol=request.symbol,
+        timeframe=request.timeframe,
+        windowSize=request.windowSize,
+        stride=request.stride,
+        includeAnomalies=request.includeAnomalies,
+        pointCount=len(points),
+        points=points,
+    )
 
 
 def get_market_regime_classifier(settings: MarketRegimeSettings | None = None) -> MarketRegimeClassifier:

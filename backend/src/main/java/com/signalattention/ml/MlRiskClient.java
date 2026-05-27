@@ -78,4 +78,22 @@ public class MlRiskClient {
             throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
         }
     }
+
+    public MlRegimeRunResponse predictRegimeRun(MlRegimeRunRequest request) {
+        try {
+            MlRegimeRunResponse response = restClient.post()
+                    .uri("/predict/regime-run")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(MlRegimeRunResponse.class);
+            if (response == null) {
+                throw new ExternalServiceException("ML service returned an empty response", null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
+        }
+    }
 }

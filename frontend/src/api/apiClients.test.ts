@@ -12,7 +12,7 @@ import {
 import { errorMessage, getJson } from "./client";
 import { fetchDashboardRiskAlerts, fetchDashboardSummary, fetchStrategyPerformance } from "./dashboard";
 import { importMarketData } from "./marketData";
-import { fetchMarketRegime } from "./marketRegime";
+import { fetchMarketRegime, runRegimeReplay } from "./marketRegime";
 import {
   createPaperSession,
   fetchPaperOrders,
@@ -223,5 +223,17 @@ describe("dashboard and analysis clients", () => {
       timeframe: "4h",
       limit: 64,
     });
+
+    await runRegimeReplay({
+      symbol: "ETH-USD",
+      timeframe: "4h",
+      startDate: "2024-01-01T00:00:00Z",
+      endDate: "2024-01-02T00:00:00Z",
+      windowSize: 64,
+      stride: 8,
+      includeAnomalies: true,
+    });
+    expect(latestFetchCall().url).toBe("http://api.test/api/regime-runs");
+    expect(latestFetchCall().init?.method).toBe("POST");
   });
 });

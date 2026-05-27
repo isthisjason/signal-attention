@@ -3,7 +3,12 @@ from decimal import Decimal
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_config import MarketRegimeSettings
-from app.services.market_regime_service import classify_market_regime, get_market_regime_classifier
+from app.services.market_regime_service import (
+    classify_market_regime,
+    get_market_regime_classifier,
+    run_market_regime,
+)
+from app.schemas.market_regime_schema import RegimeRunRequest
 from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
 
@@ -105,3 +110,21 @@ def test_mentions_unusual_volume() -> None:
     response = classify_market_regime(request_for(closes, volumes))
 
     assert any("volume" in reason for reason in response.reasons)
+
+
+def test_run_market_regime_batches_windows_and_stride() -> None:
+    closes = [Decimal("100") + Decimal(index) for index in range(30)]
+    response = run_market_regime(
+        RegimeRunRequest(
+            symbol="BTC-USD",
+            timeframe="1h",
+            candles=request_for(closes).candles,
+            windowSize=20,
+            stride=5,
+            includeAnomalies=False,
+        )
+    )
+
+    assert response.pointCount == 3
+    assert response.points[0].windowStart < response.points[0].windowEnd
+    assert response.points[0].anomalyLabel is None

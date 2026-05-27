@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeResponse;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,29 @@ class MarketRegimeControllerTests {
 
         assertThat(actual).isSameAs(expected);
         verify(service).predictMarketRegime("BTC-USD", "1h", 128);
+    }
+
+    @Test
+    void runRegimeReplayDelegatesToService() {
+        MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
+        MarketRegimeController controller = new MarketRegimeController(service);
+        RegimeRunRequest request = new RegimeRunRequest(
+                "BTC-USD",
+                "1h",
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-10T00:00:00Z"),
+                128,
+                8,
+                true,
+                null
+        );
+        RegimeRunResponse expected = new RegimeRunResponse("BTC-USD", "1h", 128, 8, true, 0, List.of(), List.of(), List.of());
+        when(service.runRegimeReplay(request)).thenReturn(expected);
+
+        RegimeRunResponse actual = controller.runRegimeReplay(request);
+
+        assertThat(actual).isSameAs(expected);
+        verify(service).runRegimeReplay(request);
     }
 
     private MlMarketRegimeResponse response() {
