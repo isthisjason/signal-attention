@@ -342,6 +342,51 @@ select:focus {
   font-size: 0.95rem;
 }
 
+.series-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 14px;
+  padding: 12px;
+}
+
+.series-heading,
+.series-meta {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.series-heading h3 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.series-heading strong {
+  font-size: 0.95rem;
+}
+
+.series-chart {
+  display: block;
+  height: 120px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.series-chart path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.series-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
 .table-scroll {
   overflow-x: auto;
 }

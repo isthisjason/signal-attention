@@ -43,6 +43,11 @@ export type MlRiskScore = {
   reasons: string[];
 };
 
+export type BacktestEquityPoint = {
+  timestamp: string;
+  equity: number;
+};
+
 export type RunBacktestPayload = {
   startDate: string;
   endDate: string;
@@ -58,6 +63,10 @@ export function fetchBacktest(backtestId: number) {
 
 export function fetchBacktestTrades(backtestId: number) {
   return getJson<BacktestTrade[]>(`/api/backtests/${backtestId}/trades`);
+}
+
+export function fetchBacktestEquitySeries(backtestId: number) {
+  return getJson<BacktestEquityPoint[]>(`/api/backtests/${backtestId}/equity-series`);
 }
 
 export function scoreBacktestRisk(backtestId: number) {

@@ -3,8 +3,10 @@ import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
   BacktestRun,
   BacktestTrade,
+  BacktestEquityPoint,
   MlRiskScore,
   fetchBacktest,
+  fetchBacktestEquitySeries,
   fetchBacktestTrades,
   runBacktest,
   scoreBacktestRisk,
@@ -108,6 +110,7 @@ function App() {
   const [backtestForm, setBacktestForm] = useState({ startDate: defaultStart, endDate: defaultEnd });
   const [backtestRun, setBacktestRun] = useState<BacktestRun | null>(null);
   const [backtestTrades, setBacktestTrades] = useState<BacktestTrade[]>([]);
+  const [backtestEquity, setBacktestEquity] = useState<BacktestEquityPoint[]>([]);
   const [riskScore, setRiskScore] = useState<MlRiskScore | null>(null);
   const [paperForm, setPaperForm] = useState({
     initialBalance: "100000",
@@ -294,9 +297,13 @@ function App() {
         startDate: toInstant(backtestForm.startDate, "Backtest start"),
         endDate: toInstant(backtestForm.endDate, "Backtest end"),
       });
-      const trades = await fetchBacktestTrades(run.id);
+      const [trades, equity] = await Promise.all([
+        fetchBacktestTrades(run.id),
+        fetchBacktestEquitySeries(run.id),
+      ]);
       setBacktestRun(run);
       setBacktestTrades(trades);
+      setBacktestEquity(equity);
       setRiskScore(null);
       setNotice({ tone: "success", message: `Backtest #${run.id} completed.` });
       loadDashboard();
@@ -428,6 +435,7 @@ function App() {
           form={backtestForm}
           riskScore={riskScore}
           selectedStrategy={selectedStrategy}
+          equitySeries={backtestEquity}
           trades={backtestTrades}
           onRiskScore={handleRiskScore}
           onSubmit={handleBacktestSubmit}
@@ -575,6 +583,7 @@ function BacktestWorkflowPanel({
   form,
   riskScore,
   selectedStrategy,
+  equitySeries,
   trades,
   onRiskScore,
   onSubmit,
@@ -585,6 +594,7 @@ function BacktestWorkflowPanel({
   form: { startDate: string; endDate: string };
   riskScore: MlRiskScore | null;
   selectedStrategy: Strategy | null;
+  equitySeries: BacktestEquityPoint[];
   trades: BacktestTrade[];
   onRiskScore: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -618,6 +628,14 @@ function BacktestWorkflowPanel({
               ["Trades", backtestRun.tradeCount],
               ["Risk", backtestRun.mlRiskLabel || riskScore?.riskLabel || "Unscored"],
             ]}
+          />
+          <SeriesChart
+            title="Equity"
+            points={equitySeries.map((point) => ({
+              timestamp: point.timestamp,
+              value: point.equity,
+            }))}
+            formatValue={formatCurrency}
           />
           <TradePreview trades={trades} />
         </>
@@ -831,6 +849,55 @@ function ResultGrid({ items }: { items: Array<[string, string | number]> }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+function SeriesChart({
+  title,
+  points,
+  formatValue,
+}: {
+  title: string;
+  points: Array<{ timestamp: string; value: number }>;
+  formatValue: (value: number) => string;
+}) {
+  if (points.length === 0) {
+    return <p className="muted">No {title.toLowerCase()} points are available yet.</p>;
+  }
+
+  const values = points.map((point) => point.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const width = 320;
+  const height = 120;
+  const padding = 14;
+  const path = points
+    .map((point, index) => {
+      const x = points.length === 1
+        ? width / 2
+        : padding + (index / (points.length - 1)) * (width - padding * 2);
+      const y = height - padding - ((point.value - min) / range) * (height - padding * 2);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  return (
+    <div className="series-card">
+      <div className="series-heading">
+        <h3>{title}</h3>
+        <strong>{formatValue(last.value)}</strong>
+      </div>
+      <svg className="series-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} chart`}>
+        <path d={path} />
+      </svg>
+      <div className="series-meta">
+        <span>{formatDateTime(first.timestamp)}</span>
+        <span>{formatDateTime(last.timestamp)}</span>
+      </div>
+    </div>
   );
 }
 
