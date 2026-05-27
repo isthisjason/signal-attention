@@ -23,7 +23,7 @@ The first version was deliberately simple: one strategy type, one sample dataset
 - Docker Compose for running the whole thing locally
 - Swagger/OpenAPI for poking at the backend API
 
-## Local Prerequisites
+## What you need locally
 
 - Docker Desktop with WSL integration enabled
 - Java 21
@@ -31,9 +31,11 @@ The first version was deliberately simple: one strategy type, one sample dataset
 - Python 3.12 or compatible Python 3.x
 - Node.js 24 or compatible current Node.js runtime
 
-## Local Services
+Docker is the easiest way to run the whole thing. The individual tools are still useful when I am working on one service at a time.
 
-Planned local URLs:
+## Local URLs
+
+When everything is running, these are the main local URLs:
 
 - Backend API: `http://localhost:8080`
 - Frontend dashboard: `http://localhost:5173`
@@ -41,9 +43,9 @@ Planned local URLs:
 - ML service: `http://localhost:8000`
 - PostgreSQL: `localhost:5432`
 
-## Demo Flow
+## Demo flow
 
-The MVP demo flow is available from either Swagger/curl or the local React dashboard:
+The usual demo is pretty small:
 
 1. Start the stack with `docker compose up --build`.
 2. Import sample BTC-USD candle data.
@@ -56,16 +58,18 @@ The MVP demo flow is available from either Swagger/curl or the local React dashb
 9. Optionally create a paper session, submit manual paper orders, replay candles, and review the paper summary.
 10. Optionally request a CPU-safe market regime classification from recent imported candles.
 
-## Useful Local Commands
+You can do this from Swagger, curl, or the React dashboard. The dashboard is the most comfortable path, but the API routes are still the main thing I wanted to build.
 
-Run backend tests:
+## Useful commands
+
+Backend tests:
 
 ```bash
 cd backend
 ./mvnw test
 ```
 
-Run ML service tests:
+ML service tests:
 
 ```bash
 cd ml-service
@@ -73,7 +77,7 @@ python3 -m pip install -r requirements.txt
 python3 -m pytest
 ```
 
-Install optional Torch dependencies for model-backed market regime experiments:
+Optional torch dependencies for model-backed market regime experiments:
 
 ```bash
 cd ml-service
@@ -96,7 +100,7 @@ python scripts/evaluate_market_regime_model.py \
   --experiment-name btc-sample-v1
 ```
 
-Training uses a chronological validation split, fits normalization on the training windows, and writes a sidecar `models/market-regime.pt.manifest.json` with dataset, feature, model, split counts, label distributions, final train loss, and validation accuracy. Passing `--experiment-name` also updates `models/experiments/index.json` with the artifact, manifest, and headline metrics. Evaluation writes JSON metrics for accuracy, per-label precision/recall/F1, confusion matrix, confidence summary, sample predictions, and the matching registry entry. These commands are optional research tooling; the default service still uses the CPU-safe rule classifier.
+The torch path is optional on purpose. Training writes a `models/market-regime.pt.manifest.json` file beside the artifact, and `--experiment-name` also updates `models/experiments/index.json`. The default service still uses the CPU-safe rule classifier because I do not want the normal demo to depend on GPU setup.
 
 Start the full local stack:
 
@@ -104,7 +108,7 @@ Start the full local stack:
 docker compose up --build
 ```
 
-Run the frontend directly during local development:
+Run the frontend directly while working on it:
 
 ```bash
 cd frontend
@@ -112,28 +116,28 @@ npm install
 npm run dev
 ```
 
-Run frontend tests:
+Frontend tests:
 
 ```bash
 cd frontend
 npm run test
 ```
 
-Run the end-to-end smoke checks against a running local stack:
+Smoke check against a running local stack:
 
 ```bash
 python3 scripts/smoke_demo.py
 ```
 
-The smoke script checks service reachability, imports the sample CSV, creates an SMA strategy, runs a backtest, persists an ML risk score, exercises paper trading, and verifies dashboard, market-regime, and audit endpoints. It is safe to rerun against an existing local database; duplicate sample candles are accepted as evidence that the dataset is already loaded.
+The smoke script checks that the services are reachable, imports the sample CSV, creates an SMA strategy, runs a backtest, saves an ML risk score, exercises paper trading, and checks dashboard, market-regime, and audit endpoints. It is safe to rerun against an existing local database. Duplicate sample candles are treated as a sign that the data is already loaded.
 
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
 
-The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary/risk-alert/audit/regime panels.
+The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary, risk alert, audit, and regime panels.
 
-## MVP API Flow
+## Main API routes
 
-After the stack starts, use Swagger at `http://localhost:8080/swagger-ui.html` or equivalent HTTP requests:
+After the stack starts, I usually use Swagger at `http://localhost:8080/swagger-ui.html`. These are the routes used in the demo:
 
 - `POST /api/market-data/import`
 - `GET /api/market-data/candles?symbol=BTC-USD&timeframe=1h`
