@@ -280,6 +280,12 @@ def write_experiment_manifest(
         validation_label_distribution=label_distribution(validation_labels, LABELS),
         final_train_loss=round(final_train_loss, 6),
         validation_accuracy=validation_accuracy_value,
+        window_ranges=window_time_ranges(
+            candles,
+            args.sequence_length,
+            len(train_windows),
+            len(validation_windows),
+        ),
         device=device,
     )
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
@@ -299,6 +305,7 @@ def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path,
         "featureVersion": manifest["featureVersion"],
         "sequenceLength": args.sequence_length,
         "labels": manifest["labels"],
+        "windowRanges": manifest["windowRanges"],
         "training": {
             "trainWindowCount": manifest["trainWindowCount"],
             "validationWindowCount": manifest["validationWindowCount"],
@@ -307,6 +314,31 @@ def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path,
             "validationAccuracy": manifest["validationAccuracy"],
         },
     }
+
+
+def window_time_ranges(
+    candles: list[MarketRegimeCandle],
+    sequence_length: int,
+    train_window_count: int,
+    validation_window_count: int,
+) -> dict[str, dict[str, str | None]]:
+    window_end_times = [
+        candle.openTime.isoformat()
+        for candle in candles[sequence_length - 1 :]
+    ]
+    train_end_times = window_end_times[:train_window_count]
+    validation_end_times = window_end_times[train_window_count : train_window_count + validation_window_count]
+    return {
+        "all": summarize_time_range(window_end_times),
+        "train": summarize_time_range(train_end_times),
+        "validation": summarize_time_range(validation_end_times),
+    }
+
+
+def summarize_time_range(values: list[str]) -> dict[str, str | None]:
+    if not values:
+        return {"firstWindowEnd": None, "lastWindowEnd": None}
+    return {"firstWindowEnd": values[0], "lastWindowEnd": values[-1]}
 
 
 def register_training_experiment(args: argparse.Namespace, manifest_path: Path, manifest: dict) -> None:

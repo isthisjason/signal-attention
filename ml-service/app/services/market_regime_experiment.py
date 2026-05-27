@@ -64,6 +64,7 @@ def build_experiment_manifest(
     validation_label_distribution: dict[str, int] | None = None,
     final_train_loss: float | None = None,
     validation_accuracy: float | None = None,
+    window_ranges: dict[str, Any] | None = None,
     device: str,
 ) -> dict[str, Any]:
     return {
@@ -85,5 +86,6 @@ def build_experiment_manifest(
         "validationLabelDistribution": validation_label_distribution,
         "finalTrainLoss": final_train_loss,
         "validationAccuracy": validation_accuracy,
+        "windowRanges": window_ranges,
         "device": device,
     }

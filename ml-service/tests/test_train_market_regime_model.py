@@ -1,7 +1,9 @@
 import pytest
 from argparse import Namespace
+from datetime import UTC, datetime, timedelta
 
 import scripts.train_market_regime_model as training_script
+from app.schemas.market_regime_schema import MarketRegimeCandle
 from app.services.market_regime_experiment import (
     build_experiment_manifest,
     describe_path,
@@ -19,6 +21,7 @@ from scripts.train_market_regime_model import (
     split_training_windows,
     validation_accuracy,
     validate_validation_ratio,
+    window_time_ranges,
 )
 
 
@@ -73,6 +76,11 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
         "artifact": {"path": str(args.output), "name": "market-regime.pt", "sizeBytes": 30, "sha256": "artifact"},
         "featureVersion": "torch-market-regime-features/v1",
         "labels": ["SIDEWAYS"],
+        "windowRanges": {
+            "all": {"firstWindowEnd": "2024-01-01T02:00:00+00:00", "lastWindowEnd": "2024-01-01T09:00:00+00:00"},
+            "train": {"firstWindowEnd": "2024-01-01T02:00:00+00:00", "lastWindowEnd": "2024-01-01T07:00:00+00:00"},
+            "validation": {"firstWindowEnd": "2024-01-01T08:00:00+00:00", "lastWindowEnd": "2024-01-01T09:00:00+00:00"},
+        },
         "trainWindowCount": 8,
         "validationWindowCount": 2,
         "validationRatio": 0.2,
@@ -86,6 +94,7 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
     assert entry["dataset"]["sha256"] == "dataset"
     assert entry["artifact"]["sha256"] == "artifact"
     assert entry["labels"] == ["SIDEWAYS"]
+    assert entry["windowRanges"]["validation"]["firstWindowEnd"] == "2024-01-01T08:00:00+00:00"
     assert entry["training"]["validationAccuracy"] == 0.75
 
 
@@ -160,6 +169,7 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
         validation_label_distribution={"SIDEWAYS": 1, "TRENDING_UP": 1},
         final_train_loss=0.123456,
         validation_accuracy=0.75,
+        window_ranges={"train": {"firstWindowEnd": "2024-01-01T00:00:00+00:00"}},
         device="cpu",
     )
 
@@ -173,6 +183,38 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
     assert manifest["validationRatio"] == 0.2
     assert manifest["finalTrainLoss"] == 0.123456
     assert manifest["validationAccuracy"] == 0.75
+    assert manifest["windowRanges"] == {"train": {"firstWindowEnd": "2024-01-01T00:00:00+00:00"}}
+
+
+def test_window_time_ranges_tracks_train_and_validation_windows() -> None:
+    candles = [
+        MarketRegimeCandle(
+            openTime=datetime(2024, 1, 1, tzinfo=UTC) + timedelta(hours=index),
+            open="1",
+            high="1",
+            low="1",
+            close="1",
+            volume="1",
+        )
+        for index in range(6)
+    ]
+
+    ranges = window_time_ranges(candles, sequence_length=3, train_window_count=3, validation_window_count=1)
+
+    assert ranges == {
+        "all": {
+            "firstWindowEnd": "2024-01-01T02:00:00+00:00",
+            "lastWindowEnd": "2024-01-01T05:00:00+00:00",
+        },
+        "train": {
+            "firstWindowEnd": "2024-01-01T02:00:00+00:00",
+            "lastWindowEnd": "2024-01-01T04:00:00+00:00",
+        },
+        "validation": {
+            "firstWindowEnd": "2024-01-01T05:00:00+00:00",
+            "lastWindowEnd": "2024-01-01T05:00:00+00:00",
+        },
+    }
 
 
 def test_describe_path_handles_missing_files(tmp_path) -> None:
