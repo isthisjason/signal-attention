@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -103,6 +104,29 @@ public class BacktestService {
     @Transactional(readOnly = true)
     public BacktestMetricsResponse getMetrics(Long id) {
         return BacktestMetricsResponse.from(findRun(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BacktestEquityPointResponse> getEquitySeries(Long id) {
+        BacktestRun run = findRun(id);
+        List<BacktestTrade> trades = backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(id)
+                .stream()
+                .filter(trade -> trade.getExitTime() != null && trade.getNetPnl() != null)
+                .sorted(Comparator.comparing(BacktestTrade::getExitTime))
+                .toList();
+
+        List<BacktestEquityPointResponse> points = new ArrayList<>();
+        BigDecimal equity = run.getInitialBalance();
+        points.add(new BacktestEquityPointResponse(run.getStartDate(), scaleMoney(equity)));
+        for (BacktestTrade trade : trades) {
+            equity = equity.add(trade.getNetPnl());
+            points.add(new BacktestEquityPointResponse(trade.getExitTime(), scaleMoney(equity)));
+        }
+        if (run.getEndDate() != null && !points.get(points.size() - 1).timestamp().equals(run.getEndDate())) {
+            BigDecimal finalEquity = run.getFinalBalance() == null ? equity : run.getFinalBalance();
+            points.add(new BacktestEquityPointResponse(run.getEndDate(), scaleMoney(finalEquity)));
+        }
+        return points;
     }
 
     @Transactional

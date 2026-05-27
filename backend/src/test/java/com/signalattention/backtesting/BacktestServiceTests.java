@@ -166,6 +166,27 @@ class BacktestServiceTests {
     }
 
     @Test
+    void getEquitySeriesBuildsPointsFromClosedTrades() throws Exception {
+        BacktestRun run = completedRun();
+        BacktestTrade firstTrade = closedTrade(run, START.plusSeconds(3600), START.plusSeconds(7200), "100");
+        BacktestTrade secondTrade = closedTrade(run, START.plusSeconds(10800), START.plusSeconds(14400), "-50");
+        when(backtestRunRepository.findById(10L)).thenReturn(Optional.of(run));
+        when(backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(10L)).thenReturn(List.of(secondTrade, firstTrade));
+
+        List<BacktestEquityPointResponse> series = backtestService.getEquitySeries(10L);
+
+        assertThat(series).extracting(BacktestEquityPointResponse::timestamp)
+                .containsExactly(START, START.plusSeconds(7200), START.plusSeconds(14400), END);
+        assertThat(series).extracting(BacktestEquityPointResponse::equity)
+                .containsExactly(
+                        new BigDecimal("1000.00000000"),
+                        new BigDecimal("1100.00000000"),
+                        new BigDecimal("1050.00000000"),
+                        new BigDecimal("1100.00000000")
+                );
+    }
+
+    @Test
     void scoreMlRiskAuditsFailures() throws Exception {
         BacktestRun run = completedRun();
         RuntimeException failure = new RuntimeException("ML service unavailable");
@@ -210,6 +231,17 @@ class BacktestServiceTests {
         run.setFeeDrag(new BigDecimal("4"));
         run.setVolatility(new BigDecimal("2.5"));
         return run;
+    }
+
+    private BacktestTrade closedTrade(BacktestRun run, Instant entryTime, Instant exitTime, String netPnl) {
+        BacktestTrade trade = new BacktestTrade(run, TradeSide.LONG, entryTime, new BigDecimal("10"), BigDecimal.ONE);
+        trade.setExitTime(exitTime);
+        trade.setExitPrice(new BigDecimal("10"));
+        trade.setGrossPnl(new BigDecimal(netPnl));
+        trade.setFees(BigDecimal.ZERO);
+        trade.setNetPnl(new BigDecimal(netPnl));
+        trade.setReturnPercent(BigDecimal.ZERO);
+        return trade;
     }
 
     private List<MarketCandle> candles(String... closes) {
