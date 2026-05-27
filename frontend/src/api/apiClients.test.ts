@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { checkAnomaly } from "./anomaly";
 import { fetchAuditEvents } from "./audit";
 import {
   fetchBacktest,
@@ -214,5 +215,13 @@ describe("dashboard and analysis clients", () => {
     expect(latestFetchCall().url).toBe(
       "http://api.test/api/market-regime?symbol=ETH-USD&timeframe=4h&limit=64",
     );
+
+    await checkAnomaly("ETH-USD", "4h", 64);
+    expect(latestFetchCall().url).toBe("http://api.test/api/anomaly-check");
+    expect(JSON.parse(String(latestFetchCall().init?.body))).toEqual({
+      symbol: "ETH-USD",
+      timeframe: "4h",
+      limit: 64,
+    });
   });
 });

@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { AnomalyResponse, checkAnomaly } from "./api/anomaly";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
   BacktestRun,
@@ -131,6 +132,7 @@ function App() {
   const [paperReplay, setPaperReplay] = useState<PaperReplayResult | null>(null);
   const [paperOrders, setPaperOrders] = useState<PaperOrder[]>([]);
   const [paperPositions, setPaperPositions] = useState<PaperPosition[]>([]);
+  const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
 
   const loadDashboard = useCallback(() => {
     setSummaryState(loadingSummary);
@@ -398,6 +400,14 @@ function App() {
     });
   }
 
+  function handleAnomalyCheck() {
+    void runAction("anomaly", async () => {
+      const result = await checkAnomaly();
+      setAnomaly(result);
+      setNotice({ tone: "success", message: `Anomaly check returned ${result.anomalyLabel}.` });
+    });
+  }
+
   return (
     <main className="app-shell">
       <header className="dashboard-header">
@@ -469,6 +479,7 @@ function App() {
       <StrategyTable state={strategiesState} />
       <StrategyComparisonPanel state={strategiesState} />
       <MarketRegimePanel state={regimeState} />
+      <AnomalyPanel anomaly={anomaly} busy={busyAction === "anomaly"} onCheck={handleAnomalyCheck} />
       <AuditTimeline state={auditState} />
     </main>
   );
@@ -1220,6 +1231,56 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
         <Feature label="Volume z-score" value={features.volumeZScore} />
       </div>
       {provenance.length ? <ResultGrid items={provenance} /> : null}
+    </section>
+  );
+}
+
+function AnomalyPanel({
+  anomaly,
+  busy,
+  onCheck,
+}: {
+  anomaly: AnomalyResponse | null;
+  busy: boolean;
+  onCheck: () => void;
+}) {
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Anomaly check</h2>
+          <p>BTC-USD, 1h, latest 128 candles</p>
+        </div>
+        <button className="button" disabled={busy} onClick={onCheck} type="button">
+          {busy ? "Checking" : "Check"}
+        </button>
+      </div>
+      {anomaly ? (
+        <>
+          <ResultGrid
+            items={[
+              ["Label", formatAction(anomaly.anomalyLabel)],
+              ["Score", anomaly.anomalyScore.toFixed(2)],
+              ["Source", anomaly.classifierSource],
+            ]}
+          />
+          <ul className="reason-list">
+            {anomaly.reasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+          <div className="feature-grid">
+            <Feature label="Latest return" value={anomaly.features.latestReturnPercent} suffix="%" />
+            <Feature label="Avg return" value={anomaly.features.averageReturnPercent} suffix="%" />
+            <Feature label="Volatility" value={anomaly.features.volatilityPercent} suffix="%" />
+            <Feature label="Trend slope" value={anomaly.features.trendSlopePercent} suffix="%" />
+            <Feature label="SMA distance" value={anomaly.features.smaDistancePercent} suffix="%" />
+            <Feature label="Volume z-score" value={anomaly.features.volumeZScore} />
+          </div>
+        </>
+      ) : (
+        <p className="muted">Run this after importing enough candles. It is just a research warning, not a trade signal.</p>
+      )}
     </section>
   );
 }
