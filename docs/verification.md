@@ -32,14 +32,13 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 ## Latest Local Verification
 
-Last checked on May 26, 2026:
+Last checked on May 27, 2026:
 
 - `cd backend && ./mvnw test`: passed, with 92 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
 - `cd ml-service && ../.venv/bin/python -m pytest`: passed, 65 tests.
 - `cd frontend && npm run test`: passed, 20 tests.
-- `cd frontend && npm run build`: passed.
 - `python3 -m unittest scripts/smoke_demo_test.py`: passed, 3 tests.
-- `docker compose config`: blocked because the `docker` command was not available in this WSL distro.
+- `docker compose config`: blocked because the `docker` command was not available in this WSL distro. Docker Desktop WSL integration is still needed here.
 - `python3 scripts/smoke_demo.py`: blocked in this WSL distro because the local stack cannot be started without Docker.
-- Focused implementation checks passed for smoke script helper validation, ML torch artifact validation, backend market-regime provenance mapping, and dashboard provenance rendering.
-- Optional torch train/evaluate commands remain optional because torch dependencies are intentionally optional.
+- `cd frontend && npm run build`: not rerun in this pass.
+- Optional torch train/evaluate commands were not rerun. They remain optional because torch dependencies are intentionally outside the default setup.
