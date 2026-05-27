@@ -117,4 +117,49 @@ class MlRiskClientTests {
         assertThat(response.artifactIdentifier()).isEqualTo("market-regime.pt");
         server.verify();
     }
+
+    @Test
+    void predictAnomalyPostsRecentCandles() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MlRiskClient client = new MlRiskClient(builder.build());
+
+        server.expect(requestTo("http://ml-service:8000/predict/anomaly"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {
+                          "anomalyScore": "42.00",
+                          "anomalyLabel": "WATCH",
+                          "reasons": ["Recent volatility is rising."],
+                          "features": {
+                            "latestReturnPercent": "0.50",
+                            "averageReturnPercent": "0.25",
+                            "volatilityPercent": "2.10",
+                            "trendSlopePercent": "0.20",
+                            "smaDistancePercent": "1.50",
+                            "volumeZScore": "0.00"
+                          },
+                          "classifierSource": "rules"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MlAnomalyResponse response = client.predictAnomaly(new MlMarketRegimeRequest(
+                "BTC-USD",
+                "1h",
+                List.of(new MlMarketRegimeCandle(
+                        Instant.parse("2024-01-01T00:00:00Z"),
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.ONE
+                ))
+        ));
+
+        assertThat(response.anomalyLabel()).isEqualTo("WATCH");
+        assertThat(response.anomalyScore()).isEqualByComparingTo("42.00");
+        server.verify();
+    }
 }

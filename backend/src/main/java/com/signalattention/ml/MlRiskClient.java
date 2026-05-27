@@ -60,4 +60,22 @@ public class MlRiskClient {
             throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
         }
     }
+
+    public MlAnomalyResponse predictAnomaly(MlMarketRegimeRequest request) {
+        try {
+            MlAnomalyResponse response = restClient.post()
+                    .uri("/predict/anomaly")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(MlAnomalyResponse.class);
+            if (response == null) {
+                throw new ExternalServiceException("ML service returned an empty response", null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
+        }
+    }
 }
