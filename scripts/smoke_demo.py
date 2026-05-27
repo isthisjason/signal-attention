@@ -179,6 +179,14 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
     trades = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/trades")
     check(isinstance(trades, list), "Backtest trades response was not a list.")
 
+    equity_series = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/equity-series")
+    check(isinstance(equity_series, list) and equity_series, "Backtest equity series response was empty.")
+    require_keys(equity_series[0], ("timestamp", "equity"), "Backtest equity point")
+
+    drawdown_series = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/drawdown-series")
+    check(isinstance(drawdown_series, list) and drawdown_series, "Backtest drawdown series response was empty.")
+    require_keys(drawdown_series[0], ("timestamp", "drawdownPercent"), "Backtest drawdown point")
+
     risk = post_json(f"{config.backend_url}/api/backtests/{backtest_id}/ml-risk-score")
     require_keys(risk, ("riskScore", "riskLabel", "reasons"), "ML risk score")
     check(isinstance(risk["reasons"], list) and risk["reasons"], "ML risk score did not include reasons.")
@@ -274,6 +282,24 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
             "volumeZScore",
         ),
         "Market regime features",
+    )
+
+    anomaly = post_json(
+        f"{config.backend_url}/api/anomaly-check",
+        {"symbol": "BTC-USD", "timeframe": "1h", "limit": 128},
+    )
+    require_keys(anomaly, ("anomalyScore", "anomalyLabel", "reasons", "features", "classifierSource"), "Anomaly check")
+    require_keys(
+        anomaly["features"],
+        (
+            "latestReturnPercent",
+            "averageReturnPercent",
+            "volatilityPercent",
+            "trendSlopePercent",
+            "smaDistancePercent",
+            "volumeZScore",
+        ),
+        "Anomaly features",
     )
 
     audit_events = request_json(f"{config.backend_url}/api/audit-events?limit=25")
