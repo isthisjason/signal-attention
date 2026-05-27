@@ -66,6 +66,8 @@ Use the returned `id` as `BACKTEST_ID`.
 curl http://localhost:8080/api/backtests/BACKTEST_ID
 curl http://localhost:8080/api/backtests/BACKTEST_ID/trades
 curl http://localhost:8080/api/backtests/BACKTEST_ID/metrics
+curl http://localhost:8080/api/backtests/BACKTEST_ID/equity-series
+curl http://localhost:8080/api/backtests/BACKTEST_ID/drawdown-series
 ```
 
 ## 5. Score ML Risk
@@ -209,6 +211,20 @@ curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=
 
 The response includes a regime label, confidence, reasons, and derived features. The default service uses deterministic rule-based analysis. Optional torch-backed inference can be enabled only when a compatible local artifact is provided.
 
+Run a simple anomaly check against the same recent candle window:
+
+```bash
+curl -X POST http://localhost:8080/api/anomaly-check \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "BTC-USD",
+    "timeframe": "1h",
+    "limit": 128
+  }'
+```
+
+The anomaly response includes a score, label, reasons, derived features, and classifier source. It is a research warning only, not a trade signal.
+
 For optional torch experiments, install `ml-service/requirements-torch.txt`, train an artifact, and evaluate it before enabling torch mode:
 
 ```bash
@@ -242,3 +258,4 @@ curl "http://localhost:8080/api/audit-events?entityType=BACKTEST&limit=10"
 - Paper fills use submitted or replay candle close prices and do not model slippage.
 - Position summaries use the latest imported candle for mark-to-market values. If no candle exists for an open position, the position is returned as unpriced.
 - Market regime classification defaults to the CPU-safe rules path; torch-backed inference is optional and remains a local research workflow.
+- Anomaly checks are deterministic and only describe unusual recent candle behavior.

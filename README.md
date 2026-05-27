@@ -57,6 +57,7 @@ The usual demo is pretty small:
 8. Optionally configure a risk policy and evaluate a simulated order.
 9. Optionally create a paper session, submit manual paper orders, replay candles, and review the paper summary.
 10. Optionally request a CPU-safe market regime classification from recent imported candles.
+11. Optionally check recent candles for simple anomaly warnings.
 
 You can do this from Swagger, curl, or the React dashboard. The dashboard is the most comfortable path, but the API routes are still the main thing I wanted to build.
 
@@ -146,6 +147,8 @@ After the stack starts, I usually use Swagger at `http://localhost:8080/swagger-
 - `GET /api/backtests/{id}`
 - `GET /api/backtests/{id}/trades`
 - `GET /api/backtests/{id}/metrics`
+- `GET /api/backtests/{id}/equity-series`
+- `GET /api/backtests/{id}/drawdown-series`
 - `POST /api/backtests/{id}/ml-risk-score`
 - `POST /api/strategies/{id}/risk-policy`
 - `GET /api/strategies/{id}/risk-policy`
@@ -165,6 +168,7 @@ After the stack starts, I usually use Swagger at `http://localhost:8080/swagger-
 - `GET /api/dashboard/strategy-performance`
 - `GET /api/dashboard/risk-alerts`
 - `GET /api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128`
+- `POST /api/anomaly-check`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl-based walkthrough.
 See [docs/architecture.md](docs/architecture.md) for the current service and data-flow diagram.
@@ -200,8 +204,8 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, baseline risk policies, paper-trading sessions, dashboard summary APIs, a React workbench, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, a simple anomaly check, baseline risk policies, paper-trading sessions, dashboard summary APIs, a React workbench, and a smoke script for the running stack.
 
-Backend, ML service, frontend, and smoke-helper tests were verified locally on May 26, 2026. Docker Compose startup was still blocked in this WSL distro because Docker Desktop WSL integration was not available here. The Compose setup is still the intended normal way to run the app.
+Backend, ML service, frontend, frontend build, and smoke-helper tests were verified locally on May 27, 2026. Docker Compose startup was still blocked in this WSL distro because Docker Desktop WSL integration was not available here. The Compose setup is still the intended normal way to run the app.
 
-The next work I would do is mostly polish and research depth: verify the full Compose demo in a Docker-enabled environment, improve the optional market-regime experiment tracking, add better chart views in the dashboard, and maybe add anomaly analysis as another simulated research endpoint.
+The next work I would do is mostly polish and research depth: verify the full Compose demo in a Docker-enabled environment, keep improving the optional market-regime experiment tracking, and make the dashboard charts easier to inspect.
