@@ -1164,13 +1164,13 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
         <Feature label="Volume z-score" value={features.volumeZScore} />
       </div>
       {provenance.length ? <ResultGrid items={provenance} /> : null}
-      <p className="muted">Classifier source: {state.data.classifierSource}</p>
     </section>
   );
 }
 
 function marketRegimeProvenanceItems(regime: MarketRegimeResponse): Array<[string, string | number]> {
   return [
+    ["Source", regime.classifierSource],
     ["Mode", regime.mode],
     ["Model", regime.modelVersion],
     ["Features", regime.featureVersion],

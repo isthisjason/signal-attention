@@ -139,6 +139,7 @@ describe("dashboard render states", () => {
     render(<App />);
 
     expect(await screen.findByText("sideways")).toBeInTheDocument();
+    expect(screen.getByText("rules")).toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.queryByText("Artifact")).not.toBeInTheDocument();
   });
