@@ -48,6 +48,11 @@ export type BacktestEquityPoint = {
   equity: number;
 };
 
+export type BacktestDrawdownPoint = {
+  timestamp: string;
+  drawdownPercent: number;
+};
+
 export type RunBacktestPayload = {
   startDate: string;
   endDate: string;
@@ -67,6 +72,10 @@ export function fetchBacktestTrades(backtestId: number) {
 
 export function fetchBacktestEquitySeries(backtestId: number) {
   return getJson<BacktestEquityPoint[]>(`/api/backtests/${backtestId}/equity-series`);
+}
+
+export function fetchBacktestDrawdownSeries(backtestId: number) {
+  return getJson<BacktestDrawdownPoint[]>(`/api/backtests/${backtestId}/drawdown-series`);
 }
 
 export function scoreBacktestRisk(backtestId: number) {

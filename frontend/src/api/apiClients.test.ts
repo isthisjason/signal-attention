@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchAuditEvents } from "./audit";
 import {
   fetchBacktest,
+  fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries,
   fetchBacktestTrades,
   runBacktest,
@@ -142,6 +143,9 @@ describe("backtest client", () => {
 
     await fetchBacktestEquitySeries(11);
     expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/equity-series");
+
+    await fetchBacktestDrawdownSeries(11);
+    expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/drawdown-series");
 
     await scoreBacktestRisk(11);
     expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/ml-risk-score");

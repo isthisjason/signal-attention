@@ -3,9 +3,11 @@ import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
   BacktestRun,
   BacktestTrade,
+  BacktestDrawdownPoint,
   BacktestEquityPoint,
   MlRiskScore,
   fetchBacktest,
+  fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries,
   fetchBacktestTrades,
   runBacktest,
@@ -111,6 +113,7 @@ function App() {
   const [backtestRun, setBacktestRun] = useState<BacktestRun | null>(null);
   const [backtestTrades, setBacktestTrades] = useState<BacktestTrade[]>([]);
   const [backtestEquity, setBacktestEquity] = useState<BacktestEquityPoint[]>([]);
+  const [backtestDrawdown, setBacktestDrawdown] = useState<BacktestDrawdownPoint[]>([]);
   const [riskScore, setRiskScore] = useState<MlRiskScore | null>(null);
   const [paperForm, setPaperForm] = useState({
     initialBalance: "100000",
@@ -297,13 +300,15 @@ function App() {
         startDate: toInstant(backtestForm.startDate, "Backtest start"),
         endDate: toInstant(backtestForm.endDate, "Backtest end"),
       });
-      const [trades, equity] = await Promise.all([
+      const [trades, equity, drawdown] = await Promise.all([
         fetchBacktestTrades(run.id),
         fetchBacktestEquitySeries(run.id),
+        fetchBacktestDrawdownSeries(run.id),
       ]);
       setBacktestRun(run);
       setBacktestTrades(trades);
       setBacktestEquity(equity);
+      setBacktestDrawdown(drawdown);
       setRiskScore(null);
       setNotice({ tone: "success", message: `Backtest #${run.id} completed.` });
       loadDashboard();
@@ -435,6 +440,7 @@ function App() {
           form={backtestForm}
           riskScore={riskScore}
           selectedStrategy={selectedStrategy}
+          drawdownSeries={backtestDrawdown}
           equitySeries={backtestEquity}
           trades={backtestTrades}
           onRiskScore={handleRiskScore}
@@ -583,6 +589,7 @@ function BacktestWorkflowPanel({
   form,
   riskScore,
   selectedStrategy,
+  drawdownSeries,
   equitySeries,
   trades,
   onRiskScore,
@@ -594,6 +601,7 @@ function BacktestWorkflowPanel({
   form: { startDate: string; endDate: string };
   riskScore: MlRiskScore | null;
   selectedStrategy: Strategy | null;
+  drawdownSeries: BacktestDrawdownPoint[];
   equitySeries: BacktestEquityPoint[];
   trades: BacktestTrade[];
   onRiskScore: () => void;
@@ -636,6 +644,14 @@ function BacktestWorkflowPanel({
               value: point.equity,
             }))}
             formatValue={formatCurrency}
+          />
+          <SeriesChart
+            title="Drawdown"
+            points={drawdownSeries.map((point) => ({
+              timestamp: point.timestamp,
+              value: point.drawdownPercent,
+            }))}
+            formatValue={formatPercent}
           />
           <TradePreview trades={trades} />
         </>
