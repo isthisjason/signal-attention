@@ -51,6 +51,11 @@ public class BacktestController {
         return backtestService.getEquitySeries(id);
     }
 
+    @GetMapping("/api/backtests/{id}/drawdown-series")
+    public List<BacktestDrawdownPointResponse> getDrawdownSeries(@PathVariable Long id) {
+        return backtestService.getDrawdownSeries(id);
+    }
+
     @PostMapping("/api/backtests/{id}/ml-risk-score")
     public MlStrategyRiskResponse scoreMlRisk(@PathVariable Long id) {
         return backtestService.scoreMlRisk(id);

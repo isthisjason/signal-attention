@@ -187,6 +187,28 @@ class BacktestServiceTests {
     }
 
     @Test
+    void getDrawdownSeriesBuildsPercentagesFromEquityPeaks() throws Exception {
+        BacktestRun run = completedRun();
+        run.setFinalBalance(new BigDecimal("1050"));
+        BacktestTrade firstTrade = closedTrade(run, START.plusSeconds(3600), START.plusSeconds(7200), "100");
+        BacktestTrade secondTrade = closedTrade(run, START.plusSeconds(10800), START.plusSeconds(14400), "-50");
+        when(backtestRunRepository.findById(10L)).thenReturn(Optional.of(run));
+        when(backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(10L)).thenReturn(List.of(firstTrade, secondTrade));
+
+        List<BacktestDrawdownPointResponse> series = backtestService.getDrawdownSeries(10L);
+
+        assertThat(series).extracting(BacktestDrawdownPointResponse::timestamp)
+                .containsExactly(START, START.plusSeconds(7200), START.plusSeconds(14400), END);
+        assertThat(series).extracting(BacktestDrawdownPointResponse::drawdownPercent)
+                .containsExactly(
+                        new BigDecimal("0.000000"),
+                        new BigDecimal("0.000000"),
+                        new BigDecimal("4.545455"),
+                        new BigDecimal("4.545455")
+                );
+    }
+
+    @Test
     void scoreMlRiskAuditsFailures() throws Exception {
         BacktestRun run = completedRun();
         RuntimeException failure = new RuntimeException("ML service unavailable");

@@ -129,6 +129,26 @@ public class BacktestService {
         return points;
     }
 
+    @Transactional(readOnly = true)
+    public List<BacktestDrawdownPointResponse> getDrawdownSeries(Long id) {
+        List<BacktestEquityPointResponse> equitySeries = getEquitySeries(id);
+        BigDecimal peak = BigDecimal.ZERO;
+        List<BacktestDrawdownPointResponse> points = new ArrayList<>();
+        for (BacktestEquityPointResponse point : equitySeries) {
+            if (point.equity().compareTo(peak) > 0) {
+                peak = point.equity();
+            }
+            BigDecimal drawdown = BigDecimal.ZERO;
+            if (peak.signum() > 0) {
+                drawdown = peak.subtract(point.equity())
+                        .divide(peak, 12, RoundingMode.HALF_UP)
+                        .multiply(ONE_HUNDRED);
+            }
+            points.add(new BacktestDrawdownPointResponse(point.timestamp(), scaleMetric(drawdown)));
+        }
+        return points;
+    }
+
     @Transactional
     public MlStrategyRiskResponse scoreMlRisk(Long id) {
         BacktestRun run = findRun(id);
