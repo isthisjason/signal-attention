@@ -230,7 +230,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     check(isinstance(positions, list), "Paper positions response was not a list.")
 
     summary = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/summary")
-    require_keys(summary, ("status", "cashBalance", "totalEquity", "positionMarks"), "Paper summary")
+    require_keys(summary, ("status", "cashBalance", "totalEquity", "openPositions"), "Paper summary")
 
     replay = post_json(
         f"{config.backend_url}/api/paper-sessions/{session_id}/replay",

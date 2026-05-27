@@ -41,6 +41,7 @@ Last checked on May 27, 2026:
 - `cd frontend && npm run test`: passed, 21 tests.
 - `cd frontend && npm run build`: passed.
 - `python3 -m unittest scripts/smoke_demo_test.py`: passed, 3 tests.
-- `docker compose config`: blocked because the `docker` command was not available in this WSL distro. Docker Desktop WSL integration is still needed here.
-- `python3 scripts/smoke_demo.py`: blocked in this WSL distro because the local stack cannot be started without Docker.
+- `docker compose config`: passed.
+- `docker compose up --build -d`: passed, with PostgreSQL, backend, ML service, and frontend containers running.
+- `python3 scripts/smoke_demo.py`: passed against the running stack for strategy #3, backtest #3, and paper session #3.
 - Optional torch train/evaluate commands were not rerun. They remain optional because torch dependencies are intentionally outside the default setup.
