@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,24 @@ def upsert_experiment_entry(registry: dict[str, Any], entry: dict[str, Any]) -> 
     return {**registry, "experiments": [*experiments, entry]}
 
 
+def describe_path(path: Path) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "path": str(path),
+        "name": path.name,
+        "sizeBytes": None,
+        "sha256": None,
+    }
+    if not path.exists() or not path.is_file():
+        return summary
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    summary["sizeBytes"] = path.stat().st_size
+    summary["sha256"] = digest.hexdigest()
+    return summary
+
+
 def build_experiment_manifest(
     *,
     csv_path: Path,
@@ -50,14 +69,8 @@ def build_experiment_manifest(
     return {
         "schemaVersion": EXPERIMENT_SCHEMA_VERSION,
         "generatedAt": datetime.now(UTC).isoformat(),
-        "dataset": {
-            "path": str(csv_path),
-            "name": csv_path.name,
-        },
-        "artifact": {
-            "path": str(output_path),
-            "name": output_path.name,
-        },
+        "dataset": describe_path(csv_path),
+        "artifact": describe_path(output_path),
         "featureVersion": MARKET_REGIME_FEATURE_VERSION,
         "featureOrder": feature_order,
         "sequenceLength": sequence_length,

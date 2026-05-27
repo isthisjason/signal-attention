@@ -4,6 +4,7 @@ from argparse import Namespace
 import scripts.train_market_regime_model as training_script
 from app.services.market_regime_experiment import (
     build_experiment_manifest,
+    describe_path,
     load_experiment_registry,
     upsert_experiment_entry,
     write_experiment_registry,
@@ -66,7 +67,12 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
         sequence_length=20,
     )
     manifest = {
+        "schemaVersion": "market-regime-experiment/v1",
+        "generatedAt": "2026-05-27T20:00:00+00:00",
+        "dataset": {"path": str(args.csv_path), "name": "candles.csv", "sizeBytes": 15, "sha256": "dataset"},
+        "artifact": {"path": str(args.output), "name": "market-regime.pt", "sizeBytes": 30, "sha256": "artifact"},
         "featureVersion": "torch-market-regime-features/v1",
+        "labels": ["SIDEWAYS"],
         "trainWindowCount": 8,
         "validationWindowCount": 2,
         "validationRatio": 0.2,
@@ -77,6 +83,9 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
     entry = build_training_registry_entry(args, tmp_path / "market-regime.pt.manifest.json", manifest)
 
     assert entry["name"] == "baseline"
+    assert entry["dataset"]["sha256"] == "dataset"
+    assert entry["artifact"]["sha256"] == "artifact"
+    assert entry["labels"] == ["SIDEWAYS"]
     assert entry["training"]["validationAccuracy"] == 0.75
 
 
@@ -130,9 +139,14 @@ def test_predict_validation_labels_returns_label_indexes_and_confidence() -> Non
 
 
 def test_experiment_manifest_records_split_fields(tmp_path) -> None:
+    csv_path = tmp_path / "candles.csv"
+    output_path = tmp_path / "market-regime.pt"
+    csv_path.write_text("symbol,timeframe\n", encoding="utf-8")
+    output_path.write_bytes(b"artifact")
+
     manifest = build_experiment_manifest(
-        csv_path=tmp_path / "candles.csv",
-        output_path=tmp_path / "market-regime.pt",
+        csv_path=csv_path,
+        output_path=output_path,
         sequence_length=20,
         feature_order=["close"],
         labels=["SIDEWAYS"],
@@ -150,11 +164,26 @@ def test_experiment_manifest_records_split_fields(tmp_path) -> None:
     )
 
     assert manifest["windowCount"] == 10
+    assert manifest["dataset"]["sizeBytes"] == 17
+    assert len(manifest["dataset"]["sha256"]) == 64
+    assert manifest["artifact"]["sizeBytes"] == 8
+    assert len(manifest["artifact"]["sha256"]) == 64
     assert manifest["trainWindowCount"] == 8
     assert manifest["validationWindowCount"] == 2
     assert manifest["validationRatio"] == 0.2
     assert manifest["finalTrainLoss"] == 0.123456
     assert manifest["validationAccuracy"] == 0.75
+
+
+def test_describe_path_handles_missing_files(tmp_path) -> None:
+    summary = describe_path(tmp_path / "missing.csv")
+
+    assert summary == {
+        "path": str(tmp_path / "missing.csv"),
+        "name": "missing.csv",
+        "sizeBytes": None,
+        "sha256": None,
+    }
 
 
 def test_label_distribution_formats_counts_by_label_name() -> None:

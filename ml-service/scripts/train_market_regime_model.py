@@ -290,12 +290,15 @@ def write_experiment_manifest(
 def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path, manifest: dict) -> dict:
     return {
         "name": args.experiment_name,
-        "datasetPath": str(args.csv_path),
-        "artifactPath": str(args.output),
+        "schemaVersion": manifest["schemaVersion"],
+        "generatedAt": manifest["generatedAt"],
+        "dataset": manifest["dataset"],
+        "artifact": manifest["artifact"],
         "manifestPath": str(manifest_path),
         "modelVersion": args.model_version,
         "featureVersion": manifest["featureVersion"],
         "sequenceLength": args.sequence_length,
+        "labels": manifest["labels"],
         "training": {
             "trainWindowCount": manifest["trainWindowCount"],
             "validationWindowCount": manifest["validationWindowCount"],
