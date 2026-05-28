@@ -12,12 +12,16 @@ from app.services.market_regime_experiment import (
     write_experiment_registry,
 )
 from scripts.train_market_regime_model import (
+    build_minibatches,
+    build_model_config,
     build_training_registry_entry,
     chronological_split_index,
     label_distribution,
     normalize_window,
     normalization_stats,
     predict_validation_labels,
+    reproducibility_block,
+    select_best_epoch,
     split_training_windows,
     validation_accuracy,
     validate_validation_ratio,
@@ -88,9 +92,10 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
         "validationAccuracy": 0.75,
     }
 
-    entry = build_training_registry_entry(args, tmp_path / "market-regime.pt.manifest.json", manifest)
+    entry = build_training_registry_entry(args, tmp_path / "market-regime.pt.manifest.json", manifest, "run-123")
 
     assert entry["name"] == "baseline"
+    assert entry["runId"] == "run-123"
     assert entry["dataset"]["sha256"] == "dataset"
     assert entry["artifact"]["sha256"] == "artifact"
     assert entry["labels"] == ["SIDEWAYS"]
@@ -284,6 +289,188 @@ def test_upsert_experiment_entry_updates_matching_entry_and_preserves_others() -
         {"name": "baseline", "artifactPath": "new.pt", "createdBy": "train"},
         {"name": "other", "artifactPath": "other.pt"},
     ]
+
+
+def test_build_minibatches_is_deterministic_for_a_seed() -> None:
+    first = build_minibatches(10, 4, seed=7)
+    second = build_minibatches(10, 4, seed=7)
+
+    assert first == second
+    assert sorted(index for batch in first for index in batch) == list(range(10))
+    assert [len(batch) for batch in first] == [4, 4, 2]
+
+
+def test_build_minibatches_changes_order_with_a_different_seed() -> None:
+    assert build_minibatches(10, 4, seed=1) != build_minibatches(10, 4, seed=2)
+
+
+def test_select_best_epoch_prefers_highest_validation_accuracy() -> None:
+    history = [
+        {"valAccuracy": 0.40},
+        {"valAccuracy": 0.70},
+        {"valAccuracy": 0.65},
+    ]
+
+    assert select_best_epoch(history) == 2
+
+
+def test_select_best_epoch_breaks_ties_toward_the_earliest_epoch() -> None:
+    history = [{"valAccuracy": 0.80}, {"valAccuracy": 0.80}]
+
+    assert select_best_epoch(history) == 1
+
+
+def test_reproducibility_block_records_seed_and_environment() -> None:
+    block = reproducibility_block(123, "2.4.0")
+
+    assert block["seed"] == 123
+    assert block["torchVersion"] == "2.4.0"
+    assert block["python"]
+    assert "gitCommit" in block
+
+
+def test_build_model_config_overrides_dropout_and_positional_encoding() -> None:
+    args = Namespace(dropout=0.3, no_positional_encoding=True)
+
+    config = build_model_config(args)
+
+    assert config["dropout"] == 0.3
+    assert config["usePositionalEncoding"] is False
+
+
+def test_build_model_config_keeps_defaults_when_no_overrides() -> None:
+    args = Namespace(dropout=None, no_positional_encoding=False)
+
+    config = build_model_config(args)
+
+    assert config["usePositionalEncoding"] is True
+    assert config["dropout"] == 0.1
+
+
+def test_train_with_early_stopping_stops_on_plateau_and_restores_best_state() -> None:
+    from scripts.train_market_regime_model import train_with_early_stopping
+
+    # Validation accuracy schedule per epoch eval: high, high, then collapses.
+    schedule = [1, 1, 0, 0, 0]
+    torch = EarlyStopTorch()
+    model = ScheduledModel(schedule)
+    validation_windows = [[[0.0]]]
+    validation_labels = [1]
+
+    outcome = train_with_early_stopping(
+        torch,
+        model,
+        FakeOptimizer(),
+        FakeLossFunction(),
+        EarlyStopTensor(item_count=4),
+        EarlyStopTensor(item_count=4),
+        validation_windows,
+        validation_labels,
+        epochs=10,
+        batch_size=2,
+        patience=2,
+        seed=1,
+        device="cpu",
+    )
+
+    assert outcome["earlyStopped"] is True
+    assert outcome["bestEpoch"] == 1
+    assert len(outcome["epochHistory"]) == 3
+    assert outcome["validationAccuracy"] == 1.0
+    # Best state captured at epoch 1 must be the one reloaded at the end.
+    assert model.loaded_state == model.snapshots[0]
+
+
+class EarlyStopTensor:
+    def __init__(self, item_count: int) -> None:
+        self.shape = (item_count,)
+
+    def index_select(self, dim, index_tensor):
+        return self
+
+
+class FakeOptimizer:
+    def zero_grad(self) -> None:
+        return None
+
+    def step(self) -> None:
+        return None
+
+
+class FakeLossValue:
+    def backward(self) -> None:
+        return None
+
+    def item(self) -> float:
+        return 0.5
+
+
+class FakeLossFunction:
+    def __call__(self, output, target) -> FakeLossValue:
+        return FakeLossValue()
+
+
+class ScheduledLogits:
+    def __init__(self, label_index: int) -> None:
+        self.label_index = label_index
+
+    def __getitem__(self, index):
+        return self
+
+    def max(self, dim):
+        return FakeScalar(0.9), FakeScalar(self.label_index)
+
+
+class ScheduledModel:
+    def __init__(self, eval_schedule: list[int]) -> None:
+        self.eval_schedule = eval_schedule
+        self.eval_count = 0
+        self.snapshots: list[dict] = []
+        self.loaded_state = None
+
+    def train(self) -> None:
+        return None
+
+    def eval(self) -> None:
+        self.eval_count += 1
+
+    def __call__(self, inputs):
+        index = min(self.eval_count, len(self.eval_schedule)) - 1
+        index = max(index, 0)
+        return ScheduledLogits(self.eval_schedule[index])
+
+    def state_dict(self) -> dict:
+        snapshot = {"w": FakeParam(self.eval_count)}
+        self.snapshots.append(snapshot)
+        return snapshot
+
+    def load_state_dict(self, state) -> None:
+        self.loaded_state = state
+
+
+class FakeParam:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def detach(self) -> "FakeParam":
+        return self
+
+    def clone(self) -> "FakeParam":
+        return self
+
+
+class EarlyStopTorch:
+    float32 = "float32"
+    long = "long"
+
+    def tensor(self, values, dtype, device):
+        return values
+
+    def no_grad(self) -> "FakeNoGrad":
+        return FakeNoGrad()
+
+    def softmax(self, logits, dim):
+        return logits
 
 
 class FakeScalar:

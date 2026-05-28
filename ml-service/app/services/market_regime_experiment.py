@@ -1,11 +1,17 @@
 from datetime import UTC, datetime
 import hashlib
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
 EXPERIMENT_SCHEMA_VERSION = "market-regime-experiment/v1"
 MARKET_REGIME_FEATURE_VERSION = "torch-market-regime-features/v1"
+
+
+def generate_run_id() -> str:
+    """A sortable run id so repeated runs of one experiment name stay distinct."""
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
 
 
 def load_experiment_registry(registry_path: Path) -> dict[str, Any]:
@@ -26,6 +32,38 @@ def upsert_experiment_entry(registry: dict[str, Any], entry: dict[str, Any]) -> 
         if existing.get("name") == entry_name:
             experiments[index] = {**existing, **entry}
             return {**registry, "experiments": experiments}
+    return {**registry, "experiments": [*experiments, entry]}
+
+
+def chronological_split_index(item_count: int, validation_ratio: float) -> int:
+    """Return the index that splits items into an earlier train slice and a later slice.
+
+    The split is chronological (no shuffling) so the later slice always represents
+    unseen future windows. At least one window is kept on each side.
+    """
+    if validation_ratio <= 0 or validation_ratio >= 1:
+        raise ValueError("validation_ratio must be greater than 0 and less than 1")
+    if item_count < 2:
+        raise ValueError("at least two windows are required for a chronological split")
+    validation_count = max(1, round(item_count * validation_ratio))
+    if validation_count >= item_count:
+        validation_count = item_count - 1
+    return item_count - validation_count
+
+
+def append_or_merge_run(registry: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
+    """Keep one entry per runId, merging train and eval that share a runId.
+
+    Unlike upsert_experiment_entry (which matched by name and overwrote history),
+    this preserves every run so the same experiment name can hold many runs.
+    """
+    experiments = list(registry.get("experiments", []))
+    run_id = entry.get("runId")
+    if run_id is not None:
+        for index, existing in enumerate(experiments):
+            if existing.get("runId") == run_id:
+                experiments[index] = {**existing, **entry}
+                return {**registry, "experiments": experiments}
     return {**registry, "experiments": [*experiments, entry]}
 
 
@@ -65,6 +103,7 @@ def build_experiment_manifest(
     final_train_loss: float | None = None,
     validation_accuracy: float | None = None,
     window_ranges: dict[str, Any] | None = None,
+    reproducibility: dict[str, Any] | None = None,
     device: str,
 ) -> dict[str, Any]:
     return {
@@ -87,5 +126,6 @@ def build_experiment_manifest(
         "finalTrainLoss": final_train_loss,
         "validationAccuracy": validation_accuracy,
         "windowRanges": window_ranges,
+        "reproducibility": reproducibility,
         "device": device,
     }
