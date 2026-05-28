@@ -5,6 +5,10 @@ import App from "./App";
 
 const mocks = vi.hoisted(() => ({
   fetchAuditEvents: vi.fn(),
+  fetchBacktest: vi.fn(),
+  fetchBacktestDrawdownSeries: vi.fn(),
+  fetchBacktestEquitySeries: vi.fn(),
+  fetchBacktestTrades: vi.fn(),
   fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
   fetchMarketRegime: vi.fn(),
@@ -12,6 +16,17 @@ const mocks = vi.hoisted(() => ({
   fetchStrategies: vi.fn(),
   fetchStrategyPaperSessions: vi.fn(),
   fetchStrategyPerformance: vi.fn(),
+  runBacktest: vi.fn(),
+  scoreBacktestRisk: vi.fn(),
+}));
+
+vi.mock("./api/backtests", () => ({
+  fetchBacktest: mocks.fetchBacktest,
+  fetchBacktestDrawdownSeries: mocks.fetchBacktestDrawdownSeries,
+  fetchBacktestEquitySeries: mocks.fetchBacktestEquitySeries,
+  fetchBacktestTrades: mocks.fetchBacktestTrades,
+  runBacktest: mocks.runBacktest,
+  scoreBacktestRisk: mocks.scoreBacktestRisk,
 }));
 
 vi.mock("./api/audit", () => ({
@@ -48,6 +63,40 @@ beforeEach(() => {
   mocks.fetchStrategyPerformance.mockResolvedValue([]);
   mocks.fetchDashboardRiskAlerts.mockResolvedValue([]);
   mocks.fetchAuditEvents.mockResolvedValue([]);
+  mocks.runBacktest.mockResolvedValue({
+    id: 12,
+    strategyId: 1,
+    startDate: "2024-01-01T00:00:00Z",
+    endDate: "2024-01-03T00:00:00Z",
+    initialBalance: 10000,
+    finalBalance: 10300,
+    totalReturn: 3,
+    maxDrawdown: 1.2,
+    winRate: 50,
+    profitFactor: 1.5,
+    tradeCount: 1,
+    averageTradeReturn: 3,
+    feeDrag: 10,
+    volatility: 0.5,
+    mlRiskScore: null,
+    mlRiskLabel: null,
+    status: "COMPLETED",
+    createdAt: "2024-01-03T00:00:00Z",
+    completedAt: "2024-01-03T00:00:01Z",
+  });
+  mocks.fetchBacktestTrades.mockResolvedValue([]);
+  mocks.fetchBacktestEquitySeries.mockResolvedValue([
+    { timestamp: "2024-01-01T00:00:00Z", equity: 10000 },
+    { timestamp: "2024-01-02T00:00:00Z", equity: 9800 },
+    { timestamp: "2024-01-03T00:00:00Z", equity: 10300 },
+  ]);
+  mocks.fetchBacktestDrawdownSeries.mockResolvedValue([
+    { timestamp: "2024-01-01T00:00:00Z", drawdownPercent: 0 },
+    { timestamp: "2024-01-02T00:00:00Z", drawdownPercent: 2 },
+    { timestamp: "2024-01-03T00:00:00Z", drawdownPercent: 0 },
+  ]);
+  mocks.fetchBacktest.mockResolvedValue(null);
+  mocks.scoreBacktestRisk.mockResolvedValue(null);
   mocks.fetchMarketRegime.mockRejectedValue(new Error("Not enough candles"));
   mocks.runRegimeReplay.mockResolvedValue({
     symbol: "BTC-USD",
@@ -107,6 +156,8 @@ describe("dashboard render states", () => {
     expect(screen.getByText("No paper sessions for the selected strategy.")).toBeInTheDocument();
     expect(screen.getByText("No paper orders for the selected session.")).toBeInTheDocument();
     expect(screen.getByText("No paper positions for the selected session.")).toBeInTheDocument();
+    expect(screen.getByText("No assessment chart yet")).toBeInTheDocument();
+    expect(screen.getByText("No anomaly check yet")).toBeInTheDocument();
     expect(screen.getByText("No risk alerts are active.")).toBeInTheDocument();
     expect(screen.getByText("No audit events have been recorded yet.")).toBeInTheDocument();
     expect(screen.getByText(/Import at least 20 BTC-USD 1h candles/)).toBeInTheDocument();
@@ -273,5 +324,37 @@ describe("dashboard render states", () => {
     expect(screen.getByText("O $40,500.00")).toBeInTheDocument();
     expect(screen.getByText("C $39,800.00")).toBeInTheDocument();
     expect(screen.getByText("no regime window")).toBeInTheDocument();
+  });
+
+  it("renders backtest chart summaries after a run", async () => {
+    const user = userEvent.setup();
+    mocks.fetchStrategies.mockResolvedValue([
+      {
+        id: 1,
+        name: "BTC SMA",
+        symbol: "BTC-USD",
+        timeframe: "1h",
+        strategyType: "SMA_CROSSOVER",
+        status: "ACTIVE",
+        rules: {
+          shortWindow: 3,
+          longWindow: 5,
+          initialBalance: 10000,
+          feePercent: 0.1,
+          positionSizePercent: 50,
+        },
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ]);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Run backtest" }));
+
+    expect(await screen.findByRole("img", { name: "Equity chart" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Equity chart summary")).toHaveTextContent("Low $9,800.00");
+    expect(screen.getByLabelText("Equity chart summary")).toHaveTextContent("High $10,300.00");
+    expect(screen.getByLabelText("Drawdown chart summary")).toHaveTextContent("High 2.00%");
   });
 });
