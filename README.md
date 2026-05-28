@@ -111,15 +111,25 @@ python scripts/train_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --output models/market-regime.pt \
   --cpu \
+  --seed 42 \
+  --batch-size 32 \
+  --patience 10 \
   --experiment-name btc-sample-v1
 python scripts/evaluate_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --artifact models/market-regime.pt \
   --output models/market-regime-evaluation.json \
+  --holdout-ratio 0.2 \
   --experiment-name btc-sample-v1
+python scripts/compare_market_regime_experiments.py \
+  --experiments-dir models/experiments
 ```
 
-The training command writes the model artifact and a manifest beside it. The evaluation command writes a separate report with accuracy, per-label metrics, a confusion matrix, confidence summary, and sample predictions. When `--experiment-name` is provided, both commands also update `models/experiments/index.json`, which gives me a small local registry of what I trained, how it was evaluated, and where the artifacts live.
+The training command runs a seeded, mini batch loop with per epoch validation and early stopping (controlled by `--patience`), then keeps the best epoch. The saved model uses light dropout and sinusoidal positional encoding, and you can turn those off with `--dropout 0` and `--no-positional-encoding` when you want to compare. The artifact and a manifest are written side by side, and the manifest records the seed, git commit, torch version, and the per epoch history so a run can be reproduced.
+
+The evaluation command writes a report with accuracy, per label metrics, a confusion matrix, and a confidence summary. It also reports a majority class baseline and the lift over that baseline, because the expected labels come from the rule based classifier rather than independent ground truth, so the model only matters if it beats simply guessing the most common regime. Pass `--holdout-ratio` to score only the later, unseen tail of the data.
+
+When `--experiment-name` is provided, both commands update `models/experiments/index.json`. Each run is kept under its own run id rather than overwriting the previous one, so the registry holds a real history. The compare script reads that registry and prints a table sorted by accuracy with the seed, dropout, positional encoding, git commit, and lift columns so I can see which run did best and why.
 
 The torch path is optional on purpose. The default service still uses the CPU-safe rule classifier because I do not want the normal demo to depend on GPU setup, large dependencies, or a model artifact that only exists on my machine.
 
