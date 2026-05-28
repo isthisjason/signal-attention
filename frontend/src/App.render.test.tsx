@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -7,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
   fetchMarketRegime: vi.fn(),
+  runRegimeReplay: vi.fn(),
   fetchStrategies: vi.fn(),
   fetchStrategyPaperSessions: vi.fn(),
   fetchStrategyPerformance: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock("./api/dashboard", () => ({
 
 vi.mock("./api/marketRegime", () => ({
   fetchMarketRegime: mocks.fetchMarketRegime,
+  runRegimeReplay: mocks.runRegimeReplay,
 }));
 
 vi.mock("./api/paperTrading", () => ({
@@ -46,6 +49,49 @@ beforeEach(() => {
   mocks.fetchDashboardRiskAlerts.mockResolvedValue([]);
   mocks.fetchAuditEvents.mockResolvedValue([]);
   mocks.fetchMarketRegime.mockRejectedValue(new Error("Not enough candles"));
+  mocks.runRegimeReplay.mockResolvedValue({
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    windowSize: 64,
+    stride: 8,
+    includeAnomalies: true,
+    pointCount: 1,
+    candles: [
+      {
+        openTime: "2024-01-01T00:00:00Z",
+        openPrice: 40000,
+        high: 41000,
+        low: 39500,
+        close: 40500,
+        volume: 100,
+      },
+      {
+        openTime: "2024-01-01T01:00:00Z",
+        openPrice: 40500,
+        high: 41500,
+        low: 40200,
+        close: 39800,
+        volume: 120,
+      },
+    ],
+    points: [
+      {
+        windowStart: "2024-01-01T00:00:00Z",
+        windowEnd: "2024-01-01T00:00:00Z",
+        regimeLabel: "TRENDING_UP",
+        confidence: 75,
+        reasons: ["Trend is rising."],
+      },
+    ],
+    tradeMarkers: [
+      {
+        tradeId: 7,
+        side: "BUY",
+        entryTime: "2024-01-01T00:00:00Z",
+        entryPrice: 40500,
+      },
+    ],
+  });
   mocks.fetchStrategies.mockResolvedValue([]);
   mocks.fetchStrategyPaperSessions.mockResolvedValue([]);
 });
@@ -184,5 +230,48 @@ describe("dashboard render states", () => {
     expect(screen.getByText("rules")).toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.queryByText("Artifact")).not.toBeInTheDocument();
+  });
+
+  it("renders candlestick replay context and selectable candle details", async () => {
+    const user = userEvent.setup();
+    mocks.fetchStrategies.mockResolvedValue([
+      {
+        id: 1,
+        name: "BTC SMA",
+        symbol: "BTC-USD",
+        timeframe: "1h",
+        strategyType: "SMA_CROSSOVER",
+        status: "ACTIVE",
+        rules: {
+          shortWindow: 3,
+          longWindow: 5,
+          initialBalance: 10000,
+          feePercent: 0.1,
+          positionSizePercent: 50,
+        },
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ]);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Run replay" }));
+
+    expect(await screen.findByRole("img", { name: "Regime replay candlestick chart" })).toBeInTheDocument();
+    const legend = screen.getByLabelText("Candlestick chart legend");
+    expect(legend).toBeInTheDocument();
+    expect(within(legend).getByText("Up candle")).toBeInTheDocument();
+    expect(within(legend).getByText("Down candle")).toBeInTheDocument();
+    expect(within(legend).getByText("Buy")).toBeInTheDocument();
+    expect(screen.getByLabelText("TRENDING_UP regime marker")).toBeInTheDocument();
+    expect(screen.getByLabelText("buy trade marker")).toBeInTheDocument();
+    expect(screen.getByText("O $40,000.00")).toBeInTheDocument();
+
+    await user.hover(screen.getByLabelText(/open \$40,500.00 high \$41,500.00/));
+
+    expect(screen.getByText("O $40,500.00")).toBeInTheDocument();
+    expect(screen.getByText("C $39,800.00")).toBeInTheDocument();
+    expect(screen.getByText("no regime window")).toBeInTheDocument();
   });
 });
