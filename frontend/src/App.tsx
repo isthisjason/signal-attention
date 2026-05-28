@@ -1073,6 +1073,8 @@ function SeriesChart({
     .join(" ");
   const first = points[0];
   const last = points[points.length - 1];
+  const low = min;
+  const high = max;
 
   return (
     <div className="series-card">
@@ -1086,6 +1088,11 @@ function SeriesChart({
       <div className="series-meta">
         <span>{formatDateTime(first.timestamp)}</span>
         <span>{formatDateTime(last.timestamp)}</span>
+      </div>
+      <div className="series-summary" aria-label={`${title} chart summary`}>
+        <span>Low {formatValue(low)}</span>
+        <span>High {formatValue(high)}</span>
+        <span>Latest {formatValue(last.value)}</span>
       </div>
     </div>
   );

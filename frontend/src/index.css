@@ -490,6 +490,23 @@ select:focus {
   margin-top: 6px;
 }
 
+.series-summary {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 8px;
+}
+
+.series-summary span {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+  padding: 6px 7px;
+}
+
 .trade-detail {
   margin-top: 14px;
 }
