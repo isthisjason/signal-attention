@@ -580,17 +580,42 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
           return (
             <g key={c.openTime}>
               <line x1={wickX} x2={wickX} y1={hi} y2={lo} stroke="#7c8796" strokeWidth="1" />
-              <rect x={wickX - 2.5} y={Math.min(o, cl)} width="5" height={Math.max(1, Math.abs(cl - o))} fill={up ? "#28a745" : "#d73a49"} />
-              {point ? <circle cx={wickX} cy={y(c.high) - 6} r="2.5" fill={colorFor(point.regimeLabel)} /> : null}
+              <rect
+                x={wickX - 2.5}
+                y={Math.min(o, cl)}
+                width="5"
+                height={Math.max(1, Math.abs(cl - o))}
+                fill={up ? "#28a745" : "#d73a49"}
+              />
+              {point ? (
+                <circle aria-label={`${point.regimeLabel} regime marker`} cx={wickX} cy={y(c.high) - 6} r="2.5" fill={colorFor(point.regimeLabel)} />
+              ) : null}
             </g>
           );
         })}
         {replay.tradeMarkers.map((t) => {
           const idx = replay.candles.findIndex((c) => c.openTime === t.entryTime);
           if (idx < 0) return null;
-          return <circle key={t.tradeId} cx={x(idx)} cy={y(t.entryPrice)} r="3.5" fill={t.side === "BUY" ? "#2d6cdf" : "#e65a00"} />;
+          const markerX = x(idx);
+          const markerY = y(t.entryPrice);
+          return (
+            <g key={t.tradeId} aria-label={`${t.side.toLowerCase()} trade marker`}>
+              {t.side === "BUY" ? (
+                <path d={`M ${markerX} ${markerY - 6} L ${markerX + 5} ${markerY + 4} L ${markerX - 5} ${markerY + 4} Z`} fill="#2d6cdf" />
+              ) : (
+                <path d={`M ${markerX} ${markerY + 6} L ${markerX + 5} ${markerY - 4} L ${markerX - 5} ${markerY - 4} Z`} fill="#e65a00" />
+              )}
+            </g>
+          );
         })}
       </svg>
+      <div className="chart-legend" aria-label="Candlestick chart legend">
+        <span><i className="legend-swatch legend-up" /> Up candle</span>
+        <span><i className="legend-swatch legend-down" /> Down candle</span>
+        <span><i className="legend-dot legend-regime" /> Regime</span>
+        <span><i className="legend-triangle legend-buy" /> Buy</span>
+        <span><i className="legend-triangle legend-sell" /> Sell</span>
+      </div>
       <div className="series-meta">
         <span>{formatDateTime(firstCandle.openTime)}</span>
         <span>{formatDateTime(lastCandle.openTime)}</span>
