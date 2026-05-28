@@ -392,6 +392,26 @@ select:focus {
   font-size: 0.72rem;
 }
 
+.chart-state {
+  background: var(--surface-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  margin-top: 14px;
+  min-height: 104px;
+  padding: 16px;
+}
+
+.chart-state strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.chart-state p {
+  color: var(--muted);
+  margin: 0;
+}
+
 .chart-legend {
   align-items: center;
   color: var(--muted);

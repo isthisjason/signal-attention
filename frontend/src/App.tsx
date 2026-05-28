@@ -535,7 +535,11 @@ function RegimeReplayPanel({
           {busy ? "Loading" : "Run replay"}
         </button>
       </div>
-      {replay ? <CandlestickReplayChart replay={replay} /> : <p className="muted">Run replay to visualize regime windows and trades.</p>}
+      {replay ? (
+        <CandlestickReplayChart replay={replay} />
+      ) : (
+        <ChartState title="No assessment chart yet" message="Run replay after selecting a strategy and date range." />
+      )}
     </section>
   );
 }
@@ -1052,7 +1056,12 @@ function SeriesChart({
   formatValue: (value: number) => string;
 }) {
   if (points.length === 0) {
-    return <p className="muted">No {title.toLowerCase()} points are available yet.</p>;
+    return (
+      <ChartState
+        title={`${title} chart unavailable`}
+        message="Run a backtest with enough imported candles to populate this series."
+      />
+    );
   }
 
   const values = points.map((point) => point.value);
@@ -1448,9 +1457,21 @@ function AnomalyPanel({
           </div>
         </>
       ) : (
-        <p className="muted">Run this after importing enough candles. It is just a research warning, not a trade signal.</p>
+        <ChartState
+          title="No anomaly check yet"
+          message="Run this after importing enough candles. It is just a research warning, not a trade signal."
+        />
       )}
     </section>
+  );
+}
+
+function ChartState({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="chart-state">
+      <strong>{title}</strong>
+      <p>{message}</p>
+    </div>
   );
 }
 
