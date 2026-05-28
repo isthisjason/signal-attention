@@ -1,18 +1,20 @@
 # SignalAttention
 
-SignalAttention is a local trading strategy sandbox I built to practice backend API work, service boundaries, testing, and a little bit of ML-style analysis. It lets me import candle data, create a simple SMA crossover strategy, run a deterministic backtest, and ask a separate Python service for a risk score.
+SignalAttention is a local trading research sandbox I built because I wanted my first applied ML project to feel like a real system, not just a notebook. I have always found trading charts interesting, but I was more interested in the engineering question underneath them: how do you import messy market data, run a repeatable simulation, score risk without pretending to know the future, and leave an audit trail that explains what happened?
 
-This is not a trading bot. It does not connect to brokers, it does not place real orders, and it should not be read as investment advice. The point is to explore strategy behavior, risk, simulation, and audit trails in a local app.
+The name comes from the paper *Attention Is All You Need*. That paper made sequence modeling feel concrete to me: instead of treating data points as isolated rows, the model attends to relationships across a sequence. SignalAttention is not a production Transformer trading model, but that idea shaped the project. I wanted to build the backend and simulation foundation first, then add attention-inspired market-regime experiments in a way that stayed honest and reproducible.
 
-## What this is
+This is not a trading bot. It does not connect to brokers, place real orders, manage money, or give investment advice. The point is to explore strategy behavior, risk scoring, simulation, and ML-style analysis inside a local app I can run, inspect, and explain.
 
-The project is split into three pieces:
+## What I Built
+
+The project is split into three services:
 
 - `backend` is the Spring Boot API. It owns the database, strategy rules, candle imports, backtesting, paper trading, audit logs, and calls to the ML service.
 - `ml-service` is a FastAPI app. I kept it separate because I wanted the project to feel like a real backend talking to a separate analysis service, even though everything runs locally.
 - `frontend` is a React dashboard/workbench. It is not trying to be a polished trading terminal. It is mostly there so the demo flow is easier to click through.
 
-The first version was deliberately simple: one strategy type, one sample dataset, deterministic rules, and a local Docker setup. Later work adds risk policies, paper trading, market regime analysis, and optional torch experiments, but the default path is still meant to run on a normal CPU.
+The first version was deliberately simple: one strategy type, one sample dataset, deterministic rules, and a local Docker setup. Later work adds risk policies, paper trading, market-regime analysis, anomaly checks, chart feedback, and optional torch experiments, but the default path is still meant to run on a normal CPU.
 
 ## Stack
 
