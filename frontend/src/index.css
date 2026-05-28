@@ -381,6 +381,17 @@ select:focus {
   stroke-width: 3;
 }
 
+.chart-grid-line {
+  stroke: var(--border);
+  stroke-dasharray: 4 5;
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  fill: var(--muted);
+  font-size: 0.72rem;
+}
+
 .series-meta {
   color: var(--muted);
   font-size: 0.75rem;

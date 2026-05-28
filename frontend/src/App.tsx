@@ -544,20 +544,31 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
   if (!replay.candles.length) return null;
   const width = 900;
   const height = 280;
-  const pad = 20;
+  const pad = { top: 18, right: 72, bottom: 34, left: 18 };
   const highs = replay.candles.map((c) => c.high);
   const lows = replay.candles.map((c) => c.low);
   const min = Math.min(...lows);
   const max = Math.max(...highs);
   const span = max - min || 1;
-  const x = (i: number) => pad + (i / Math.max(1, replay.candles.length - 1)) * (width - pad * 2);
-  const y = (p: number) => height - pad - ((p - min) / span) * (height - pad * 2);
+  const x = (i: number) => pad.left + (i / Math.max(1, replay.candles.length - 1)) * (width - pad.left - pad.right);
+  const y = (p: number) => height - pad.bottom - ((p - min) / span) * (height - pad.top - pad.bottom);
   const midByTime = new Map(replay.points.map((p) => [p.windowEnd, p]));
   const colorFor = (label: string) => (label.includes("DOWN") ? "#cc3b3b" : label.includes("SIDE") ? "#9f7a28" : "#2a8f54");
+  const firstCandle = replay.candles[0];
+  const lastCandle = replay.candles[replay.candles.length - 1];
+  const priceTicks = [max, min + span / 2, min];
 
   return (
     <div className="series-card">
       <svg className="series-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Regime replay candlestick chart">
+        {priceTicks.map((tick) => (
+          <g key={tick.toFixed(6)}>
+            <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} className="chart-grid-line" />
+            <text x={width - pad.right + 10} y={y(tick) + 4} className="chart-axis-label">
+              {formatCurrency(tick)}
+            </text>
+          </g>
+        ))}
         {replay.candles.map((c, i) => {
           const wickX = x(i);
           const o = y(c.openPrice);
@@ -580,7 +591,10 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
           return <circle key={t.tradeId} cx={x(idx)} cy={y(t.entryPrice)} r="3.5" fill={t.side === "BUY" ? "#2d6cdf" : "#e65a00"} />;
         })}
       </svg>
-      <p className="muted">Dots above candles show regime windows, blue or orange markers show trade entries.</p>
+      <div className="series-meta">
+        <span>{formatDateTime(firstCandle.openTime)}</span>
+        <span>{formatDateTime(lastCandle.openTime)}</span>
+      </div>
     </div>
   );
 }
