@@ -211,7 +211,7 @@ The ML part is intentionally conservative. The default risk score and market reg
 
 ## What is not included
 
-This does not place real trades. That is intentional.
+This does not place real trades. That is intentional. I want the project to be useful as a simulator I can reason about, not something that can accidentally drift into real-money execution.
 
 - No broker or exchange integration
 - No custody, payments, or real-money order routing
@@ -220,11 +220,11 @@ This does not place real trades. That is intentional.
 - No background live trading scheduler
 - No custom user-submitted strategy code
 
-Paper trading here means simulated orders and manual candle replay. It is useful for testing the shape of the workflow, but it is still fake trading.
+Paper trading here means simulated orders and manual candle replay. It is useful for testing the shape of the workflow, charting assessments, and audit behavior, but it is still fake trading.
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, a simple anomaly check, baseline risk policies, paper-trading sessions, dashboard summary APIs, a React workbench, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, a simple anomaly check, baseline risk policies, paper-trading sessions, dashboard summary APIs, candlestick assessment feedback in the React workbench, and a smoke script for the running stack.
 
 Backend, ML service, frontend, frontend build, smoke-helper tests, Compose config, Compose startup, and the running-stack smoke demo were verified locally on May 27, 2026.
 
