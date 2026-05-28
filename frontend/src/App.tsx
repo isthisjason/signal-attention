@@ -541,6 +541,7 @@ function RegimeReplayPanel({
 }
 
 function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   if (!replay.candles.length) return null;
   const width = 900;
   const height = 280;
@@ -557,6 +558,8 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
   const firstCandle = replay.candles[0];
   const lastCandle = replay.candles[replay.candles.length - 1];
   const priceTicks = [max, min + span / 2, min];
+  const selectedCandle = replay.candles[Math.min(selectedIndex, replay.candles.length - 1)];
+  const selectedRegime = midByTime.get(selectedCandle.openTime);
 
   return (
     <div className="series-card">
@@ -578,7 +581,17 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
           const up = c.close >= c.openPrice;
           const point = midByTime.get(c.openTime);
           return (
-            <g key={c.openTime}>
+            <g
+              key={c.openTime}
+              className="candle-hit-target"
+              role="button"
+              tabIndex={0}
+              aria-label={`${formatDateTime(c.openTime)} open ${formatCurrency(c.openPrice)} high ${formatCurrency(c.high)} low ${formatCurrency(c.low)} close ${formatCurrency(c.close)}`}
+              onBlur={() => setSelectedIndex(i)}
+              onFocus={() => setSelectedIndex(i)}
+              onMouseEnter={() => setSelectedIndex(i)}
+            >
+              <rect x={wickX - 6} y={pad.top} width="12" height={height - pad.top - pad.bottom} fill="transparent" />
               <line x1={wickX} x2={wickX} y1={hi} y2={lo} stroke="#7c8796" strokeWidth="1" />
               <rect
                 x={wickX - 2.5}
@@ -586,6 +599,8 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
                 width="5"
                 height={Math.max(1, Math.abs(cl - o))}
                 fill={up ? "#28a745" : "#d73a49"}
+                stroke={selectedIndex === i ? "#111827" : "transparent"}
+                strokeWidth="1.5"
               />
               {point ? (
                 <circle aria-label={`${point.regimeLabel} regime marker`} cx={wickX} cy={y(c.high) - 6} r="2.5" fill={colorFor(point.regimeLabel)} />
@@ -619,6 +634,14 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
       <div className="series-meta">
         <span>{formatDateTime(firstCandle.openTime)}</span>
         <span>{formatDateTime(lastCandle.openTime)}</span>
+      </div>
+      <div className="candle-detail" aria-live="polite">
+        <span>{formatDateTime(selectedCandle.openTime)}</span>
+        <span>O {formatCurrency(selectedCandle.openPrice)}</span>
+        <span>H {formatCurrency(selectedCandle.high)}</span>
+        <span>L {formatCurrency(selectedCandle.low)}</span>
+        <span>C {formatCurrency(selectedCandle.close)}</span>
+        <strong>{selectedRegime?.regimeLabel ? formatAction(selectedRegime.regimeLabel) : "no regime window"}</strong>
       </div>
     </div>
   );

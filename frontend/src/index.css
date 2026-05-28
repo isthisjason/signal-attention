@@ -450,6 +450,40 @@ select:focus {
   border-top: 10px solid #e65a00;
 }
 
+.candle-hit-target {
+  cursor: crosshair;
+  outline: none;
+}
+
+.candle-hit-target:focus-visible rect[fill="transparent"] {
+  stroke: var(--accent);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+}
+
+.candle-detail {
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-top: 10px;
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
+.candle-detail span,
+.candle-detail strong {
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.candle-detail span {
+  color: var(--muted);
+}
+
 .series-meta {
   color: var(--muted);
   font-size: 0.75rem;
