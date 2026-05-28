@@ -25,6 +25,18 @@ The first version was deliberately simple: one strategy type, one sample dataset
 - Docker Compose for running the whole thing locally
 - Swagger/OpenAPI for poking at the backend API
 
+## How the ML Fits
+
+The ML side of this project is intentionally cautious. I did not want to build a black-box price predictor and pretend it could tell someone what to buy. The safer and more useful question is: given a strategy run and recent candles, does this look fragile, risky, unusual, or regime-dependent?
+
+The default ML service answers that with inspectable rules:
+
+- Strategy risk scoring looks at backtest metrics such as drawdown, trade count, volatility, win rate, and profit factor, then returns a score, label, and reasons.
+- Market-regime classification looks at recent candle sequences and summarizes trend, volatility, SMA distance, returns, and volume behavior.
+- Anomaly checks flag unusual recent candle behavior as research warnings, not trade signals.
+
+The attention idea matters most in the sequence framing. Candle data is temporal: the meaning of one candle depends on what came before it. The optional torch path experiments with that idea by training a small local market-regime model over candle windows, but the project keeps the rule-based path as the default because it is easier to reproduce, explain, and test.
+
 ## What you need locally
 
 - Docker Desktop with WSL integration enabled
