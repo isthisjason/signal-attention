@@ -18,9 +18,10 @@ from app.services.market_regime_torch_adapter import (
     validate_artifact_metadata,
 )
 from app.services.market_regime_experiment import (
+    append_or_merge_run,
+    chronological_split_index,
     describe_path,
     load_experiment_registry,
-    upsert_experiment_entry,
     write_experiment_registry,
 )
 from app.services.market_regime_torch_features import (
@@ -38,6 +39,7 @@ def main() -> None:
     metadata = validate_artifact_metadata(artifact)
     candles = load_candles(args.csv_path)
     examples = build_examples(candles, int(metadata["sequenceLength"]))
+    examples, evaluation_scope = apply_holdout(examples, args.holdout_ratio)
 
     model = build_transformer_model(
         torch,
@@ -50,6 +52,8 @@ def main() -> None:
     model.eval()
 
     predictions = predict_examples(torch, model, metadata, examples, device)
+    model_metrics = calculate_metrics(predictions, metadata["labels"])
+    baseline = majority_class_baseline(predictions, metadata["labels"])
     report = {
         "artifact": describe_path(args.artifact),
         "dataset": describe_path(args.csv_path),
@@ -57,14 +61,23 @@ def main() -> None:
         "featureOrder": metadata["featureOrder"],
         "labels": metadata["labels"],
         "windowCount": len(examples),
+        "evaluationScope": evaluation_scope,
+        "groundTruthSource": "rule-based-labels",
+        "note": (
+            "Expected labels come from the deterministic rule based classifier, "
+            "so this measures agreement with those rules, not an independent ground truth. "
+            "Read accuracy alongside the majority class baseline and lift."
+        ),
         "windowRanges": window_ranges_from_predictions(predictions),
         "labelDistribution": label_distribution_from_predictions(predictions, metadata["labels"]),
-        "metrics": calculate_metrics(predictions, metadata["labels"]),
+        "metrics": model_metrics,
+        "baseline": baseline,
+        "liftOverBaseline": round(model_metrics["accuracy"] - baseline["metrics"]["accuracy"], 4),
         "samples": predictions[: args.sample_count],
     }
     write_report(args.output, report)
     if args.experiment_name:
-        register_evaluation_report(args, report)
+        register_evaluation_report(args, report, metadata.get("runId"))
 
 
 def parse_args() -> argparse.Namespace:
@@ -73,9 +86,50 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--sample-count", type=int, default=10)
+    parser.add_argument(
+        "--holdout-ratio",
+        type=float,
+        default=None,
+        help="Score only the later chronological fraction of windows (for example 0.2).",
+    )
     parser.add_argument("--experiment-name")
     parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
     return parser.parse_args()
+
+
+def apply_holdout(examples: list[dict[str, Any]], holdout_ratio: float | None) -> tuple[list[dict[str, Any]], str]:
+    if holdout_ratio is None:
+        return examples, "full"
+    if len(examples) < 2:
+        return examples, "full"
+    split_index = chronological_split_index(len(examples), holdout_ratio)
+    return examples[split_index:], "holdout"
+
+
+def majority_class_baseline(predictions: list[dict[str, Any]], labels: list[str]) -> dict[str, Any]:
+    """Predict the single most common expected label for every window.
+
+    This is the honest floor a sequence model has to beat. If it cannot, the model
+    is not learning anything the label frequencies do not already tell us.
+    """
+    expected_counts = {label: 0 for label in labels}
+    for prediction in predictions:
+        expected_counts[prediction["expectedLabel"]] += 1
+    majority_label = max(labels, key=lambda label: expected_counts[label]) if predictions else (labels[0] if labels else None)
+
+    baseline_predictions = [
+        {
+            "expectedLabel": prediction["expectedLabel"],
+            "predictedLabel": majority_label,
+            "confidence": 0,
+        }
+        for prediction in predictions
+    ]
+    return {
+        "strategy": "majority-class",
+        "label": majority_label,
+        "metrics": calculate_metrics(baseline_predictions, labels),
+    }
 
 
 def load_candles(csv_path: Path) -> list[MarketRegimeCandle]:
@@ -217,10 +271,11 @@ def write_report(output: Path | None, report: dict[str, Any]) -> None:
     output.write_text(payload, encoding="utf-8")
 
 
-def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, Any]) -> dict[str, Any]:
+def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, Any], run_id: str | None = None) -> dict[str, Any]:
     metrics = report["metrics"]
     return {
         "name": args.experiment_name,
+        "runId": run_id,
         "evaluation": {
             "dataset": report["dataset"],
             "artifact": report["artifact"],
@@ -232,14 +287,18 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
             "confidence": metrics["confidence"],
             "labelDistribution": report["labelDistribution"],
             "windowRanges": report["windowRanges"],
+            "evaluationScope": report.get("evaluationScope"),
+            "baselineAccuracy": report.get("baseline", {}).get("metrics", {}).get("accuracy"),
+            "baselineLabel": report.get("baseline", {}).get("label"),
+            "liftOverBaseline": report.get("liftOverBaseline"),
         },
     }
 
 
-def register_evaluation_report(args: argparse.Namespace, report: dict[str, Any]) -> None:
+def register_evaluation_report(args: argparse.Namespace, report: dict[str, Any], run_id: str | None) -> None:
     registry_path = args.experiments_dir / "index.json"
     registry = load_experiment_registry(registry_path)
-    registry = upsert_experiment_entry(registry, build_evaluation_registry_entry(args, report))
+    registry = append_or_merge_run(registry, build_evaluation_registry_entry(args, report, run_id))
     write_experiment_registry(registry_path, registry)
 
 
