@@ -92,7 +92,11 @@ python3 -m pip install -r requirements.txt
 python3 -m pytest
 ```
 
-Optional torch dependencies for model-backed market regime experiments:
+## Optional Torch Experiments
+
+The normal demo does not need PyTorch. I kept the torch path separate because I wanted a place to experiment with sequence models without making the project harder to run.
+
+Install optional torch dependencies only when working on model-backed market-regime experiments:
 
 ```bash
 cd ml-service
@@ -115,7 +119,9 @@ python scripts/evaluate_market_regime_model.py \
   --experiment-name btc-sample-v1
 ```
 
-The torch path is optional on purpose. Training writes a `models/market-regime.pt.manifest.json` file beside the artifact, and `--experiment-name` also updates `models/experiments/index.json`. The default service still uses the CPU-safe rule classifier because I do not want the normal demo to depend on GPU setup.
+The training command writes the model artifact and a manifest beside it. The evaluation command writes a separate report with accuracy, per-label metrics, a confusion matrix, confidence summary, and sample predictions. When `--experiment-name` is provided, both commands also update `models/experiments/index.json`, which gives me a small local registry of what I trained, how it was evaluated, and where the artifacts live.
+
+The torch path is optional on purpose. The default service still uses the CPU-safe rule classifier because I do not want the normal demo to depend on GPU setup, large dependencies, or a model artifact that only exists on my machine.
 
 Start the full local stack:
 
