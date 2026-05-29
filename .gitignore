@@ -1,4 +1,5 @@
 # Local tool state
+.omc/
 .omx/
 
 # Environment and secrets
