@@ -25,6 +25,18 @@ The first version was deliberately simple: one strategy type, one sample dataset
 - Docker Compose for running the whole thing locally
 - Swagger/OpenAPI for poking at the backend API
 
+## How the ML Fits
+
+The ML side of this project is intentionally cautious. I did not want to build a black-box price predictor and pretend it could tell someone what to buy. The safer and more useful question is: given a strategy run and recent candles, does this look fragile, risky, unusual, or regime-dependent?
+
+The default ML service answers that with inspectable rules:
+
+- Strategy risk scoring looks at backtest metrics such as drawdown, trade count, volatility, win rate, and profit factor, then returns a score, label, and reasons.
+- Market-regime classification looks at recent candle sequences and summarizes trend, volatility, SMA distance, returns, and volume behavior.
+- Anomaly checks flag unusual recent candle behavior as research warnings, not trade signals.
+
+The attention idea matters most in the sequence framing. Candle data is temporal: the meaning of one candle depends on what came before it. The optional torch path experiments with that idea by training a small local market-regime model over candle windows, but the project keeps the rule-based path as the default because it is easier to reproduce, explain, and test.
+
 ## What you need locally
 
 - Docker Desktop with WSL integration enabled
@@ -80,7 +92,11 @@ python3 -m pip install -r requirements.txt
 python3 -m pytest
 ```
 
-Optional torch dependencies for model-backed market regime experiments:
+## Optional Torch Experiments
+
+The normal demo does not need PyTorch. I kept the torch path separate because I wanted a place to experiment with sequence models without making the project harder to run.
+
+Install optional torch dependencies only when working on model-backed market-regime experiments:
 
 ```bash
 cd ml-service
@@ -95,15 +111,27 @@ python scripts/train_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --output models/market-regime.pt \
   --cpu \
+  --seed 42 \
+  --batch-size 32 \
+  --patience 10 \
   --experiment-name btc-sample-v1
 python scripts/evaluate_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --artifact models/market-regime.pt \
   --output models/market-regime-evaluation.json \
+  --holdout-ratio 0.2 \
   --experiment-name btc-sample-v1
+python scripts/compare_market_regime_experiments.py \
+  --experiments-dir models/experiments
 ```
 
-The torch path is optional on purpose. Training writes a `models/market-regime.pt.manifest.json` file beside the artifact, and `--experiment-name` also updates `models/experiments/index.json`. The default service still uses the CPU-safe rule classifier because I do not want the normal demo to depend on GPU setup.
+The training command runs a seeded, mini batch loop with per epoch validation and early stopping (controlled by `--patience`), then keeps the best epoch. The saved model uses light dropout and sinusoidal positional encoding, and you can turn those off with `--dropout 0` and `--no-positional-encoding` when you want to compare. The artifact and a manifest are written side by side, and the manifest records the seed, git commit, torch version, and the per epoch history so a run can be reproduced.
+
+The evaluation command writes a report with accuracy, per label metrics, a confusion matrix, and a confidence summary. It also reports a majority class baseline and the lift over that baseline, because the expected labels come from the rule based classifier rather than independent ground truth, so the model only matters if it beats simply guessing the most common regime. Pass `--holdout-ratio` to score only the later, unseen tail of the data.
+
+When `--experiment-name` is provided, both commands update `models/experiments/index.json`. Each run is kept under its own run id rather than overwriting the previous one, so the registry holds a real history. The compare script reads that registry and prints a table sorted by accuracy with the seed, dropout, positional encoding, git commit, and lift columns so I can see which run did best and why.
+
+The torch path is optional on purpose. The default service still uses the CPU-safe rule classifier because I do not want the normal demo to depend on GPU setup, large dependencies, or a model artifact that only exists on my machine.
 
 Start the full local stack:
 
@@ -193,7 +221,7 @@ The ML part is intentionally conservative. The default risk score and market reg
 
 ## What is not included
 
-This does not place real trades. That is intentional.
+This does not place real trades. That is intentional. I want the project to be useful as a simulator I can reason about, not something that can accidentally drift into real-money execution.
 
 - No broker or exchange integration
 - No custody, payments, or real-money order routing
@@ -202,12 +230,12 @@ This does not place real trades. That is intentional.
 - No background live trading scheduler
 - No custom user-submitted strategy code
 
-Paper trading here means simulated orders and manual candle replay. It is useful for testing the shape of the workflow, but it is still fake trading.
+Paper trading here means simulated orders and manual candle replay. It is useful for testing the shape of the workflow, charting assessments, and audit behavior, but it is still fake trading.
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, a simple anomaly check, baseline risk policies, paper-trading sessions, dashboard summary APIs, a React workbench, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule-based ML risk scoring, CPU-safe market regime classification, optional torch-backed regime inference, a simple anomaly check, baseline risk policies, paper-trading sessions, dashboard summary APIs, candlestick assessment feedback in the React workbench, and a smoke script for the running stack.
 
-Backend, ML service, frontend, frontend build, smoke-helper tests, Compose config, Compose startup, and the running-stack smoke demo were verified locally on May 27, 2026.
+Backend, ML service, frontend, frontend build, and smoke-helper tests were verified locally on May 28, 2026. Compose and the running-stack smoke demo were last verified on May 27, 2026; they were not rerun in the current WSL distro because Docker CLI is unavailable here.
 
 The next work I would do is mostly polish and research depth: verify the full Compose demo in a Docker-enabled environment, keep improving the optional market-regime experiment tracking, and make the dashboard charts easier to inspect.

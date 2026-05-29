@@ -8,7 +8,7 @@ docker compose up --build
 
 The React dashboard is available at `http://localhost:5173` when the frontend service or local Vite dev server is running.
 
-The dashboard can drive the same flow as the curl commands below: import candles, create the SMA strategy, run the backtest, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
+The dashboard can drive the same flow as the curl commands below: import candles, create the SMA strategy, run the backtest, inspect equity/drawdown charts, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
 
 To run the same workflow as an automated smoke check:
 
@@ -69,6 +69,8 @@ curl http://localhost:8080/api/backtests/BACKTEST_ID/metrics
 curl http://localhost:8080/api/backtests/BACKTEST_ID/equity-series
 curl http://localhost:8080/api/backtests/BACKTEST_ID/drawdown-series
 ```
+
+In the dashboard, the backtest panel shows the same equity and drawdown series with latest, high, and low summaries. These charts are visual feedback for the assessment; they are not trade recommendations.
 
 ## 5. Score ML Risk
 
@@ -198,8 +200,10 @@ The dashboard also includes workbench controls for the main demo flow:
 - Import `data/btc-usd-1h-sample.csv`.
 - Create a default BTC-USD 1h SMA crossover strategy.
 - Run the January 1-10, 2024 backtest.
+- Review the equity and drawdown chart summaries after the backtest.
 - Score the latest backtest with the ML risk endpoint.
 - Create a paper session, start or stop it, submit manual paper orders, and replay imported candles.
+- Run regime replay to inspect the candlestick assessment chart with regime and trade markers.
 
 ## Market Regime Analysis
 
@@ -224,6 +228,8 @@ curl -X POST http://localhost:8080/api/anomaly-check \
 ```
 
 The anomaly response includes a score, label, reasons, derived features, and classifier source. It is a research warning only, not a trade signal.
+
+The dashboard regime replay panel adds a candlestick assessment chart over the selected date range. The chart shows candle direction, price context, regime windows, and backtest trade markers when a backtest is available.
 
 For optional torch experiments, install `ml-service/requirements-torch.txt`, train an artifact, and evaluate it before enabling torch mode:
 

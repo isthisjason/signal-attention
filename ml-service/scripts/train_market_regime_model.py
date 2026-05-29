@@ -12,8 +12,10 @@ from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeReq
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
 from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, build_experiment_manifest
 from app.services.market_regime_experiment import (
+    append_or_merge_run,
+    chronological_split_index,
+    generate_run_id,
     load_experiment_registry,
-    upsert_experiment_entry,
     write_experiment_registry,
 )
 from app.services.market_regime_torch_features import (
@@ -29,6 +31,8 @@ LABELS = ["SIDEWAYS", "TRENDING_UP", "TRENDING_DOWN", "HIGH_VOLATILITY"]
 def main() -> None:
     args = parse_args()
     torch = load_torch()
+    seed_everything(torch, args.seed)
+    run_id = generate_run_id()
     candles = load_candles(args.csv_path)
     windows, labels = build_training_windows(candles, args.sequence_length)
     if not windows:
@@ -46,6 +50,7 @@ def main() -> None:
         for window in validation_windows
     ]
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
+    model_config = build_model_config(args)
 
     inputs = torch.tensor(normalized_train_windows, dtype=torch.float32, device=device)
     targets = torch.tensor(train_labels, dtype=torch.long, device=device)
@@ -53,38 +58,39 @@ def main() -> None:
         torch,
         feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
         class_count=len(LABELS),
-        config=DEFAULT_TORCH_MODEL_CONFIG,
+        config=model_config,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     loss_function = torch.nn.CrossEntropyLoss()
 
-    model.train()
-    for _ in range(args.epochs):
-        optimizer.zero_grad()
-        loss = loss_function(model(inputs), targets)
-        loss.backward()
-        optimizer.step()
-    final_train_loss = float(loss.item())
-
-    model.eval()
-    validation_predictions = predict_validation_labels(
+    training_outcome = train_with_early_stopping(
         torch,
         model,
+        optimizer,
+        loss_function,
+        inputs,
+        targets,
         normalized_validation_windows,
-        device,
+        validation_labels,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        patience=args.patience,
+        seed=args.seed,
+        device=device,
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
             "metadata": {
+                "runId": run_id,
                 "modelVersion": args.model_version,
                 "featureVersion": MARKET_REGIME_FEATURE_VERSION,
                 "sequenceLength": args.sequence_length,
                 "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
                 "labels": LABELS,
                 "normalization": {"mean": means, "std": stds},
-                "model": DEFAULT_TORCH_MODEL_CONFIG,
+                "model": model_config,
             },
             "modelStateDict": model.cpu().state_dict(),
         },
@@ -92,17 +98,149 @@ def main() -> None:
     )
     manifest_path, manifest = write_experiment_manifest(
         args,
+        candles,
         windows,
         train_windows,
         validation_windows,
         train_labels,
         validation_labels,
-        final_train_loss,
-        validation_accuracy(validation_predictions, validation_labels),
+        model_config,
+        training_outcome,
+        reproducibility_block(args.seed, getattr(torch, "__version__", None)),
         str(device),
     )
     if args.experiment_name:
-        register_training_experiment(args, manifest_path, manifest)
+        register_training_experiment(args, manifest_path, manifest, run_id)
+
+
+def seed_everything(torch, seed: int) -> None:
+    import random
+
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def build_model_config(args: argparse.Namespace) -> dict:
+    config = dict(DEFAULT_TORCH_MODEL_CONFIG)
+    if args.dropout is not None:
+        config["dropout"] = args.dropout
+    if args.no_positional_encoding:
+        config["usePositionalEncoding"] = False
+    return config
+
+
+def build_minibatches(item_count: int, batch_size: int, seed: int) -> list[list[int]]:
+    """Return a deterministic shuffled set of index batches for one epoch."""
+    import random
+
+    indices = list(range(item_count))
+    random.Random(seed).shuffle(indices)
+    return [indices[start : start + batch_size] for start in range(0, item_count, batch_size)]
+
+
+def select_best_epoch(history: list[dict[str, float]]) -> int:
+    """Return the 1 based epoch with the highest validation accuracy.
+
+    Ties keep the earliest epoch so we favour the simpler, earlier model.
+    """
+    best_index = 0
+    for index in range(1, len(history)):
+        if history[index]["valAccuracy"] > history[best_index]["valAccuracy"]:
+            best_index = index
+    return best_index + 1
+
+
+def train_with_early_stopping(
+    torch,
+    model,
+    optimizer,
+    loss_function,
+    inputs,
+    targets,
+    normalized_validation_windows: list[list[list[float]]],
+    validation_labels: list[int],
+    *,
+    epochs: int,
+    batch_size: int,
+    patience: int,
+    seed: int,
+    device,
+) -> dict:
+    item_count = int(inputs.shape[0])
+    history: list[dict[str, float]] = []
+    best_val_accuracy = -1.0
+    best_state = None
+    best_epoch = 0
+    epochs_without_improvement = 0
+    early_stopped = False
+
+    for epoch in range(1, epochs + 1):
+        model.train()
+        batch_losses: list[float] = []
+        for batch_indices in build_minibatches(item_count, batch_size, seed + epoch):
+            index_tensor = torch.tensor(batch_indices, dtype=torch.long, device=device)
+            batch_inputs = inputs.index_select(0, index_tensor)
+            batch_targets = targets.index_select(0, index_tensor)
+            optimizer.zero_grad()
+            loss = loss_function(model(batch_inputs), batch_targets)
+            loss.backward()
+            optimizer.step()
+            batch_losses.append(float(loss.item()))
+
+        train_loss = round(sum(batch_losses) / len(batch_losses), 6) if batch_losses else 0.0
+        model.eval()
+        predictions = predict_validation_labels(torch, model, normalized_validation_windows, device)
+        val_accuracy = validation_accuracy(predictions, validation_labels)
+        val_loss = validation_loss(torch, model, loss_function, normalized_validation_windows, validation_labels, device)
+        history.append(
+            {
+                "epoch": epoch,
+                "trainLoss": train_loss,
+                "valLoss": val_loss,
+                "valAccuracy": val_accuracy,
+            }
+        )
+
+        if val_accuracy > best_val_accuracy:
+            best_val_accuracy = val_accuracy
+            best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
+            best_epoch = epoch
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= patience:
+                early_stopped = True
+                break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+
+    best_record = history[best_epoch - 1] if history else {"trainLoss": 0.0, "valAccuracy": 0.0}
+    return {
+        "epochHistory": history,
+        "bestEpoch": best_epoch,
+        "earlyStopped": early_stopped,
+        "finalTrainLoss": best_record["trainLoss"],
+        "validationAccuracy": best_record["valAccuracy"],
+    }
+
+
+def validation_loss(
+    torch,
+    model,
+    loss_function,
+    normalized_validation_windows: list[list[list[float]]],
+    validation_labels: list[int],
+    device,
+) -> float:
+    if not normalized_validation_windows:
+        return 0.0
+    with torch.no_grad():
+        inputs = torch.tensor(normalized_validation_windows, dtype=torch.float32, device=device)
+        targets = torch.tensor(validation_labels, dtype=torch.long, device=device)
+        return round(float(loss_function(model(inputs), targets).item()), 6)
 
 
 def parse_args() -> argparse.Namespace:
@@ -113,28 +251,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument("--validation-ratio", type=float, default=0.2)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--patience", type=int, default=10, help="Stop after this many epochs without validation improvement.")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--dropout", type=float, default=None, help="Override the model dropout (defaults to the model config value).")
+    parser.add_argument("--no-positional-encoding", action="store_true", help="Disable sinusoidal positional encoding.")
     parser.add_argument("--model-version", default="local-transformer-v1")
     parser.add_argument("--experiment-name")
     parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
     parser.add_argument("--cpu", action="store_true")
     args = parser.parse_args()
     validate_validation_ratio(args.validation_ratio)
+    if args.batch_size <= 0:
+        raise SystemExit("--batch-size must be greater than 0")
+    if args.patience <= 0:
+        raise SystemExit("--patience must be greater than 0")
     return args
 
 
 def validate_validation_ratio(validation_ratio: float) -> None:
     if validation_ratio <= 0 or validation_ratio >= 1:
         raise SystemExit("--validation-ratio must be greater than 0 and less than 1")
-
-
-def chronological_split_index(item_count: int, validation_ratio: float) -> int:
-    validate_validation_ratio(validation_ratio)
-    if item_count < 2:
-        raise ValueError("at least two windows are required for a train/validation split")
-    validation_count = max(1, round(item_count * validation_ratio))
-    if validation_count >= item_count:
-        validation_count = item_count - 1
-    return item_count - validation_count
 
 
 def split_training_windows(items: list, validation_ratio: float) -> tuple[list, list]:
@@ -245,15 +382,45 @@ def validation_accuracy(predictions: list[dict[str, float | int]], expected_labe
     return round(correct / len(expected_labels), 4)
 
 
+def git_commit() -> str | None:
+    """Best effort current commit hash, None when git is unavailable."""
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    commit = result.stdout.strip()
+    return commit or None
+
+
+def reproducibility_block(seed: int, torch_version: str | None) -> dict:
+    import platform
+
+    return {
+        "seed": seed,
+        "gitCommit": git_commit(),
+        "torchVersion": torch_version,
+        "python": platform.python_version(),
+    }
+
+
 def write_experiment_manifest(
     args: argparse.Namespace,
+    candles: list[MarketRegimeCandle],
     windows: list[list[list[float]]],
     train_windows: list[list[list[float]]],
     validation_windows: list[list[list[float]]],
     train_labels: list[int],
     validation_labels: list[int],
-    final_train_loss: float,
-    validation_accuracy_value: float,
+    model_config: dict,
+    training_outcome: dict,
+    reproducibility: dict,
     device: str,
 ) -> tuple[Path, dict]:
     manifest = build_experiment_manifest(
@@ -269,8 +436,13 @@ def write_experiment_manifest(
         training={
             "epochs": args.epochs,
             "learningRate": args.learning_rate,
+            "batchSize": args.batch_size,
+            "patience": args.patience,
             "modelVersion": args.model_version,
-            "model": DEFAULT_TORCH_MODEL_CONFIG,
+            "model": model_config,
+            "epochHistory": training_outcome["epochHistory"],
+            "bestEpoch": training_outcome["bestEpoch"],
+            "earlyStopped": training_outcome["earlyStopped"],
         },
         window_count=len(windows),
         train_window_count=len(train_windows),
@@ -278,14 +450,15 @@ def write_experiment_manifest(
         validation_ratio=args.validation_ratio,
         train_label_distribution=label_distribution(train_labels, LABELS),
         validation_label_distribution=label_distribution(validation_labels, LABELS),
-        final_train_loss=round(final_train_loss, 6),
-        validation_accuracy=validation_accuracy_value,
+        final_train_loss=training_outcome["finalTrainLoss"],
+        validation_accuracy=training_outcome["validationAccuracy"],
         window_ranges=window_time_ranges(
             candles,
             args.sequence_length,
             len(train_windows),
             len(validation_windows),
         ),
+        reproducibility=reproducibility,
         device=device,
     )
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
@@ -293,9 +466,11 @@ def write_experiment_manifest(
     return manifest_path, manifest
 
 
-def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path, manifest: dict) -> dict:
+def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path, manifest: dict, run_id: str) -> dict:
+    training = manifest.get("training", {})
     return {
         "name": args.experiment_name,
+        "runId": run_id,
         "schemaVersion": manifest["schemaVersion"],
         "generatedAt": manifest["generatedAt"],
         "dataset": manifest["dataset"],
@@ -306,12 +481,17 @@ def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path,
         "sequenceLength": args.sequence_length,
         "labels": manifest["labels"],
         "windowRanges": manifest["windowRanges"],
+        "reproducibility": manifest.get("reproducibility"),
         "training": {
             "trainWindowCount": manifest["trainWindowCount"],
             "validationWindowCount": manifest["validationWindowCount"],
             "validationRatio": manifest["validationRatio"],
             "finalTrainLoss": manifest["finalTrainLoss"],
             "validationAccuracy": manifest["validationAccuracy"],
+            "bestEpoch": training.get("bestEpoch"),
+            "earlyStopped": training.get("earlyStopped"),
+            "dropout": training.get("model", {}).get("dropout"),
+            "usePositionalEncoding": training.get("model", {}).get("usePositionalEncoding"),
         },
     }
 
@@ -341,10 +521,10 @@ def summarize_time_range(values: list[str]) -> dict[str, str | None]:
     return {"firstWindowEnd": values[0], "lastWindowEnd": values[-1]}
 
 
-def register_training_experiment(args: argparse.Namespace, manifest_path: Path, manifest: dict) -> None:
+def register_training_experiment(args: argparse.Namespace, manifest_path: Path, manifest: dict, run_id: str) -> None:
     registry_path = args.experiments_dir / "index.json"
     registry = load_experiment_registry(registry_path)
-    registry = upsert_experiment_entry(registry, build_training_registry_entry(args, manifest_path, manifest))
+    registry = append_or_merge_run(registry, build_training_registry_entry(args, manifest_path, manifest, run_id))
     write_experiment_registry(registry_path, registry)
 
 

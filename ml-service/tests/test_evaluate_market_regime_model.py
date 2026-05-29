@@ -2,9 +2,11 @@ from argparse import Namespace
 
 import scripts.evaluate_market_regime_model as evaluation_script
 from scripts.evaluate_market_regime_model import (
+    apply_holdout,
     build_evaluation_registry_entry,
     calculate_metrics,
     label_distribution_from_predictions,
+    majority_class_baseline,
     window_ranges_from_predictions,
 )
 
@@ -54,10 +56,15 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
         }
     }
 
-    entry = build_evaluation_registry_entry(args, report)
+    report["evaluationScope"] = "holdout"
+    report["baseline"] = {"label": "SIDEWAYS", "metrics": {"accuracy": 0.5}}
+    report["liftOverBaseline"] = 0.25
+
+    entry = build_evaluation_registry_entry(args, report, "run-123")
 
     assert entry == {
         "name": "baseline",
+        "runId": "run-123",
         "evaluation": {
             "dataset": {"path": str(tmp_path / "candles.csv"), "name": "candles.csv"},
             "artifact": {"path": str(tmp_path / "market-regime.pt"), "name": "market-regime.pt"},
@@ -72,8 +79,45 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
                 "firstWindowEnd": "2024-01-01T00:00:00+00:00",
                 "lastWindowEnd": "2024-01-01T03:00:00+00:00",
             },
+            "evaluationScope": "holdout",
+            "baselineAccuracy": 0.5,
+            "baselineLabel": "SIDEWAYS",
+            "liftOverBaseline": 0.25,
         },
     }
+
+
+def test_majority_class_baseline_predicts_dominant_label() -> None:
+    predictions = [
+        {"expectedLabel": "SIDEWAYS", "predictedLabel": "SIDEWAYS"},
+        {"expectedLabel": "SIDEWAYS", "predictedLabel": "TRENDING_UP"},
+        {"expectedLabel": "TRENDING_UP", "predictedLabel": "TRENDING_UP"},
+    ]
+
+    baseline = majority_class_baseline(predictions, ["SIDEWAYS", "TRENDING_UP"])
+
+    assert baseline["strategy"] == "majority-class"
+    assert baseline["label"] == "SIDEWAYS"
+    # Two of three windows are SIDEWAYS, so always guessing SIDEWAYS scores 2/3.
+    assert baseline["metrics"]["accuracy"] == round(2 / 3, 4)
+
+
+def test_apply_holdout_returns_full_scope_when_ratio_is_none() -> None:
+    examples = [{"openTime": str(index)} for index in range(5)]
+
+    result, scope = apply_holdout(examples, None)
+
+    assert scope == "full"
+    assert result == examples
+
+
+def test_apply_holdout_keeps_only_the_later_chronological_tail() -> None:
+    examples = [{"openTime": str(index)} for index in range(10)]
+
+    result, scope = apply_holdout(examples, 0.2)
+
+    assert scope == "holdout"
+    assert [example["openTime"] for example in result] == ["8", "9"]
 
 
 def test_calculate_metrics_includes_counts() -> None:

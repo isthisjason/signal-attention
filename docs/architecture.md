@@ -66,14 +66,17 @@ pip install -r requirements-torch.txt
 python scripts/train_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --output models/market-regime.pt \
-  --cpu
+  --cpu --seed 42 --batch-size 32 --patience 10
 python scripts/evaluate_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --artifact models/market-regime.pt \
-  --output models/market-regime-evaluation.json
+  --output models/market-regime-evaluation.json \
+  --holdout-ratio 0.2
+python scripts/compare_market_regime_experiments.py \
+  --experiments-dir models/experiments
 ```
 
-The training command saves `models/market-regime.pt.manifest.json` beside the artifact. The evaluation command saves accuracy, per-label metrics, confusion matrix, confidence summary, and sample predictions. Torch-mode API responses include optional provenance fields so the dashboard can identify mode, model version, feature version, sequence length, and artifact name.
+The training command runs a seeded, mini batch loop with per epoch validation and early stopping, keeps the best epoch, and saves `models/market-regime.pt.manifest.json` beside the artifact with the seed, git commit, torch version, model config, and per epoch history. The model uses light dropout and sinusoidal positional encoding by default, both adjustable from the command line. The evaluation command saves accuracy, per label metrics, a confusion matrix, a confidence summary, and sample predictions, plus a majority class baseline and the lift over it so the rule derived labels are read honestly rather than as ground truth. Each run is recorded in `models/experiments/index.json` under its own run id, and the compare script prints those runs sorted by accuracy. Torch mode API responses include optional provenance fields so the dashboard can identify mode, model version, feature version, sequence length, and artifact name.
 
 The optional Compose profile exposes a torch-enabled ML service on port `8001`:
 

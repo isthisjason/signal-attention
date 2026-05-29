@@ -1069,7 +1069,7 @@ GPU acceleration belongs with this future attention-model phase, not the Backend
 | Phase 3 - Baseline ML Service | FastAPI risk endpoint and Spring Boot ML client. | Backtest result includes ML risk score and classification. |
 | Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Implemented baseline simulated-order approval/rejection with logged reasons. |
 | Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | Implemented baseline sessions, manual orders, positions, summaries, and manual candle replay. |
-| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | CPU-safe regime foundation, artifact-backed torch inference, local training/export script, and optional torch Compose profile are implemented; model quality and experiment tracking remain future work. |
+| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | CPU-safe regime foundation, artifact-backed torch inference, local training/export script, and optional torch Compose profile are implemented. Model quality and experiment tracking are now implemented too: seeded mini batch training with early stopping, a regularized model with positional encoding, baseline aware evaluation, and a versioned experiment registry with a comparison view, all reproducible on CPU. |
 | Phase 7 - Polish | README, tests, seed data, optional dashboard, screenshots. | Portfolio-ready project with clear docs and reproducible local setup. |
 
 ---
@@ -1104,8 +1104,9 @@ The project should eventually include:
 ## 29. Current Project Progress
 
 - Phases 1-5 are implemented as backend-first local MVP capabilities.
-- Phase 6 now has a CPU-safe foundation plus an optional torch path: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, artifact-backed PyTorch Transformer inference, a local training/export script, optional torch Compose profile, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
-- Remaining Phase 6 work: improve model quality and experiment tracking for the optional PyTorch Transformer path while preserving CPU reproducibility.
+- Phase 6 now has a CPU-safe foundation plus a hardened optional torch path: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, artifact-backed PyTorch Transformer inference, a local training/export script, optional torch Compose profile, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
+- Model quality and experiment tracking for the optional torch path are now implemented while keeping CPU reproducibility: a seeded mini batch training loop with per epoch validation and `--patience` early stopping that keeps the best epoch, a regularized model with light dropout and sinusoidal positional encoding, baseline aware evaluation that reports a majority class baseline and lift with an optional `--holdout-ratio`, and a versioned experiment registry (one entry per run id, seed, git commit, torch version, and per epoch history) with a `compare_market_regime_experiments.py` view.
+- Further model quality work (richer features, independent ground truth, hyperparameter search) remains optional research and is not required for the local research baseline.
 
 ---
 
