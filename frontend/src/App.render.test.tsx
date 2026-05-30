@@ -388,6 +388,77 @@ describe("dashboard render states", () => {
     expect(screen.getByLabelText("Drawdown chart summary")).toHaveTextContent("High 2.00%");
   });
 
+  it("runs a backtest and scores ML risk from the completed run", async () => {
+    const user = userEvent.setup();
+    mocks.fetchStrategies.mockResolvedValue([
+      {
+        id: 1,
+        name: "BTC SMA",
+        symbol: "BTC-USD",
+        timeframe: "1h",
+        strategyType: "SMA_CROSSOVER",
+        status: "ACTIVE",
+        rules: {
+          shortWindow: 3,
+          longWindow: 5,
+          initialBalance: 10000,
+          feePercent: 0.1,
+          positionSizePercent: 50,
+        },
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ]);
+    mocks.scoreBacktestRisk.mockResolvedValue({
+      riskScore: 72,
+      riskLabel: "HIGH_RISK",
+      reasons: ["High drawdown increases capital risk."],
+    });
+    mocks.fetchBacktest.mockResolvedValue({
+      id: 12,
+      strategyId: 1,
+      startDate: "2024-01-01T00:00:00Z",
+      endDate: "2024-01-03T00:00:00Z",
+      initialBalance: 10000,
+      finalBalance: 10300,
+      totalReturn: 3,
+      maxDrawdown: 1.2,
+      winRate: 50,
+      profitFactor: 1.5,
+      tradeCount: 1,
+      averageTradeReturn: 3,
+      feeDrag: 10,
+      volatility: 0.5,
+      mlRiskScore: 72,
+      mlRiskLabel: "HIGH_RISK",
+      status: "COMPLETED",
+      createdAt: "2024-01-03T00:00:00Z",
+      completedAt: "2024-01-03T00:00:01Z",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "Run backtest" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Score ML risk" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Run backtest" }));
+
+    expect(await screen.findByText("Backtest #12 completed.")).toBeInTheDocument();
+    expect(mocks.runBacktest).toHaveBeenCalledWith(1, expect.objectContaining({
+      startDate: expect.stringMatching(/2024-01-01T\d{2}:00:00.000Z/),
+      endDate: expect.stringMatching(/2024-01-10T\d{2}:00:00.000Z/),
+    }));
+    expect(mocks.fetchBacktestEquitySeries).toHaveBeenCalledWith(12);
+    expect(mocks.fetchBacktestDrawdownSeries).toHaveBeenCalledWith(12);
+
+    await user.click(screen.getByRole("button", { name: "Score ML risk" }));
+
+    expect(await screen.findByText("Risk score saved as HIGH_RISK.")).toBeInTheDocument();
+    expect(mocks.scoreBacktestRisk).toHaveBeenCalledWith(12);
+    expect(mocks.fetchBacktest).toHaveBeenCalledWith(12);
+    expect(screen.getByText("High drawdown increases capital risk.")).toBeInTheDocument();
+  });
+
   it("renders CSV import success state", async () => {
     const user = userEvent.setup();
     render(<App />);
