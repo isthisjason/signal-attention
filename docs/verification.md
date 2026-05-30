@@ -36,14 +36,15 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 ## Latest Local Verification
 
-Last checked on May 28, 2026:
+Last checked on May 30, 2026:
 
 - `cd backend && ./mvnw test`: passed, with 100 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
-- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 81 tests.
-- `cd frontend && npm run test`: passed, 23 tests.
+- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 101 tests.
+- `cd frontend && npm run test`: passed, 28 tests.
 - `cd frontend && npm run build`: passed.
-- `python3 -m unittest scripts/smoke_demo_test.py`: passed, 3 tests.
-- `docker compose config`: blocked because Docker CLI is unavailable in this WSL distro.
+- `python3 -m unittest scripts/smoke_demo_test.py`: passed, 7 tests.
+- `docker compose version`: blocked because Docker CLI is unavailable in this WSL distro.
+- `docker compose config`: not rerun because Docker CLI is unavailable in this WSL distro.
 - `docker compose up --build -d`: not rerun because Docker CLI is unavailable in this WSL distro.
 - `python3 scripts/smoke_demo.py`: not rerun because the local Compose stack could not be started in this WSL distro.
 - Optional torch train/evaluate commands were not rerun. They remain optional because torch dependencies are intentionally outside the default setup.
