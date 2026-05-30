@@ -122,6 +122,10 @@ def check(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def log_step(label: str) -> None:
+    print(f"[smoke] {label}")
+
+
 def require_keys(payload: dict[str, Any], keys: tuple[str, ...], context: str) -> None:
     missing = [key for key in keys if key not in payload]
     check(not missing, f"{context} response missing keys: {', '.join(missing)}.")
@@ -133,12 +137,15 @@ def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
 
 
 def check_stack(config: Config) -> None:
+    log_step("checking ML service health")
     ml_health = request_json(f"{config.ml_url}/health", config.timeout_seconds)
     check(ml_health == {"status": "ok"}, "ML service health check did not return ok.")
 
+    log_step("checking backend OpenAPI")
     openapi = request_json(f"{config.backend_url}/v3/api-docs", config.timeout_seconds)
     check("paths" in openapi, "Backend OpenAPI document did not include paths.")
 
+    log_step("checking frontend shell")
     frontend = request_text(config.frontend_url, config.timeout_seconds)
     check("SignalAttention" in frontend or "<div id=\"root\"" in frontend, "Frontend did not render the app shell.")
 
@@ -146,6 +153,7 @@ def check_stack(config: Config) -> None:
 def check_core_workflow(config: Config) -> tuple[int, int]:
     check(config.sample_csv.exists(), f"Sample CSV does not exist: {config.sample_csv}")
 
+    log_step("importing market data")
     import_summary = post_multipart_file(
         f"{config.backend_url}/api/market-data/import",
         "file",
@@ -159,6 +167,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
         "Market data import neither imported rows nor found existing sample candles.",
     )
 
+    log_step("creating strategy")
     strategy = post_json(
         f"{config.backend_url}/api/strategies",
         config.timeout_seconds,
@@ -180,6 +189,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
     strategy_id = int(strategy["id"])
     check(strategy["symbol"] == "BTC-USD" and strategy["timeframe"] == "1h", "Strategy create returned the wrong market.")
 
+    log_step("running backtest")
     backtest = post_json(
         f"{config.backend_url}/api/strategies/{strategy_id}/backtests",
         config.timeout_seconds,
@@ -192,6 +202,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
     backtest_id = int(backtest["id"])
     check(backtest["status"] == "COMPLETED", "Backtest did not complete.")
 
+    log_step("checking backtest metrics and chart series")
     metrics = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/metrics", config.timeout_seconds)
     require_keys(metrics, ("totalReturn", "maxDrawdown", "winRate", "tradeCount"), "Backtest metrics")
     check(metrics["tradeCount"] == backtest["tradeCount"], "Backtest metrics trade count did not match run response.")
@@ -210,6 +221,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
     check(isinstance(drawdown_series, list) and drawdown_series, "Backtest drawdown series response was empty.")
     require_keys(drawdown_series[0], ("timestamp", "drawdownPercent"), "Backtest drawdown point")
 
+    log_step("scoring ML risk")
     risk = post_json(f"{config.backend_url}/api/backtests/{backtest_id}/ml-risk-score", config.timeout_seconds)
     require_keys(risk, ("riskScore", "riskLabel", "reasons"), "ML risk score")
     check(isinstance(risk["reasons"], list) and risk["reasons"], "ML risk score did not include reasons.")
@@ -222,6 +234,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
 
 
 def check_paper_workflow(config: Config, strategy_id: int) -> int:
+    log_step("creating paper session")
     session = post_json(
         f"{config.backend_url}/api/strategies/{strategy_id}/paper-sessions",
         config.timeout_seconds,
@@ -231,6 +244,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     session_id = int(session["id"])
     check(session["status"] == "CREATED", "Paper session was not created.")
 
+    log_step("starting paper session")
     started = request_json_method(
         f"{config.backend_url}/api/paper-sessions/{session_id}/start",
         "PATCH",
@@ -239,6 +253,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     require_keys(started, ("id", "status", "startedAt"), "Paper session start")
     check(started["status"] == "RUNNING", "Paper session did not start.")
 
+    log_step("submitting paper order")
     order = post_json(
         f"{config.backend_url}/api/paper-sessions/{session_id}/orders",
         config.timeout_seconds,
@@ -252,6 +267,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     require_keys(order, ("id", "status", "side", "notional"), "Paper order")
     check(order["status"] in {"FILLED", "REJECTED"}, "Paper order did not return a terminal status.")
 
+    log_step("checking paper orders, positions, and summary")
     orders = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/orders", config.timeout_seconds)
     check(isinstance(orders, list) and orders, "Paper orders response did not include the submitted order.")
 
@@ -261,6 +277,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     summary = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/summary", config.timeout_seconds)
     require_keys(summary, ("status", "cashBalance", "totalEquity", "openPositions"), "Paper summary")
 
+    log_step("replaying candles through paper session")
     replay = post_json(
         f"{config.backend_url}/api/paper-sessions/{session_id}/replay",
         config.timeout_seconds,
@@ -272,6 +289,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     )
     require_keys(replay, ("candlesRead", "signalsProcessed", "filledOrders", "rejectedOrders"), "Paper replay")
 
+    log_step("stopping paper session")
     stopped = request_json_method(
         f"{config.backend_url}/api/paper-sessions/{session_id}/stop",
         "PATCH",
@@ -284,6 +302,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
 
 
 def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) -> None:
+    log_step("checking dashboard summary")
     summary = request_json(f"{config.backend_url}/api/dashboard/summary", config.timeout_seconds)
     require_keys(
         summary,
@@ -293,6 +312,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
     check(summary["strategyCount"] >= 1, "Dashboard summary did not include created strategies.")
     check(summary["backtestCount"] >= 1, "Dashboard summary did not include created backtests.")
 
+    log_step("checking strategy performance")
     performance = request_json(f"{config.backend_url}/api/dashboard/strategy-performance", config.timeout_seconds)
     check(isinstance(performance, list), "Strategy performance response was not a list.")
     check(
@@ -300,9 +320,11 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Strategy performance did not include the smoke strategy.",
     )
 
+    log_step("checking risk alerts")
     alerts = request_json(f"{config.backend_url}/api/dashboard/risk-alerts", config.timeout_seconds)
     check(isinstance(alerts, list), "Risk alerts response was not a list.")
 
+    log_step("checking market regime")
     regime = request_json(
         f"{config.backend_url}/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128",
         config.timeout_seconds,
@@ -321,6 +343,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Market regime features",
     )
 
+    log_step("checking anomaly analysis")
     anomaly = post_json(
         f"{config.backend_url}/api/anomaly-check",
         config.timeout_seconds,
@@ -340,6 +363,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Anomaly features",
     )
 
+    log_step("checking audit events")
     audit_events = request_json(f"{config.backend_url}/api/audit-events?limit=25", config.timeout_seconds)
     check(isinstance(audit_events, list) and audit_events, "Audit events response was empty.")
     require_keys(audit_events[0], ("id", "entityType", "entityId", "action", "message", "createdAt"), "Audit event")
