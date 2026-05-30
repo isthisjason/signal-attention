@@ -20,44 +20,47 @@ class Config:
     frontend_url: str
     ml_url: str
     sample_csv: Path
+    timeout_seconds: float
 
 
-def parse_args() -> Config:
+def parse_args(argv: list[str] | None = None) -> Config:
     parser = argparse.ArgumentParser(description="Run SignalAttention smoke checks.")
     parser.add_argument("--backend-url", default="http://localhost:8080")
     parser.add_argument("--frontend-url", default="http://localhost:5173")
     parser.add_argument("--ml-url", default="http://localhost:8000")
     parser.add_argument("--sample-csv", default="data/btc-usd-1h-sample.csv")
-    args = parser.parse_args()
+    parser.add_argument("--timeout-seconds", type=float, default=10.0)
+    args = parser.parse_args(argv)
     return Config(
         backend_url=args.backend_url.rstrip("/"),
         frontend_url=args.frontend_url.rstrip("/"),
         ml_url=args.ml_url.rstrip("/"),
         sample_csv=Path(args.sample_csv),
+        timeout_seconds=args.timeout_seconds,
     )
 
 
-def request_json(url: str) -> Any:
+def request_json(url: str, timeout_seconds: float) -> Any:
     request = Request(url, headers={"Accept": "application/json"})
-    with urlopen(request, timeout=10) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         payload = response.read().decode("utf-8")
     return json.loads(payload) if payload else None
 
 
-def request_text(url: str) -> str:
+def request_text(url: str, timeout_seconds: float) -> str:
     request = Request(url)
-    with urlopen(request, timeout=10) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         return response.read().decode("utf-8")
 
 
-def request_json_method(url: str, method: str) -> Any:
+def request_json_method(url: str, method: str, timeout_seconds: float) -> Any:
     request = Request(url, headers={"Accept": "application/json"}, method=method)
-    with urlopen(request, timeout=20) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         payload = response.read().decode("utf-8")
     return json.loads(payload) if payload else None
 
 
-def post_json(url: str, body: dict[str, Any] | None = None) -> Any:
+def post_json(url: str, timeout_seconds: float, body: dict[str, Any] | None = None) -> Any:
     payload = json.dumps(body or {}).encode("utf-8")
     request = Request(
         url,
@@ -65,12 +68,12 @@ def post_json(url: str, body: dict[str, Any] | None = None) -> Any:
         headers={"Accept": "application/json", "Content-Type": "application/json"},
         method="POST",
     )
-    with urlopen(request, timeout=20) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         response_payload = response.read().decode("utf-8")
     return json.loads(response_payload) if response_payload else None
 
 
-def post_multipart_file(url: str, field_name: str, file_path: Path) -> Any:
+def post_multipart_file(url: str, field_name: str, file_path: Path, timeout_seconds: float) -> Any:
     boundary = "signalattention-smoke-boundary"
     content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
     file_bytes = file_path.read_bytes()
@@ -95,7 +98,7 @@ def post_multipart_file(url: str, field_name: str, file_path: Path) -> Any:
         },
         method="POST",
     )
-    with urlopen(request, timeout=30) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         payload = response.read().decode("utf-8")
     return json.loads(payload) if payload else None
 
@@ -116,13 +119,13 @@ def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
 
 
 def check_stack(config: Config) -> None:
-    ml_health = request_json(f"{config.ml_url}/health")
+    ml_health = request_json(f"{config.ml_url}/health", config.timeout_seconds)
     check(ml_health == {"status": "ok"}, "ML service health check did not return ok.")
 
-    openapi = request_json(f"{config.backend_url}/v3/api-docs")
+    openapi = request_json(f"{config.backend_url}/v3/api-docs", config.timeout_seconds)
     check("paths" in openapi, "Backend OpenAPI document did not include paths.")
 
-    frontend = request_text(config.frontend_url)
+    frontend = request_text(config.frontend_url, config.timeout_seconds)
     check("SignalAttention" in frontend or "<div id=\"root\"" in frontend, "Frontend did not render the app shell.")
 
 
@@ -133,6 +136,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
         f"{config.backend_url}/api/market-data/import",
         "file",
         config.sample_csv,
+        config.timeout_seconds,
     )
     require_keys(import_summary, ("totalRows", "rowsImported", "rowsRejected", "errors"), "Market data import")
     check(import_summary["totalRows"] > 0, "Market data import did not read any rows.")
@@ -143,6 +147,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
 
     strategy = post_json(
         f"{config.backend_url}/api/strategies",
+        config.timeout_seconds,
         {
             "name": "BTC SMA Crossover Smoke",
             "symbol": "BTC-USD",
@@ -163,6 +168,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
 
     backtest = post_json(
         f"{config.backend_url}/api/strategies/{strategy_id}/backtests",
+        config.timeout_seconds,
         {
             "startDate": "2024-01-01T00:00:00Z",
             "endDate": "2024-01-10T00:00:00Z",
@@ -172,26 +178,29 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
     backtest_id = int(backtest["id"])
     check(backtest["status"] == "COMPLETED", "Backtest did not complete.")
 
-    metrics = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/metrics")
+    metrics = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/metrics", config.timeout_seconds)
     require_keys(metrics, ("totalReturn", "maxDrawdown", "winRate", "tradeCount"), "Backtest metrics")
     check(metrics["tradeCount"] == backtest["tradeCount"], "Backtest metrics trade count did not match run response.")
 
-    trades = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/trades")
+    trades = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/trades", config.timeout_seconds)
     check(isinstance(trades, list), "Backtest trades response was not a list.")
 
-    equity_series = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/equity-series")
+    equity_series = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/equity-series", config.timeout_seconds)
     check(isinstance(equity_series, list) and equity_series, "Backtest equity series response was empty.")
     require_keys(equity_series[0], ("timestamp", "equity"), "Backtest equity point")
 
-    drawdown_series = request_json(f"{config.backend_url}/api/backtests/{backtest_id}/drawdown-series")
+    drawdown_series = request_json(
+        f"{config.backend_url}/api/backtests/{backtest_id}/drawdown-series",
+        config.timeout_seconds,
+    )
     check(isinstance(drawdown_series, list) and drawdown_series, "Backtest drawdown series response was empty.")
     require_keys(drawdown_series[0], ("timestamp", "drawdownPercent"), "Backtest drawdown point")
 
-    risk = post_json(f"{config.backend_url}/api/backtests/{backtest_id}/ml-risk-score")
+    risk = post_json(f"{config.backend_url}/api/backtests/{backtest_id}/ml-risk-score", config.timeout_seconds)
     require_keys(risk, ("riskScore", "riskLabel", "reasons"), "ML risk score")
     check(isinstance(risk["reasons"], list) and risk["reasons"], "ML risk score did not include reasons.")
 
-    refreshed = request_json(f"{config.backend_url}/api/backtests/{backtest_id}")
+    refreshed = request_json(f"{config.backend_url}/api/backtests/{backtest_id}", config.timeout_seconds)
     require_keys(refreshed, ("id", "mlRiskScore", "mlRiskLabel"), "Refreshed backtest")
     check(refreshed["mlRiskLabel"] == risk["riskLabel"], "ML risk label was not persisted.")
 
@@ -201,18 +210,24 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
 def check_paper_workflow(config: Config, strategy_id: int) -> int:
     session = post_json(
         f"{config.backend_url}/api/strategies/{strategy_id}/paper-sessions",
+        config.timeout_seconds,
         {"initialBalance": 100000},
     )
     require_keys(session, ("id", "status", "cashBalance"), "Paper session create")
     session_id = int(session["id"])
     check(session["status"] == "CREATED", "Paper session was not created.")
 
-    started = request_json_method(f"{config.backend_url}/api/paper-sessions/{session_id}/start", "PATCH")
+    started = request_json_method(
+        f"{config.backend_url}/api/paper-sessions/{session_id}/start",
+        "PATCH",
+        config.timeout_seconds,
+    )
     require_keys(started, ("id", "status", "startedAt"), "Paper session start")
     check(started["status"] == "RUNNING", "Paper session did not start.")
 
     order = post_json(
         f"{config.backend_url}/api/paper-sessions/{session_id}/orders",
+        config.timeout_seconds,
         {
             "side": "BUY",
             "symbol": "BTC-USD",
@@ -223,17 +238,18 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     require_keys(order, ("id", "status", "side", "notional"), "Paper order")
     check(order["status"] in {"FILLED", "REJECTED"}, "Paper order did not return a terminal status.")
 
-    orders = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/orders")
+    orders = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/orders", config.timeout_seconds)
     check(isinstance(orders, list) and orders, "Paper orders response did not include the submitted order.")
 
-    positions = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/positions")
+    positions = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/positions", config.timeout_seconds)
     check(isinstance(positions, list), "Paper positions response was not a list.")
 
-    summary = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/summary")
+    summary = request_json(f"{config.backend_url}/api/paper-sessions/{session_id}/summary", config.timeout_seconds)
     require_keys(summary, ("status", "cashBalance", "totalEquity", "openPositions"), "Paper summary")
 
     replay = post_json(
         f"{config.backend_url}/api/paper-sessions/{session_id}/replay",
+        config.timeout_seconds,
         {
             "startDate": "2024-01-01T00:00:00Z",
             "endDate": "2024-01-10T00:00:00Z",
@@ -242,7 +258,11 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
     )
     require_keys(replay, ("candlesRead", "signalsProcessed", "filledOrders", "rejectedOrders"), "Paper replay")
 
-    stopped = request_json_method(f"{config.backend_url}/api/paper-sessions/{session_id}/stop", "PATCH")
+    stopped = request_json_method(
+        f"{config.backend_url}/api/paper-sessions/{session_id}/stop",
+        "PATCH",
+        config.timeout_seconds,
+    )
     require_keys(stopped, ("id", "status", "stoppedAt"), "Paper session stop")
     check(stopped["status"] == "STOPPED", "Paper session did not stop.")
 
@@ -250,7 +270,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
 
 
 def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) -> None:
-    summary = request_json(f"{config.backend_url}/api/dashboard/summary")
+    summary = request_json(f"{config.backend_url}/api/dashboard/summary", config.timeout_seconds)
     require_keys(
         summary,
         ("strategyCount", "backtestCount", "activePaperSessionCount", "recentAuditEvents"),
@@ -259,17 +279,20 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
     check(summary["strategyCount"] >= 1, "Dashboard summary did not include created strategies.")
     check(summary["backtestCount"] >= 1, "Dashboard summary did not include created backtests.")
 
-    performance = request_json(f"{config.backend_url}/api/dashboard/strategy-performance")
+    performance = request_json(f"{config.backend_url}/api/dashboard/strategy-performance", config.timeout_seconds)
     check(isinstance(performance, list), "Strategy performance response was not a list.")
     check(
         any(item["strategyId"] == strategy_id for item in performance),
         "Strategy performance did not include the smoke strategy.",
     )
 
-    alerts = request_json(f"{config.backend_url}/api/dashboard/risk-alerts")
+    alerts = request_json(f"{config.backend_url}/api/dashboard/risk-alerts", config.timeout_seconds)
     check(isinstance(alerts, list), "Risk alerts response was not a list.")
 
-    regime = request_json(f"{config.backend_url}/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128")
+    regime = request_json(
+        f"{config.backend_url}/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128",
+        config.timeout_seconds,
+    )
     require_keys(regime, ("regimeLabel", "confidence", "reasons", "features", "classifierSource"), "Market regime")
     require_keys(
         regime["features"],
@@ -286,6 +309,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
 
     anomaly = post_json(
         f"{config.backend_url}/api/anomaly-check",
+        config.timeout_seconds,
         {"symbol": "BTC-USD", "timeframe": "1h", "limit": 128},
     )
     require_keys(anomaly, ("anomalyScore", "anomalyLabel", "reasons", "features", "classifierSource"), "Anomaly check")
@@ -302,7 +326,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Anomaly features",
     )
 
-    audit_events = request_json(f"{config.backend_url}/api/audit-events?limit=25")
+    audit_events = request_json(f"{config.backend_url}/api/audit-events?limit=25", config.timeout_seconds)
     check(isinstance(audit_events, list) and audit_events, "Audit events response was empty.")
     require_keys(audit_events[0], ("id", "entityType", "entityId", "action", "message", "createdAt"), "Audit event")
     check(

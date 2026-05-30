@@ -12,6 +12,16 @@ import smoke_demo
 
 
 class SmokeDemoHelperTests(unittest.TestCase):
+    def test_parse_args_uses_default_timeout(self) -> None:
+        config = smoke_demo.parse_args([])
+
+        self.assertEqual(config.timeout_seconds, 10.0)
+
+    def test_parse_args_accepts_custom_timeout(self) -> None:
+        config = smoke_demo.parse_args(["--timeout-seconds", "2.5"])
+
+        self.assertEqual(config.timeout_seconds, 2.5)
+
     def test_only_duplicate_rejections_accepts_existing_candles(self) -> None:
         self.assertTrue(
             smoke_demo.only_duplicate_rejections(
