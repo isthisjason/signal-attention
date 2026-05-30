@@ -162,6 +162,12 @@ python3 scripts/smoke_demo.py
 
 The smoke script checks that the services are reachable, imports the sample CSV, creates an SMA strategy, runs a backtest, saves an ML risk score, exercises paper trading, and checks dashboard, market-regime, and audit endpoints. It is safe to rerun against an existing local database. Duplicate sample candles are treated as a sign that the data is already loaded.
 
+If the stack is cold or running slowly, give each request more time:
+
+```bash
+python3 scripts/smoke_demo.py --timeout-seconds 30
+```
+
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
 
 The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary, risk alert, audit, and regime panels.

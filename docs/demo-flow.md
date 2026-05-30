@@ -18,6 +18,12 @@ python3 scripts/smoke_demo.py
 
 The smoke script assumes the stack is already running and uses `http://localhost:8080`, `http://localhost:5173`, and `http://localhost:8000` by default. Use `--backend-url`, `--frontend-url`, `--ml-url`, or `--sample-csv` to point it at different local endpoints or data.
 
+Use `--timeout-seconds` when the local stack is cold or running on slower hardware:
+
+```bash
+python3 scripts/smoke_demo.py --timeout-seconds 30
+```
+
 ## 1. Import Sample Candles
 
 ```bash
