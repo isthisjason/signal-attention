@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -15,11 +15,19 @@ const mocks = vi.hoisted(() => ({
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
   createStrategy: vi.fn(),
+  createPaperSession: vi.fn(),
+  fetchPaperOrders: vi.fn(),
+  fetchPaperPositions: vi.fn(),
+  fetchPaperSessionSummary: vi.fn(),
   fetchStrategies: vi.fn(),
   fetchStrategyPaperSessions: vi.fn(),
   fetchStrategyPerformance: vi.fn(),
+  replayPaperSession: vi.fn(),
   runBacktest: vi.fn(),
   scoreBacktestRisk: vi.fn(),
+  startPaperSession: vi.fn(),
+  stopPaperSession: vi.fn(),
+  submitPaperOrder: vi.fn(),
 }));
 
 vi.mock("./api/backtests", () => ({
@@ -51,7 +59,15 @@ vi.mock("./api/marketData", () => ({
 }));
 
 vi.mock("./api/paperTrading", () => ({
+  createPaperSession: mocks.createPaperSession,
+  fetchPaperOrders: mocks.fetchPaperOrders,
+  fetchPaperPositions: mocks.fetchPaperPositions,
+  fetchPaperSessionSummary: mocks.fetchPaperSessionSummary,
   fetchStrategyPaperSessions: mocks.fetchStrategyPaperSessions,
+  replayPaperSession: mocks.replayPaperSession,
+  startPaperSession: mocks.startPaperSession,
+  stopPaperSession: mocks.stopPaperSession,
+  submitPaperOrder: mocks.submitPaperOrder,
 }));
 
 vi.mock("./api/strategies", () => ({
@@ -173,6 +189,64 @@ beforeEach(() => {
   });
   mocks.fetchStrategies.mockResolvedValue([]);
   mocks.fetchStrategyPaperSessions.mockResolvedValue([]);
+  mocks.createPaperSession.mockResolvedValue({
+    id: 9,
+    strategyId: 1,
+    status: "CREATED",
+    initialBalance: 100000,
+    cashBalance: 100000,
+    createdAt: "2024-01-01T00:00:00Z",
+    startedAt: null,
+    stoppedAt: null,
+  });
+  mocks.startPaperSession.mockResolvedValue({
+    id: 9,
+    strategyId: 1,
+    status: "RUNNING",
+    initialBalance: 100000,
+    cashBalance: 100000,
+    createdAt: "2024-01-01T00:00:00Z",
+    startedAt: "2024-01-01T00:00:00Z",
+    stoppedAt: null,
+  });
+  mocks.stopPaperSession.mockResolvedValue({
+    id: 9,
+    strategyId: 1,
+    status: "STOPPED",
+    initialBalance: 100000,
+    cashBalance: 100000,
+    createdAt: "2024-01-01T00:00:00Z",
+    startedAt: "2024-01-01T00:00:00Z",
+    stoppedAt: "2024-01-01T01:00:00Z",
+  });
+  mocks.submitPaperOrder.mockResolvedValue({
+    id: 17,
+    sessionId: 9,
+    side: "BUY",
+    symbol: "BTC-USD",
+    quantity: 0.25,
+    price: 42000,
+    notional: 10500,
+    status: "FILLED",
+    rejectionReason: null,
+    createdAt: "2024-01-01T00:00:00Z",
+  });
+  mocks.replayPaperSession.mockResolvedValue({
+    candlesRead: 10,
+    signalsProcessed: 2,
+    filledOrders: 1,
+    rejectedOrders: 0,
+  });
+  mocks.fetchPaperSessionSummary.mockResolvedValue({
+    status: "RUNNING",
+    cashBalance: 89500,
+    totalEquity: 100500,
+    openPositionValue: 11000,
+    unrealizedPnl: 500,
+    openPositions: 1,
+  });
+  mocks.fetchPaperOrders.mockResolvedValue([]);
+  mocks.fetchPaperPositions.mockResolvedValue([]);
 });
 
 describe("dashboard render states", () => {
@@ -511,5 +585,71 @@ describe("dashboard render states", () => {
     });
     expect(mocks.fetchDashboardSummary.mock.calls.length).toBeGreaterThan(dashboardCallsBeforeCreate);
     expect(mocks.fetchStrategies.mock.calls.length).toBeGreaterThan(strategyCallsBeforeCreate);
+  });
+
+  it("runs the paper trading workflow actions for a selected strategy", async () => {
+    const user = userEvent.setup();
+    const session = {
+      id: 9,
+      strategyId: 1,
+      status: "CREATED",
+      initialBalance: 100000,
+      cashBalance: 100000,
+      createdAt: "2024-01-01T00:00:00Z",
+      startedAt: null,
+      stoppedAt: null,
+    };
+    mocks.fetchStrategies.mockResolvedValue([
+      {
+        id: 1,
+        name: "BTC SMA",
+        symbol: "BTC-USD",
+        timeframe: "1h",
+        strategyType: "SMA_CROSSOVER",
+        status: "ACTIVE",
+        rules: {
+          shortWindow: 3,
+          longWindow: 5,
+          initialBalance: 10000,
+          feePercent: 0.1,
+          positionSizePercent: 50,
+        },
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ]);
+    mocks.fetchStrategyPaperSessions.mockResolvedValue([session]);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Start" })).toBeEnabled());
+    expect(screen.getByRole("button", { name: "Stop" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Submit order" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Replay candles" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Create session" }));
+    expect(await screen.findByText("Created paper session #9.")).toBeInTheDocument();
+    expect(mocks.createPaperSession).toHaveBeenCalledWith(1, 100000);
+
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    expect(await screen.findByText("Started session #9.")).toBeInTheDocument();
+    expect(mocks.startPaperSession).toHaveBeenCalledWith(9);
+
+    await user.click(screen.getByRole("button", { name: "Submit order" }));
+    expect(await screen.findByText("Order #17 filled.")).toBeInTheDocument();
+    expect(mocks.submitPaperOrder).toHaveBeenCalledWith(9, {
+      side: "BUY",
+      symbol: "BTC-USD",
+      quantity: 0.25,
+      price: 42000,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Replay candles" }));
+    expect(await screen.findByText("Replay filled 1 orders.")).toBeInTheDocument();
+    expect(mocks.replayPaperSession).toHaveBeenCalledWith(9, expect.objectContaining({ maxCandles: 250 }));
+
+    await user.click(screen.getByRole("button", { name: "Stop" }));
+    expect(await screen.findByText("Stopped session #9.")).toBeInTheDocument();
+    expect(mocks.stopPaperSession).toHaveBeenCalledWith(9);
   });
 });
