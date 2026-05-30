@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
   fetchMarketRegime: vi.fn(),
+  importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
   fetchStrategies: vi.fn(),
   fetchStrategyPaperSessions: vi.fn(),
@@ -42,6 +43,10 @@ vi.mock("./api/dashboard", () => ({
 vi.mock("./api/marketRegime", () => ({
   fetchMarketRegime: mocks.fetchMarketRegime,
   runRegimeReplay: mocks.runRegimeReplay,
+}));
+
+vi.mock("./api/marketData", () => ({
+  importMarketData: mocks.importMarketData,
 }));
 
 vi.mock("./api/paperTrading", () => ({
@@ -140,6 +145,12 @@ beforeEach(() => {
         entryPrice: 40500,
       },
     ],
+  });
+  mocks.importMarketData.mockResolvedValue({
+    totalRows: 3,
+    rowsImported: 3,
+    rowsRejected: 0,
+    errors: [],
   });
   mocks.fetchStrategies.mockResolvedValue([]);
   mocks.fetchStrategyPaperSessions.mockResolvedValue([]);
@@ -356,5 +367,33 @@ describe("dashboard render states", () => {
     expect(screen.getByLabelText("Equity chart summary")).toHaveTextContent("Low $9,800.00");
     expect(screen.getByLabelText("Equity chart summary")).toHaveTextContent("High $10,300.00");
     expect(screen.getByLabelText("Drawdown chart summary")).toHaveTextContent("High 2.00%");
+  });
+
+  it("renders CSV import success state", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const input = await screen.findByLabelText("Candle CSV");
+    await user.upload(input, new File(["openTime,open"], "candles.csv", { type: "text/csv" }));
+    await user.click(screen.getByRole("button", { name: "Import CSV" }));
+
+    expect(await screen.findByText("Imported 3 candle rows.")).toBeInTheDocument();
+    expect(screen.getByText("Rows read")).toBeInTheDocument();
+    expect(screen.getByText("Imported")).toBeInTheDocument();
+    expect(mocks.importMarketData).toHaveBeenCalledWith(expect.objectContaining({ name: "candles.csv" }));
+  });
+
+  it("renders CSV import validation and API errors", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Import CSV" }));
+    expect(screen.getByText("Choose a CSV file before importing.")).toBeInTheDocument();
+
+    mocks.importMarketData.mockRejectedValueOnce(new Error("CSV parse failed"));
+    await user.upload(screen.getByLabelText("Candle CSV"), new File(["bad"], "bad.csv", { type: "text/csv" }));
+    await user.click(screen.getByRole("button", { name: "Import CSV" }));
+
+    expect(await screen.findByText("CSV parse failed")).toBeInTheDocument();
   });
 });
