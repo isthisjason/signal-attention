@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import io
 import unittest
 from pathlib import Path
 import sys
+from urllib.error import HTTPError
+from urllib.request import Request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import smoke_demo
@@ -49,6 +52,30 @@ class SmokeDemoHelperTests(unittest.TestCase):
     def test_require_keys_reports_missing_response_fields(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "Backtest response missing keys: status"):
             smoke_demo.require_keys({"id": 1}, ("id", "status"), "Backtest")
+
+    def test_format_http_error_includes_method_url_status_and_body(self) -> None:
+        request = Request("http://api.test/api/fails", method="POST")
+        error = HTTPError(
+            request.full_url,
+            400,
+            "Bad Request",
+            hdrs={},
+            fp=io.BytesIO(b'{"message":"Invalid request"}'),
+        )
+
+        self.assertEqual(
+            smoke_demo.format_http_error(request, error),
+            'POST http://api.test/api/fails failed with HTTP 400: {"message":"Invalid request"}',
+        )
+
+    def test_format_http_error_omits_empty_body(self) -> None:
+        request = Request("http://api.test/api/fails")
+        error = HTTPError(request.full_url, 500, "Server Error", hdrs={}, fp=io.BytesIO(b""))
+
+        self.assertEqual(
+            smoke_demo.format_http_error(request, error),
+            "GET http://api.test/api/fails failed with HTTP 500",
+        )
 
 
 if __name__ == "__main__":

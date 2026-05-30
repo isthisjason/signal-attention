@@ -42,21 +42,18 @@ def parse_args(argv: list[str] | None = None) -> Config:
 
 def request_json(url: str, timeout_seconds: float) -> Any:
     request = Request(url, headers={"Accept": "application/json"})
-    with urlopen(request, timeout=timeout_seconds) as response:
-        payload = response.read().decode("utf-8")
+    payload = read_response(request, timeout_seconds)
     return json.loads(payload) if payload else None
 
 
 def request_text(url: str, timeout_seconds: float) -> str:
     request = Request(url)
-    with urlopen(request, timeout=timeout_seconds) as response:
-        return response.read().decode("utf-8")
+    return read_response(request, timeout_seconds)
 
 
 def request_json_method(url: str, method: str, timeout_seconds: float) -> Any:
     request = Request(url, headers={"Accept": "application/json"}, method=method)
-    with urlopen(request, timeout=timeout_seconds) as response:
-        payload = response.read().decode("utf-8")
+    payload = read_response(request, timeout_seconds)
     return json.loads(payload) if payload else None
 
 
@@ -68,8 +65,7 @@ def post_json(url: str, timeout_seconds: float, body: dict[str, Any] | None = No
         headers={"Accept": "application/json", "Content-Type": "application/json"},
         method="POST",
     )
-    with urlopen(request, timeout=timeout_seconds) as response:
-        response_payload = response.read().decode("utf-8")
+    response_payload = read_response(request, timeout_seconds)
     return json.loads(response_payload) if response_payload else None
 
 
@@ -98,9 +94,27 @@ def post_multipart_file(url: str, field_name: str, file_path: Path, timeout_seco
         },
         method="POST",
     )
-    with urlopen(request, timeout=timeout_seconds) as response:
-        payload = response.read().decode("utf-8")
+    payload = read_response(request, timeout_seconds)
     return json.loads(payload) if payload else None
+
+
+def read_response(request: Request, timeout_seconds: float) -> str:
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            return response.read().decode("utf-8")
+    except HTTPError as error:
+        raise RuntimeError(format_http_error(request, error)) from error
+
+
+def format_http_error(request: Request, error: HTTPError) -> str:
+    body = ""
+    if error.fp is not None:
+        body = error.read().decode("utf-8", errors="replace").strip()
+
+    message = f"{request.get_method()} {request.full_url} failed with HTTP {error.code}"
+    if body:
+        return f"{message}: {body}"
+    return message
 
 
 def check(condition: bool, message: str) -> None:
