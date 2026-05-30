@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   fetchMarketRegime: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
+  createStrategy: vi.fn(),
   fetchStrategies: vi.fn(),
   fetchStrategyPaperSessions: vi.fn(),
   fetchStrategyPerformance: vi.fn(),
@@ -54,6 +55,7 @@ vi.mock("./api/paperTrading", () => ({
 }));
 
 vi.mock("./api/strategies", () => ({
+  createStrategy: mocks.createStrategy,
   fetchStrategies: mocks.fetchStrategies,
 }));
 
@@ -151,6 +153,23 @@ beforeEach(() => {
     rowsImported: 3,
     rowsRejected: 0,
     errors: [],
+  });
+  mocks.createStrategy.mockResolvedValue({
+    id: 42,
+    name: "BTC SMA Crossover",
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    strategyType: "SMA_CROSSOVER",
+    status: "ACTIVE",
+    rules: {
+      shortWindow: 3,
+      longWindow: 5,
+      initialBalance: 10000,
+      feePercent: 0.1,
+      positionSizePercent: 50,
+    },
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
   });
   mocks.fetchStrategies.mockResolvedValue([]);
   mocks.fetchStrategyPaperSessions.mockResolvedValue([]);
@@ -395,5 +414,31 @@ describe("dashboard render states", () => {
     await user.click(screen.getByRole("button", { name: "Import CSV" }));
 
     expect(await screen.findByText("CSV parse failed")).toBeInTheDocument();
+  });
+
+  it("creates the default SMA strategy and refreshes selected strategy state", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const dashboardCallsBeforeCreate = mocks.fetchDashboardSummary.mock.calls.length;
+    const strategyCallsBeforeCreate = mocks.fetchStrategies.mock.calls.length;
+    await user.click(await screen.findByRole("button", { name: "Create SMA strategy" }));
+
+    expect(await screen.findByText("Created strategy #42.")).toBeInTheDocument();
+    expect(mocks.createStrategy).toHaveBeenCalledWith({
+      name: "BTC SMA Crossover",
+      symbol: "BTC-USD",
+      timeframe: "1h",
+      strategyType: "SMA_CROSSOVER",
+      rules: {
+        shortWindow: 3,
+        longWindow: 5,
+        initialBalance: 10000,
+        feePercent: 0.1,
+        positionSizePercent: 50,
+      },
+    });
+    expect(mocks.fetchDashboardSummary.mock.calls.length).toBeGreaterThan(dashboardCallsBeforeCreate);
+    expect(mocks.fetchStrategies.mock.calls.length).toBeGreaterThan(strategyCallsBeforeCreate);
   });
 });
