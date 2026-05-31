@@ -244,6 +244,6 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 The repo currently has the backend foundation, strategy CRUD, CSV candle import, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, CPU safe market regime classification, optional torch backed regime inference, a simple anomaly check, baseline risk policies, paper trading sessions, dashboard summary APIs, candlestick assessment feedback in the React workbench, and a smoke script for the running stack.
 
-Frontend render and state tests were verified locally on May 31, 2026 during the Phase 7 polish pass. The full backend, ML service, frontend build, and smoke helper checks should be rerun before recording final demo evidence. Compose and the running stack smoke demo were not rerun in the current WSL distro because Docker CLI is unavailable here.
+Backend, ML service, frontend tests, frontend build, and smoke helper tests were verified locally on May 31, 2026 during the Phase 7 polish pass. Compose and the running stack smoke demo were not rerun in the current WSL distro because Docker CLI is unavailable here.
 
 The next work I would do is mostly final evidence capture: verify the full Compose demo in a Docker enabled environment, save the smoke output, and capture the dashboard and Swagger screenshots listed in the docs.

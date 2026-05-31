@@ -60,9 +60,11 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 
 Last checked on May 31, 2026:
 
-- `cd frontend && npm run test -- App.render.test.tsx`: passed, 13 tests.
-- `cd frontend && npm run test -- App.render.test.tsx App.test.ts`: passed, 19 tests.
-- Full backend, ML, frontend, build, and smoke-helper verification should be rerun after the remaining Phase 7 docs and README pass.
+- `cd backend && ./mvnw test`: passed, with 100 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
+- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 101 tests.
+- `cd frontend && npm run test`: passed, 29 tests.
+- `cd frontend && npm run build`: passed.
+- `python3 -m unittest scripts/smoke_demo_test.py`: passed, 7 tests.
 - `docker compose version`: blocked because Docker CLI is unavailable in this WSL distro.
 - `docker compose config`: not rerun because Docker CLI is unavailable in this WSL distro.
 - `docker compose up --build -d`: not rerun because Docker CLI is unavailable in this WSL distro.
