@@ -253,11 +253,11 @@ describe("dashboard render states", () => {
   it("renders empty workflow state without enabling dependent actions", async () => {
     render(<App />);
 
-    expect(await screen.findByText("No strategies have been created yet.")).toBeInTheDocument();
-    expect(screen.getByText("No saved strategies yet.")).toBeInTheDocument();
+    expect(await screen.findByText(/No strategies have been created yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No saved strategies yet/)).toBeInTheDocument();
     expect(screen.getByText("No import has run in this browser session.")).toBeInTheDocument();
-    expect(screen.getByText("No backtest has run in this browser session.")).toBeInTheDocument();
-    expect(screen.getByText("No paper sessions for the selected strategy.")).toBeInTheDocument();
+    expect(screen.getByText(/No backtest has run in this browser session/)).toBeInTheDocument();
+    expect(screen.getByText(/No paper sessions for the selected strategy/)).toBeInTheDocument();
     expect(screen.getByText("No paper orders for the selected session.")).toBeInTheDocument();
     expect(screen.getByText("No paper positions for the selected session.")).toBeInTheDocument();
     expect(screen.getByText("No assessment chart yet")).toBeInTheDocument();
@@ -272,6 +272,18 @@ describe("dashboard render states", () => {
     expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Submit order" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Replay candles" })).toBeDisabled();
+  });
+
+  it("renders practical service errors when the backend is unavailable", async () => {
+    mocks.fetchDashboardSummary.mockRejectedValue(new Error("Failed to fetch"));
+    mocks.fetchStrategyPerformance.mockRejectedValue(new Error("Failed to fetch"));
+    mocks.fetchDashboardRiskAlerts.mockRejectedValue(new Error("Failed to fetch"));
+    mocks.fetchAuditEvents.mockRejectedValue(new Error("Failed to fetch"));
+    mocks.fetchStrategies.mockRejectedValue(new Error("Failed to fetch"));
+
+    render(<App />);
+
+    expect(await screen.findAllByText(/Check that the backend API is running/)).toHaveLength(5);
   });
 
   it("renders market regime provenance when it is present", async () => {

@@ -732,9 +732,9 @@ function StrategyWorkflowPanel({
         </select>
       </label>
       {state.status === "loading" ? <p className="muted">Loading saved strategies.</p> : null}
-      {state.status === "error" ? <p className="muted">{state.error}</p> : null}
+      {state.status === "error" ? <p className="muted">{serviceErrorMessage(state.error, "backend")}</p> : null}
       {state.status === "success" && state.data.length === 0 ? (
-        <p className="muted">No saved strategies yet.</p>
+        <p className="muted">No saved strategies yet. Create the sample SMA strategy to unlock backtests and paper sessions.</p>
       ) : null}
       <form className="control-stack" onSubmit={onSubmit}>
         <div className="form-grid">
@@ -789,7 +789,11 @@ function BacktestWorkflowPanel({
   return (
     <section className="panel">
       <h2>Backtest</h2>
-      <p>{selectedStrategy ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}` : "Select a strategy first."}</p>
+      <p>
+        {selectedStrategy
+          ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}`
+          : "Create or select a strategy first. Backtests use the selected strategy rules."}
+      </p>
       <form className="control-stack" onSubmit={onSubmit}>
         <div className="form-grid">
           <DateInput label="Start" name="startDate" state={form} setState={onUpdate} />
@@ -835,7 +839,7 @@ function BacktestWorkflowPanel({
         </>
       ) : null}
       {riskScore ? <ul className="compact-list">{riskScore.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}
-      {!backtestRun ? <p className="muted">No backtest has run in this browser session.</p> : null}
+      {!backtestRun ? <p className="muted">No backtest has run in this browser session. Import candles and choose a strategy first.</p> : null}
     </section>
   );
 }
@@ -905,7 +909,7 @@ function PaperTradingPanel({
           ))}
         </select>
       </label>
-      {sessions.length === 0 ? <p className="muted">No paper sessions for the selected strategy.</p> : null}
+      {sessions.length === 0 ? <p className="muted">No paper sessions for the selected strategy. Create one after selecting a strategy.</p> : null}
       <form className="control-stack" onSubmit={onCreate}>
         <TextInput label="Initial balance" name="initialBalance" state={form} setState={onUpdate} type="number" />
         <button className="button" disabled={busy} type="submit">
@@ -1165,7 +1169,7 @@ function SummaryCards({ state }: { state: LoadState<DashboardSummary> }) {
     );
   }
   if (state.status === "error") {
-    return <PanelMessage title="Dashboard summary" tone="error" message={state.error} />;
+    return <PanelMessage title="Dashboard summary" tone="error" message={serviceErrorMessage(state.error, "backend")} />;
   }
 
   const latest = state.data.latestBacktest;
@@ -1198,7 +1202,7 @@ function RiskAlertsPanel({ state }: { state: LoadState<DashboardRiskAlert[]> }) 
     return <PanelMessage title="Risk alerts" message="Loading risk alerts." />;
   }
   if (state.status === "error") {
-    return <PanelMessage title="Risk alerts" tone="error" message={state.error} />;
+    return <PanelMessage title="Risk alerts" tone="error" message={serviceErrorMessage(state.error, "backend")} />;
   }
   if (state.data.length === 0) {
     return <PanelMessage title="Risk alerts" message="No risk alerts are active." />;
@@ -1230,10 +1234,10 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
     return <PanelMessage title="Strategy performance" message="Loading strategy performance." />;
   }
   if (state.status === "error") {
-    return <PanelMessage title="Strategy performance" tone="error" message={state.error} />;
+    return <PanelMessage title="Strategy performance" tone="error" message={serviceErrorMessage(state.error, "backend")} />;
   }
   if (state.data.length === 0) {
-    return <PanelMessage title="Strategy performance" message="No strategies have been created yet." />;
+    return <PanelMessage title="Strategy performance" message="No strategies have been created yet. Start by importing candles, then create an SMA strategy." />;
   }
 
   return (
@@ -1339,7 +1343,7 @@ function AuditTimeline({ state }: { state: LoadState<AuditEvent[]> }) {
     return <PanelMessage title="Audit events" message="Loading audit events." />;
   }
   if (state.status === "error") {
-    return <PanelMessage title="Audit events" tone="error" message={state.error} />;
+    return <PanelMessage title="Audit events" tone="error" message={serviceErrorMessage(state.error, "backend")} />;
   }
   if (state.data.length === 0) {
     return <PanelMessage title="Audit events" message="No audit events have been recorded yet." />;
@@ -1375,7 +1379,7 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
       <PanelMessage
         title="Market regime"
         tone="error"
-        message={`${state.error} Import at least 20 BTC-USD 1h candles before using this panel.`}
+        message={`${serviceErrorMessage(state.error, "ml")} Import at least 20 BTC-USD 1h candles before using this panel.`}
       />
     );
   }
@@ -1513,6 +1517,11 @@ function PanelMessage({
       <p>{message}</p>
     </section>
   );
+}
+
+function serviceErrorMessage(message: string, service: "backend" | "ml") {
+  const serviceName = service === "backend" ? "backend API" : "ML service";
+  return `${message} Check that the ${serviceName} is running, then refresh this dashboard.`;
 }
 
 export function toInstant(value: string, label = "Date") {
