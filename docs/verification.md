@@ -2,6 +2,26 @@
 
 Use this checklist from a clean clone or a freshly pulled branch.
 
+## Quick Verification
+
+Run these first when changing the project:
+
+```bash
+cd backend && ./mvnw test
+cd ../ml-service && python3 -m pytest
+cd ../frontend && npm run test
+npm run build
+cd .. && python3 -m unittest scripts/smoke_demo_test.py
+```
+
+When Docker is available, also run:
+
+```bash
+docker compose config
+docker compose up --build
+python3 scripts/smoke_demo.py --timeout-seconds 30
+```
+
 | Area | Command | Expected result |
 | --- | --- | --- |
 | ML service tests | `cd ml-service && python3 -m pytest` | Health and strategy-risk tests pass. |
@@ -16,6 +36,8 @@ Use this checklist from a clean clone or a freshly pulled branch.
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
 | ML health | `curl http://localhost:8000/health` | Returns `{"status":"ok"}`. |
 | Demo flow | Follow `docs/demo-flow.md` | Import, strategy, backtest, ML score, paper replay, dashboard, and audit flow works. |
+| Demo evidence guide | Follow `docs/demo-evidence.md` | Smoke output, Swagger, frontend, and ML health checks can be recorded for review. |
+| Screenshot guide | Follow `docs/screenshots.md` | Required portfolio screenshots are listed without committing local artifacts by default. |
 | Dashboard risk alerts | `curl http://localhost:8080/api/dashboard/risk-alerts` | Returns derived drawdown and ML-risk alerts, or an empty list. |
 | Market regime flow | `curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"` | Returns a regime label, confidence, reasons, and derived features after candles are imported. |
 | Backtest chart data | `curl http://localhost:8080/api/backtests/BACKTEST_ID/equity-series` and `curl http://localhost:8080/api/backtests/BACKTEST_ID/drawdown-series` | Returns timestamped points for dashboard charts. |
@@ -36,13 +58,11 @@ Use this checklist from a clean clone or a freshly pulled branch.
 
 ## Latest Local Verification
 
-Last checked on May 30, 2026:
+Last checked on May 31, 2026:
 
-- `cd backend && ./mvnw test`: passed, with 100 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
-- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 101 tests.
-- `cd frontend && npm run test`: passed, 28 tests.
-- `cd frontend && npm run build`: passed.
-- `python3 -m unittest scripts/smoke_demo_test.py`: passed, 7 tests.
+- `cd frontend && npm run test -- App.render.test.tsx`: passed, 13 tests.
+- `cd frontend && npm run test -- App.render.test.tsx App.test.ts`: passed, 19 tests.
+- Full backend, ML, frontend, build, and smoke-helper verification should be rerun after the remaining Phase 7 docs and README pass.
 - `docker compose version`: blocked because Docker CLI is unavailable in this WSL distro.
 - `docker compose config`: not rerun because Docker CLI is unavailable in this WSL distro.
 - `docker compose up --build -d`: not rerun because Docker CLI is unavailable in this WSL distro.
