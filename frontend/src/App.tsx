@@ -135,7 +135,7 @@ function App() {
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
 
-  const loadDashboard = useCallback(() => {
+  const loadDashboard = useCallback(async () => {
     setSummaryState(loadingSummary);
     setStrategiesState(loadingStrategies);
     setAuditState(loadingAuditEvents);
@@ -143,32 +143,32 @@ function App() {
     setRegimeState(loadingMarketRegime);
     setStrategyListState(loadingStrategyList);
 
-    fetchDashboardSummary()
+    const summaryLoad = fetchDashboardSummary()
       .then((data) => setSummaryState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setSummaryState({ status: "error", data: null, error: errorMessage(error) }),
       );
-    fetchMarketRegime()
+    const regimeLoad = fetchMarketRegime()
       .then((data) => setRegimeState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRegimeState({ status: "error", data: null, error: errorMessage(error) }),
       );
-    fetchAuditEvents()
+    const auditLoad = fetchAuditEvents()
       .then((data) => setAuditState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setAuditState({ status: "error", data: null, error: errorMessage(error) }),
       );
-    fetchDashboardRiskAlerts()
+    const riskAlertsLoad = fetchDashboardRiskAlerts()
       .then((data) => setRiskAlertsState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRiskAlertsState({ status: "error", data: null, error: errorMessage(error) }),
       );
-    fetchStrategyPerformance()
+    const strategyPerformanceLoad = fetchStrategyPerformance()
       .then((data) => setStrategiesState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setStrategiesState({ status: "error", data: null, error: errorMessage(error) }),
       );
-    fetchStrategies()
+    const strategiesLoad = fetchStrategies()
       .then((data) => {
         setStrategyListState({ status: "success", data, error: null });
         setSelectedStrategyId((current) => current ?? data[0]?.id ?? null);
@@ -176,21 +176,33 @@ function App() {
       .catch((error: unknown) =>
         setStrategyListState({ status: "error", data: null, error: errorMessage(error) }),
       );
+
+    await Promise.all([
+      summaryLoad,
+      regimeLoad,
+      auditLoad,
+      riskAlertsLoad,
+      strategyPerformanceLoad,
+      strategiesLoad,
+    ]);
   }, []);
 
   useEffect(() => {
-    loadDashboard();
+    void loadDashboard();
   }, [loadDashboard]);
 
-  const loadPaperSessions = useCallback((strategyId: number, preferredSessionId?: number) => {
-    fetchStrategyPaperSessions(strategyId)
-      .then((sessions) => {
-        setPaperSessions(sessions);
-        setSelectedPaperSessionId((current) =>
-          selectPaperSessionId(current, sessions, preferredSessionId),
-        );
-      })
-      .catch((error: unknown) => setNotice({ tone: "error", message: errorMessage(error) }));
+  const loadPaperSessions = useCallback(async (strategyId: number, preferredSessionId?: number) => {
+    try {
+      const sessions = await fetchStrategyPaperSessions(strategyId);
+      setPaperSessions(sessions);
+      setSelectedPaperSessionId((current) =>
+        selectPaperSessionId(current, sessions, preferredSessionId),
+      );
+      return sessions;
+    } catch (error: unknown) {
+      setNotice({ tone: "error", message: errorMessage(error) });
+      return [];
+    }
   }, []);
 
   useEffect(() => {
@@ -200,7 +212,7 @@ function App() {
       setSelectedPaperSessionId(null);
       return;
     }
-    loadPaperSessions(selectedStrategyId);
+    void loadPaperSessions(selectedStrategyId);
   }, [loadPaperSessions, selectedStrategyId]);
 
   useEffect(() => {
@@ -272,7 +284,7 @@ function App() {
       });
       setSelectedStrategyId(created.id);
       setNotice({ tone: "success", message: `Created strategy #${created.id}.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -288,7 +300,7 @@ function App() {
       const summary = await importMarketData(file);
       setImportSummary(summary);
       setNotice({ tone: "success", message: `Imported ${summary.rowsImported} candle rows.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -314,7 +326,7 @@ function App() {
       setBacktestDrawdown(drawdown);
       setRiskScore(null);
       setNotice({ tone: "success", message: `Backtest #${run.id} completed.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -329,7 +341,7 @@ function App() {
       setRiskScore(score);
       setBacktestRun(refreshed);
       setNotice({ tone: "success", message: `Risk score saved as ${score.riskLabel}.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -343,7 +355,7 @@ function App() {
       const session = await createPaperSession(selectedStrategyId, Number(paperForm.initialBalance));
       await loadPaperSessions(selectedStrategyId, session.id);
       setNotice({ tone: "success", message: `Created paper session #${session.id}.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -360,7 +372,7 @@ function App() {
       await loadPaperSessions(selectedStrategyId);
       setSelectedPaperSessionId(session.id);
       setNotice({ tone: "success", message: `${action === "start" ? "Started" : "Stopped"} session #${session.id}.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -376,8 +388,16 @@ function App() {
         maxCandles: Number(paperForm.maxCandles),
       });
       setPaperReplay(result);
+      const [summary, orders, positions] = await Promise.all([
+        fetchPaperSessionSummary(selectedPaperSessionId),
+        fetchPaperOrders(selectedPaperSessionId),
+        fetchPaperPositions(selectedPaperSessionId),
+      ]);
+      setPaperSummary(summary);
+      setPaperOrders(orders);
+      setPaperPositions(positions);
       setNotice({ tone: "success", message: `Replay filled ${result.filledOrders} orders.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -397,7 +417,7 @@ function App() {
       setPaperPositions(await fetchPaperPositions(selectedPaperSessionId));
       setPaperSummary(await fetchPaperSessionSummary(selectedPaperSessionId));
       setNotice({ tone: order.status === "FILLED" ? "success" : "error", message: `Order #${order.id} ${order.status.toLowerCase()}.` });
-      loadDashboard();
+      await loadDashboard();
     });
   }
 
@@ -437,7 +457,7 @@ function App() {
           <p className="eyebrow">SignalAttention</p>
           <h1>Trading research dashboard</h1>
         </div>
-        <button className="button" disabled={loading} onClick={loadDashboard} type="button">
+        <button className="button" disabled={loading} onClick={() => void loadDashboard()} type="button">
           {loading ? "Refreshing" : "Refresh"}
         </button>
       </header>
