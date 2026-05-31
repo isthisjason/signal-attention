@@ -1106,7 +1106,25 @@ The project should eventually include:
 - Phases 1-5 are implemented as backend-first local MVP capabilities.
 - Phase 6 now has a CPU-safe foundation plus a hardened optional torch path: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, artifact-backed PyTorch Transformer inference, a local training/export script, optional torch Compose profile, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
 - Model quality and experiment tracking for the optional torch path are now implemented while keeping CPU reproducibility: a seeded mini batch training loop with per epoch validation and `--patience` early stopping that keeps the best epoch, a regularized model with light dropout and sinusoidal positional encoding, baseline aware evaluation that reports a majority class baseline and lift with an optional `--holdout-ratio`, and a versioned experiment registry (one entry per run id, seed, git commit, torch version, and per epoch history) with a `compare_market_regime_experiments.py` view.
+- The React dashboard/workbench is implemented for the local demo path: import sample candles, create SMA strategies, run backtests, score ML risk, manage paper sessions, replay candles, and review summary, risk alert, audit, anomaly, strategy comparison, chart, and market regime panels.
+- The running-stack smoke script covers service reachability, sample import, strategy creation, backtesting, persisted ML risk score, paper trading, dashboard, market regime, anomaly, and audit checks.
 - Further model quality work (richer features, independent ground truth, hyperparameter search) remains optional research and is not required for the local research baseline.
+
+## 30. Next Implementation Wave
+
+The next wave is Phase 7 portfolio polish. It should improve how easy the project is to verify, demo, and explain, without adding auth, users, broker connections, live trading, cloud deployment, or new model research.
+
+Planned commit-sized work:
+
+1. Document the Phase 7 targets and current progress.
+2. Add a demo evidence workflow for recording local smoke, Swagger, frontend, and ML health checks.
+3. Polish dashboard empty states and service error states.
+4. Tighten dashboard refresh behavior around the main demo workflow.
+5. Add screenshot capture guidance for portfolio evidence.
+6. Finalize the verification matrix.
+7. Give the README a final portfolio pass with plain, human wording.
+
+After each implementation wave, update `PROJECT_PROGRESS.local.md` with completed commits, verification results, blockers, and next steps. That file is intentionally local-only and should not be committed.
 
 ---
 
