@@ -212,6 +212,8 @@ See [docs/verification.md](docs/verification.md) for the local verification chec
 See [docs/demo-evidence.md](docs/demo-evidence.md) for the commands I use to collect demo proof.
 See [docs/screenshots.md](docs/screenshots.md) for the screenshot checklist.
 
+Committed portfolio screenshots are available in [docs/assets/screenshots](docs/assets/screenshots). They show the local dashboard and Swagger UI after the smoke demo has created sample BTC-USD data.
+
 ## What I was trying to practice
 
 The main goal was to build something that touches a few real backend problems without pretending to be a real trading platform.
