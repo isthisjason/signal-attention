@@ -58,15 +58,15 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 
 ## Latest Local Verification
 
-Last checked on May 31, 2026:
+Last checked on June 1, 2026:
 
 - `cd backend && ./mvnw test`: passed, with 100 tests run and 4 Docker-backed persistence tests skipped because Docker was unavailable in this WSL environment.
 - `cd ml-service && ../.venv/bin/python -m pytest`: passed, 101 tests.
 - `cd frontend && npm run test`: passed, 29 tests.
 - `cd frontend && npm run build`: passed.
 - `python3 -m unittest scripts/smoke_demo_test.py`: passed, 7 tests.
-- `docker compose version`: passed, Docker Compose v5.1.3.
 - `docker compose config`: passed.
 - `docker compose up --build -d`: passed; PostgreSQL, backend, ML service, and frontend started.
 - `python3 scripts/smoke_demo.py --timeout-seconds 30`: passed against the running Compose stack after allowing localhost access from the sandbox.
+- Portfolio screenshots were captured from the running frontend and Swagger UI and committed under `docs/assets/screenshots/`.
 - Optional torch train/evaluate commands were not rerun. They remain optional because torch dependencies are intentionally outside the default setup.

@@ -1116,13 +1116,14 @@ The next wave is Phase 7 portfolio polish. It should improve how easy the projec
 
 Planned commit-sized work:
 
-1. Document the Phase 7 targets and current progress.
-2. Add a demo evidence workflow for recording local smoke, Swagger, frontend, and ML health checks.
-3. Polish dashboard empty states and service error states.
-4. Tighten dashboard refresh behavior around the main demo workflow.
-5. Add screenshot capture guidance for portfolio evidence.
-6. Finalize the verification matrix.
-7. Give the README a final portfolio pass with plain, human wording.
+1. Document the Phase 7 targets and current progress. Done.
+2. Add a demo evidence workflow for recording local smoke, Swagger, frontend, and ML health checks. Done.
+3. Polish dashboard empty states and service error states. Done.
+4. Tighten dashboard refresh behavior around the main demo workflow. Done.
+5. Add screenshot capture guidance for portfolio evidence. Done.
+6. Finalize the verification matrix. Done.
+7. Give the README a final portfolio pass with plain, human wording. Done.
+8. Commit portfolio screenshots from the verified running stack. Done.
 
 After each implementation wave, update `PROJECT_PROGRESS.local.md` with completed commits, verification results, blockers, and next steps. That file is intentionally local-only and should not be committed.
 
