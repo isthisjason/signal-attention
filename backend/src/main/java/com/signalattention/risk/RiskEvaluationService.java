@@ -39,6 +39,7 @@ public class RiskEvaluationService {
         RiskPolicy policy = riskPolicyRepository.findByStrategyId(request.strategyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Risk policy not found for strategy: " + request.strategyId()));
 
+        // Position size is measured against account equity so the same order scales across balances.
         BigDecimal orderNotional = request.quantity().multiply(request.price()).setScale(8, RoundingMode.HALF_UP);
         BigDecimal positionSizePercent = orderNotional
                 .divide(request.accountEquity(), 12, RoundingMode.HALF_UP)
@@ -74,6 +75,7 @@ public class RiskEvaluationService {
         if (request.lastRiskRejectionAt() != null && policy.getCooldownMinutes() > 0) {
             Instant cooldownEndsAt = request.lastRiskRejectionAt().plus(policy.getCooldownMinutes(), ChronoUnit.MINUTES);
             if (cooldownEndsAt.isAfter(evaluatedAt)) {
+                // Cooldown blocks another order after a recent rejection even if size checks pass.
                 decision = RiskDecision.REJECTED;
                 reasonCodes.add(RiskReasonCode.COOLDOWN_ACTIVE);
                 reasons.add("Risk cooldown is active after a recent rejection.");
@@ -81,6 +83,7 @@ public class RiskEvaluationService {
         }
 
         if (request.side() == RiskOrderSide.SELL && request.openPositionEntryPrice() != null) {
+            // Stop-loss and take-profit are annotations for closing orders, not automatic executions.
             BigDecimal openPositionReturn = request.price()
                     .subtract(request.openPositionEntryPrice())
                     .divide(request.openPositionEntryPrice(), 12, RoundingMode.HALF_UP)

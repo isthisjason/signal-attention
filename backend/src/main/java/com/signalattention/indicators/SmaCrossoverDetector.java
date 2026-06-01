@@ -35,6 +35,7 @@ public class SmaCrossoverDetector {
             int previousComparison = previousShort.get().compareTo(previousLong.get());
             int currentComparison = currentShort.get().compareTo(currentLong.get());
 
+            // A crossover only counts when the short SMA moves from one side of the long SMA to the other.
             if (previousComparison <= 0 && currentComparison > 0) {
                 signals.add(new CrossoverSignal(index, CrossoverSignalType.BULLISH_CROSSOVER));
             } else if (previousComparison >= 0 && currentComparison < 0) {

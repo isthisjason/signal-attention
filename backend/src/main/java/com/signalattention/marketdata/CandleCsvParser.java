@@ -41,6 +41,7 @@ public class CandleCsvParser {
                 if (line.isBlank()) {
                     continue;
                 }
+                // Count only data rows so the import summary matches rows the parser actually tried.
                 totalRows++;
                 parseRow(rowNumber, line, candles, errors);
             }
@@ -86,6 +87,7 @@ public class CandleCsvParser {
             return;
         }
 
+        // Row-level errors do not stop the whole import; valid rows can still be saved.
         candles.add(new ParsedMarketCandle(rowNumber, symbol, timeframe, openTime, open, high, low, close, volume));
     }
 

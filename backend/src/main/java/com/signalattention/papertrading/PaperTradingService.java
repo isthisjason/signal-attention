@@ -143,6 +143,7 @@ public class PaperTradingService {
     public PaperSessionSummaryResponse getSummary(Long id) {
         PaperSession session = findSession(id);
         List<PaperPosition> openPositions = positionRepository.findByPaperSessionIdAndStatusOrderByOpenedAtAsc(id, PaperPositionStatus.OPEN);
+        // Marks use the latest imported candle so summaries can show current paper equity.
         List<PaperPositionMarkResponse> marks = openPositions.stream()
                 .map(position -> markPosition(session, position))
                 .toList();
@@ -215,6 +216,7 @@ public class PaperTradingService {
         int filledOrders = 0;
         int rejectedOrders = 0;
         for (int index = 0; index < candles.size(); index++) {
+            // Replay turns historical SMA signals into normal paper orders, so the same checks apply.
             CrossoverSignalType signal = signalsByIndex.get(index);
             if (signal == null) {
                 continue;
@@ -257,6 +259,7 @@ public class PaperTradingService {
                 session.getStrategy().getTimeframe()
         );
         if (latest == null) {
+            // The position still exists, but it cannot be priced until market data is imported.
             return new PaperPositionMarkResponse(
                     position.getId(),
                     position.getSymbol(),
@@ -295,6 +298,7 @@ public class PaperTradingService {
             if (openPosition(session.getId(), strategy.getSymbol()) != null) {
                 return null;
             }
+            // Bullish replay orders use the strategy's configured position-size percent.
             BigDecimal allocation = session.getCashBalance()
                     .multiply(rules.positionSizePercent())
                     .divide(new BigDecimal("100"), MONEY_SCALE, RoundingMode.HALF_UP);
@@ -304,6 +308,7 @@ public class PaperTradingService {
             }
             return new PaperOrderRequest(PaperOrderSide.BUY, strategy.getSymbol(), quantity, candle.getClose());
         }
+        // Bearish replay orders close the open simulated position when one exists.
         PaperPosition position = openPosition(session.getId(), strategy.getSymbol());
         if (position == null) {
             return null;

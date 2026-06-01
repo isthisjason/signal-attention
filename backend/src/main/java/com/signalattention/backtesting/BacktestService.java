@@ -179,6 +179,7 @@ public class BacktestService {
             throw new BadRequestException("Unsupported strategy type: " + strategy.getStrategyType());
         }
 
+        // Request values can override saved strategy rules for one-off backtest runs.
         SmaCrossoverRulesRequest rules = parseRules(strategy);
         BigDecimal initialBalance = override(request.initialBalance(), rules.initialBalance());
         BigDecimal feePercent = override(request.feePercent(), rules.feePercent());
@@ -197,6 +198,7 @@ public class BacktestService {
             throw new BadRequestException("Not enough candles for long SMA window");
         }
 
+        // Save the run first so generated trades can reference a real backtest id.
         BacktestRun run = backtestRunRepository.save(new BacktestRun(
                 strategy,
                 request.startDate(),
@@ -251,6 +253,7 @@ public class BacktestService {
             CrossoverSignalType signal = signalsByIndex.get(index);
 
             if (signal == CrossoverSignalType.BULLISH_CROSSOVER && quantity.signum() == 0) {
+                // Long-only simulation: buy once on a bullish cross using the configured cash percent.
                 BigDecimal allocation = cash.multiply(positionSizePercent).divide(ONE_HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
                 entryFee = percentOf(allocation, feePercent);
                 BigDecimal entryNotional = allocation.subtract(entryFee);
@@ -262,6 +265,7 @@ public class BacktestService {
                     totalFees = totalFees.add(entryFee);
                 }
             } else if (signal == CrossoverSignalType.BEARISH_CROSSOVER && quantity.signum() > 0) {
+                // A bearish cross exits the current long position and realizes P&L.
                 TradeClose close = closeTrade(run, entryTime, entryPrice, quantity, entryFee, candle, feePercent);
                 cash = cash.add(close.cashReturned());
                 totalFees = totalFees.add(close.exitFee());
@@ -276,6 +280,7 @@ public class BacktestService {
         }
 
         if (quantity.signum() > 0) {
+            // Close any open position on the final candle so metrics use a completed equity curve.
             MarketCandle lastCandle = candles.get(candles.size() - 1);
             TradeClose close = closeTrade(run, entryTime, entryPrice, quantity, entryFee, lastCandle, feePercent);
             cash = cash.add(close.cashReturned());
@@ -287,6 +292,7 @@ public class BacktestService {
         return new SimulationResult(cash, trades, totalFees, maxDrawdown(equityCurve), volatility(equityCurve));
     }
 
+    // Converts an open position into a persisted trade and returns the cash after exit fees.
     private TradeClose closeTrade(
             BacktestRun run,
             Instant entryTime,
@@ -313,6 +319,7 @@ public class BacktestService {
         return new TradeClose(trade, exitValue.subtract(exitFee), exitFee);
     }
 
+    // Mark-to-market equity lets drawdown and volatility include open positions.
     private BigDecimal markEquity(BigDecimal cash, BigDecimal quantity, BigDecimal closePrice, BigDecimal feePercent) {
         if (quantity.signum() == 0) {
             return cash;
@@ -321,6 +328,7 @@ public class BacktestService {
         return cash.add(exitValue).subtract(percentOf(exitValue, feePercent));
     }
 
+    // Drawdown is measured from the highest prior equity point.
     private BigDecimal maxDrawdown(List<BigDecimal> equityCurve) {
         BigDecimal peak = BigDecimal.ZERO;
         BigDecimal maxDrawdown = BigDecimal.ZERO;
@@ -338,6 +346,7 @@ public class BacktestService {
         return maxDrawdown;
     }
 
+    // Uses equity returns, not candle returns, because fees and position sizing affect the account curve.
     private BigDecimal volatility(List<BigDecimal> equityCurve) {
         if (equityCurve.size() < 2) {
             return BigDecimal.ZERO;

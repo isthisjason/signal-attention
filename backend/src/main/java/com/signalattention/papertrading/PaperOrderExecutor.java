@@ -41,6 +41,7 @@ public class PaperOrderExecutor {
         BigDecimal quantity = scaleMoney(request.quantity());
         BigDecimal price = scaleMoney(request.price());
         BigDecimal notional = scaleMoney(quantity.multiply(price));
+        // Orders are always saved, even when rejected, so the paper audit trail is complete.
         String rejection = rejectionReason(session, request, notional);
         PaperOrderStatus status = rejection == null ? PaperOrderStatus.FILLED : PaperOrderStatus.REJECTED;
         PaperOrder order = orderRepository.save(new PaperOrder(
@@ -70,6 +71,7 @@ public class PaperOrderExecutor {
         if (request.side() == PaperOrderSide.SELL && openPosition.getQuantity().compareTo(request.quantity()) < 0) {
             return "Sell quantity exceeds the open paper position.";
         }
+        // Risk policy is optional for paper trading; when present it acts as a final approval gate.
         if (riskPolicyRepository.findByStrategyId(session.getStrategy().getId()).isPresent()
                 && riskDecision(session, request, notional, openPosition) == RiskDecision.REJECTED) {
             return "Risk policy rejected the paper order.";
@@ -106,6 +108,7 @@ public class PaperOrderExecutor {
         session.setCashBalance(scaleMoney(session.getCashBalance().subtract(notional)));
         PaperPosition position = openPosition(session.getId(), symbol)
                 .orElseGet(() -> new PaperPosition(session, symbol, BigDecimal.ZERO, price));
+        // Additional buys average into the existing paper position instead of creating lots.
         BigDecimal currentValue = position.getQuantity().multiply(position.getEntryPrice());
         BigDecimal newQuantity = position.getQuantity().add(quantity);
         position.setEntryPrice(scaleMoney(currentValue.add(notional).divide(newQuantity, MONEY_SCALE, RoundingMode.HALF_UP)));
@@ -118,6 +121,7 @@ public class PaperOrderExecutor {
                 .orElseThrow(() -> new BadRequestException("No open paper position exists for the symbol"));
         session.setCashBalance(scaleMoney(session.getCashBalance().add(notional)));
         if (position.getQuantity().compareTo(quantity) == 0) {
+            // Full exits close the position; partial exits leave the original average entry price.
             position.setStatus(PaperPositionStatus.CLOSED);
             position.setExitPrice(price);
             position.setClosedAt(Instant.now());

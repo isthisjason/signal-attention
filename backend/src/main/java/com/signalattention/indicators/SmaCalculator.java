@@ -19,6 +19,7 @@ public class SmaCalculator {
         BigDecimal rollingSum = BigDecimal.ZERO;
 
         for (int index = 0; index < prices.size(); index++) {
+            // Keep a rolling sum so each SMA point is O(1) instead of re-summing the window.
             rollingSum = rollingSum.add(prices.get(index));
             if (index >= window) {
                 rollingSum = rollingSum.subtract(prices.get(index - window));
