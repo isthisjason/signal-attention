@@ -39,6 +39,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardSummaryResponse getSummary() {
+        // Summary is intentionally cheap: counts plus the latest backtest and latest audit events.
         return new DashboardSummaryResponse(
                 strategyRepository.count(),
                 backtestRunRepository.count(),
@@ -52,6 +53,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public List<DashboardStrategyPerformanceResponse> getStrategyPerformance() {
+        // Each strategy row shows the latest backtest and paper-session count for quick comparison.
         return strategyRepository.findAll().stream()
                 .map(this::strategyPerformance)
                 .toList();
@@ -59,6 +61,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public List<DashboardRiskAlertResponse> getRiskAlerts() {
+        // Alerts are derived from saved backtest results; there is no separate alert table yet.
         return backtestRunRepository.findAll().stream()
                 .flatMap(run -> Stream.of(drawdownAlert(run), mlRiskAlert(run)))
                 .filter(alert -> alert != null)

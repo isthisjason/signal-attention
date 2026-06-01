@@ -59,6 +59,7 @@ public class MarketRegimeService {
             throw new BadRequestException("At least " + MIN_CANDLE_LIMIT + " candles are required for market regime analysis");
         }
 
+        // The backend owns candle lookup; the ML service only receives the sequence to classify.
         return mlRiskClient.predictMarketRegime(new MlMarketRegimeRequest(
                 normalizedSymbol,
                 normalizedTimeframe,
@@ -86,6 +87,7 @@ public class MarketRegimeService {
             throw new BadRequestException("windowSize must be less than or equal to candle count");
         }
 
+        // ML returns rolling regime points; the backend returns those points with the source candles.
         MlRegimeRunResponse mlResponse = mlRiskClient.predictRegimeRun(
                 new MlRegimeRunRequest(
                         symbol,
@@ -121,6 +123,7 @@ public class MarketRegimeService {
     }
 
     private List<MarketCandle> latestCandlesAscending(String symbol, String timeframe, int limit) {
+        // Repository query is newest-first for limiting, then reversed for time-series processing.
         List<MarketCandle> candles = new ArrayList<>(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeDesc(
                 symbol,
                 timeframe,
@@ -169,6 +172,7 @@ public class MarketRegimeService {
         if (backtestId == null) {
             return List.of();
         }
+        // Trade markers are optional chart context and must match the requested market.
         var run = backtestRunRepository.findById(backtestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Backtest run not found: " + backtestId));
         if (!run.getStrategy().getSymbol().equals(symbol) || !run.getStrategy().getTimeframe().equals(timeframe)) {

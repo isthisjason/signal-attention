@@ -41,6 +41,7 @@ public class AnomalyService {
         if (candles.size() < MIN_CANDLE_LIMIT) {
             throw new BadRequestException("At least " + MIN_CANDLE_LIMIT + " candles are required for anomaly analysis");
         }
+        // Anomaly scoring uses the same recent candle window as market regime classification.
         return mlRiskClient.predictAnomaly(new MlMarketRegimeRequest(
                 symbol,
                 timeframe,
@@ -49,6 +50,7 @@ public class AnomalyService {
     }
 
     private List<MarketCandle> latestCandlesAscending(String symbol, String timeframe, int limit) {
+        // Pull newest candles for the limit, then restore chronological order before sending to ML.
         List<MarketCandle> candles = new ArrayList<>(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeDesc(
                 symbol,
                 timeframe,

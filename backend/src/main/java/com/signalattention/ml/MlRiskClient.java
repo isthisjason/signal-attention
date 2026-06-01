@@ -25,6 +25,7 @@ public class MlRiskClient {
         this.restClient = restClient;
     }
 
+    // Backtest metrics are sent to the ML service only after the backend has persisted the run.
     public MlStrategyRiskResponse scoreStrategyRisk(MlStrategyRiskRequest request) {
         try {
             MlStrategyRiskResponse response = restClient.post()
@@ -43,6 +44,7 @@ public class MlRiskClient {
         }
     }
 
+    // Market regime and anomaly requests reuse the same candle sequence shape.
     public MlMarketRegimeResponse predictMarketRegime(MlMarketRegimeRequest request) {
         try {
             MlMarketRegimeResponse response = restClient.post()
@@ -61,6 +63,7 @@ public class MlRiskClient {
         }
     }
 
+    // A null body is treated as a service failure because the dashboard needs a complete payload.
     public MlAnomalyResponse predictAnomaly(MlMarketRegimeRequest request) {
         try {
             MlAnomalyResponse response = restClient.post()
@@ -79,6 +82,7 @@ public class MlRiskClient {
         }
     }
 
+    // Regime replay asks ML for rolling-window labels while the backend adds candle and trade context.
     public MlRegimeRunResponse predictRegimeRun(MlRegimeRunRequest request) {
         try {
             MlRegimeRunResponse response = restClient.post()

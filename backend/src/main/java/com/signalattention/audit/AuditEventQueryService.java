@@ -22,6 +22,7 @@ public class AuditEventQueryService {
     public List<AuditEventResponse> list(String entityType, String entityId, Integer limit) {
         PageRequest pageRequest = PageRequest.of(0, normalizedLimit(limit));
         List<AuditEvent> events;
+        // Choose the most specific repository query available so filters stay database-side.
         if (hasText(entityType) && hasText(entityId)) {
             events = auditEventRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(entityType, entityId, pageRequest);
         } else if (hasText(entityType)) {
