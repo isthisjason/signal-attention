@@ -136,6 +136,7 @@ function App() {
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
 
   const loadDashboard = useCallback(async () => {
+    // Refresh each panel independently so one failed endpoint does not blank the whole dashboard.
     setSummaryState(loadingSummary);
     setStrategiesState(loadingStrategies);
     setAuditState(loadingAuditEvents);
@@ -195,6 +196,7 @@ function App() {
     try {
       const sessions = await fetchStrategyPaperSessions(strategyId);
       setPaperSessions(sessions);
+      // Keep the current session when possible, but prefer a newly created one after create.
       setSelectedPaperSessionId((current) =>
         selectPaperSessionId(current, sessions, preferredSessionId),
       );
@@ -206,6 +208,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Changing strategies resets replay output because sessions and chart context belong to one strategy.
     setPaperReplay(null);
     if (selectedStrategyId === null) {
       setPaperSessions([]);
@@ -216,6 +219,7 @@ function App() {
   }, [loadPaperSessions, selectedStrategyId]);
 
   useEffect(() => {
+    // Session details are kept in local state because several actions update them together.
     if (selectedPaperSessionId === null) {
       setPaperSummary(null);
       setPaperOrders([]);
@@ -255,6 +259,7 @@ function App() {
     strategyListState.status === "loading";
 
   async function runAction(action: string, work: () => Promise<void>) {
+    // One wrapper keeps button busy states and notices consistent across the workbench.
     setBusyAction(action);
     setNotice(null);
     try {
@@ -388,6 +393,7 @@ function App() {
         maxCandles: Number(paperForm.maxCandles),
       });
       setPaperReplay(result);
+      // Replay can create orders and positions, so reload the paper details immediately.
       const [summary, orders, positions] = await Promise.all([
         fetchPaperSessionSummary(selectedPaperSessionId),
         fetchPaperOrders(selectedPaperSessionId),
@@ -435,6 +441,7 @@ function App() {
       return;
     }
     void runAction("regime-replay", async () => {
+      // Trade markers are included only when a backtest has been run in this browser session.
       const replay = await runRegimeReplay({
         symbol: selectedStrategy.symbol,
         timeframe: selectedStrategy.timeframe,
@@ -575,8 +582,10 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
   const min = Math.min(...lows);
   const max = Math.max(...highs);
   const span = max - min || 1;
+  // Map candle index and price into the fixed SVG coordinate space.
   const x = (i: number) => pad.left + (i / Math.max(1, replay.candles.length - 1)) * (width - pad.left - pad.right);
   const y = (p: number) => height - pad.bottom - ((p - min) / span) * (height - pad.top - pad.bottom);
+  // Regime points are keyed by window end time so markers align with candles.
   const midByTime = new Map(replay.points.map((p) => [p.windowEnd, p]));
   const colorFor = (label: string) => (label.includes("DOWN") ? "#cc3b3b" : label.includes("SIDE") ? "#9f7a28" : "#2a8f54");
   const firstCandle = replay.candles[0];
@@ -1088,6 +1097,7 @@ function SeriesChart({
     );
   }
 
+  // Build one compact SVG path instead of rendering a full chart library for simple sparklines.
   const values = points.map((point) => point.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
