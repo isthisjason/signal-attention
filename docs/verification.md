@@ -65,8 +65,8 @@ Last checked on May 31, 2026:
 - `cd frontend && npm run test`: passed, 29 tests.
 - `cd frontend && npm run build`: passed.
 - `python3 -m unittest scripts/smoke_demo_test.py`: passed, 7 tests.
-- `docker compose version`: blocked because Docker CLI is unavailable in this WSL distro.
-- `docker compose config`: not rerun because Docker CLI is unavailable in this WSL distro.
-- `docker compose up --build -d`: not rerun because Docker CLI is unavailable in this WSL distro.
-- `python3 scripts/smoke_demo.py`: not rerun because the local Compose stack could not be started in this WSL distro.
+- `docker compose version`: passed, Docker Compose v5.1.3.
+- `docker compose config`: passed.
+- `docker compose up --build -d`: passed; PostgreSQL, backend, ML service, and frontend started.
+- `python3 scripts/smoke_demo.py --timeout-seconds 30`: passed against the running Compose stack after allowing localhost access from the sandbox.
 - Optional torch train/evaluate commands were not rerun. They remain optional because torch dependencies are intentionally outside the default setup.
