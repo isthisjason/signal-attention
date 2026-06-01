@@ -1126,6 +1126,27 @@ Planned commit-sized work:
 
 After each implementation wave, update `PROJECT_PROGRESS.local.md` with completed commits, verification results, blockers, and next steps. That file is intentionally local-only and should not be committed.
 
+## 31. Code Commenting Wave
+
+Add short comments for future readers before doing more feature work. The comments should help a junior to intermediate developer understand why the main workflows exist and where important state changes happen.
+
+Planned commit-sized work:
+
+1. Document the code commenting wave in this implementation plan.
+2. Comment backend simulation flow: backtests, SMA signals, CSV import, risk evaluation, paper order execution, and paper replay.
+3. Comment backend analysis integrations: ML client calls, market regime/anomaly proxying, dashboard aggregation, and audit filtering.
+4. Comment ML service reasoning paths: rule scoring, feature extraction, classifier selection, torch artifact validation, and training/evaluation helpers.
+5. Comment frontend workflow state: dashboard refresh, selected strategy/session state, busy actions, paper refreshes, and chart coordinate helpers.
+6. Comment the smoke workflow phases in `scripts/smoke_demo.py`.
+7. Update verification results and `PROJECT_PROGRESS.local.md` after implementation.
+
+Comment style:
+
+- Keep comments short and plain.
+- Explain workflow intent, domain rules, or non-obvious calculations.
+- Do not comment every getter, setter, record, repository, enum, or simple controller method.
+- Do not add comments that just repeat the code.
+
 ---
 
 ## 28. Assumptions and Defaults
