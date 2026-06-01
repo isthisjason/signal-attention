@@ -137,6 +137,7 @@ def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
 
 
 def check_stack(config: Config) -> None:
+    # First prove the three user-facing services are reachable.
     log_step("checking ML service health")
     ml_health = request_json(f"{config.ml_url}/health", config.timeout_seconds)
     check(ml_health == {"status": "ok"}, "ML service health check did not return ok.")
@@ -153,6 +154,7 @@ def check_stack(config: Config) -> None:
 def check_core_workflow(config: Config) -> tuple[int, int]:
     check(config.sample_csv.exists(), f"Sample CSV does not exist: {config.sample_csv}")
 
+    # Core workflow mirrors the smallest useful demo: data, strategy, backtest, risk score.
     log_step("importing market data")
     import_summary = post_multipart_file(
         f"{config.backend_url}/api/market-data/import",
@@ -234,6 +236,7 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
 
 
 def check_paper_workflow(config: Config, strategy_id: int) -> int:
+    # Paper trading stays simulated, but it should still exercise session lifecycle and orders.
     log_step("creating paper session")
     session = post_json(
         f"{config.backend_url}/api/strategies/{strategy_id}/paper-sessions",
@@ -302,6 +305,7 @@ def check_paper_workflow(config: Config, strategy_id: int) -> int:
 
 
 def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) -> None:
+    # Analysis checks prove the created demo data flows into dashboard and audit views.
     log_step("checking dashboard summary")
     summary = request_json(f"{config.backend_url}/api/dashboard/summary", config.timeout_seconds)
     require_keys(
