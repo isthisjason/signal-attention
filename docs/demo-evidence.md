@@ -70,3 +70,16 @@ For a portfolio pass, save:
 - Any Docker or environment blocker, especially if Docker is unavailable in WSL.
 
 Do not save or commit local database contents, generated model artifacts, or machine-specific environment files.
+
+## Committed Evidence
+
+The current portfolio screenshots are committed under `docs/assets/screenshots/`:
+
+- `dashboard-overview.png`
+- `backtest-charts.png`
+- `risk-audit.png`
+- `paper-trading.png`
+- `market-regime-anomaly.png`
+- `swagger-endpoints.png`
+
+The dashboard captures use the local sample BTC-USD demo data produced by the smoke workflow.
