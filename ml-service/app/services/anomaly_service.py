@@ -6,6 +6,7 @@ from app.services.market_regime_features import build_market_regime_features
 
 def detect_anomaly(request: AnomalyRequest) -> AnomalyResponse:
     features = build_market_regime_features(request.candles)
+    # Anomaly score is additive so the reasons explain exactly what looked unusual.
     score = Decimal("0")
     reasons: list[str] = []
 
@@ -39,6 +40,7 @@ def detect_anomaly(request: AnomalyRequest) -> AnomalyResponse:
     score = min(score, Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     label = anomaly_label(score)
     if not reasons:
+        # Normal still gets a reason so API consumers are not left with an empty explanation.
         reasons.append("Recent price, volatility, and volume look normal for this sequence.")
 
     return AnomalyResponse(

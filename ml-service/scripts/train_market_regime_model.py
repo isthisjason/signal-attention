@@ -40,6 +40,7 @@ def main() -> None:
     train_windows, validation_windows = split_training_windows(windows, args.validation_ratio)
     train_labels, validation_labels = split_training_windows(labels, args.validation_ratio)
 
+    # Fit normalization on training windows only, then reuse those stats for validation and inference.
     means, stds = normalization_stats(train_windows)
     normalized_train_windows = [
         normalize_window(window, means, stds)
@@ -180,6 +181,7 @@ def train_with_early_stopping(
         model.train()
         batch_losses: list[float] = []
         for batch_indices in build_minibatches(item_count, batch_size, seed + epoch):
+            # Change the shuffle seed per epoch while keeping the whole run reproducible.
             index_tensor = torch.tensor(batch_indices, dtype=torch.long, device=device)
             batch_inputs = inputs.index_select(0, index_tensor)
             batch_targets = targets.index_select(0, index_tensor)
@@ -204,6 +206,7 @@ def train_with_early_stopping(
         )
 
         if val_accuracy > best_val_accuracy:
+            # Keep the best validation state, not just the final epoch.
             best_val_accuracy = val_accuracy
             best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
             best_epoch = epoch
@@ -325,6 +328,7 @@ def build_training_windows(
     for end_index in range(sequence_length, len(candles) + 1):
         window = candles[end_index - sequence_length : end_index]
         request = MarketRegimeRequest(symbol="local", timeframe="local", candles=window)
+        # Labels come from the rule classifier, so this is distillation rather than market truth.
         label = classifier.classify(request).regimeLabel
         windows.append(build_torch_feature_matrix(window))
         labels.append(LABELS.index(label))

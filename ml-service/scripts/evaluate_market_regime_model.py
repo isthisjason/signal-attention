@@ -39,6 +39,7 @@ def main() -> None:
     metadata = validate_artifact_metadata(artifact)
     candles = load_candles(args.csv_path)
     examples = build_examples(candles, int(metadata["sequenceLength"]))
+    # Optional holdout scores only the later windows to mimic future data.
     examples, evaluation_scope = apply_holdout(examples, args.holdout_ratio)
 
     model = build_transformer_model(
@@ -158,6 +159,7 @@ def build_examples(candles: list[MarketRegimeCandle], sequence_length: int) -> l
     for end_index in range(sequence_length, len(candles) + 1):
         window = candles[end_index - sequence_length : end_index]
         request = MarketRegimeRequest(symbol="local", timeframe="local", candles=window)
+        # Expected labels are generated the same way as training labels for a fair comparison.
         examples.append(
             {
                 "openTime": window[-1].openTime.isoformat(),
@@ -207,6 +209,7 @@ def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> d
 
     per_label = {}
     for label in labels:
+        # Per-label metrics show whether accuracy is hiding a weak minority class.
         true_positive = confusion_matrix[label][label]
         false_positive = sum(confusion_matrix[other][label] for other in labels if other != label)
         false_negative = sum(confusion_matrix[label][other] for other in labels if other != label)

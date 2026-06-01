@@ -6,6 +6,7 @@ from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeFea
 def build_market_regime_features(candles: list[MarketRegimeCandle]) -> MarketRegimeFeatures:
     closes = [candle.close for candle in candles]
     volumes = [candle.volume for candle in candles]
+    # Features are deliberately simple so rule labels and torch inputs stay explainable.
     returns = [
         percent_change(previous, current)
         for previous, current in zip(closes, closes[1:])

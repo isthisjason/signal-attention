@@ -4,6 +4,7 @@ from app.schemas.strategy_risk_schema import StrategyRiskRequest, StrategyRiskRe
 
 
 def score_strategy_risk(request: StrategyRiskRequest) -> StrategyRiskResponse:
+    # Start from a neutral-ish baseline, then move the score with inspectable rules.
     score = Decimal("20")
     reasons: list[str] = []
 
@@ -18,6 +19,7 @@ def score_strategy_risk(request: StrategyRiskRequest) -> StrategyRiskResponse:
         reasons.append("Trade count is broad enough for a baseline read.")
 
     if request.totalReturn > Decimal("100") and request.tradeCount < 10:
+        # Big returns from tiny samples are treated as fragile, not automatically impressive.
         score += Decimal("30")
         reasons.append("Very high return with few trades may be overfit.")
 
@@ -54,6 +56,7 @@ def score_strategy_risk(request: StrategyRiskRequest) -> StrategyRiskResponse:
 
     score = max(Decimal("0"), min(Decimal("100"), score)).quantize(Decimal("0.01"))
 
+    # The overfit label wins before the generic score buckets.
     if request.tradeCount < 5 or (request.totalReturn > Decimal("100") and request.tradeCount < 10):
         label = "LIKELY_OVERFIT"
     elif score >= Decimal("70"):

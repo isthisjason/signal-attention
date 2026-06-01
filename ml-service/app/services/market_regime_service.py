@@ -17,6 +17,7 @@ from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
 
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
+    # Mode selection stays behind the classifier interface so routes do not care about rules vs torch.
     return get_market_regime_classifier().classify(request)
 
 
@@ -24,6 +25,7 @@ def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
     classifier = get_market_regime_classifier()
     points: list[RegimeRunPoint] = []
     for end_index in range(request.windowSize, len(request.candles) + 1, request.stride):
+        # Each point classifies one rolling candle window ending at end_index.
         window = request.candles[end_index - request.windowSize : end_index]
         regime = classifier.classify(
             MarketRegimeRequest(symbol=request.symbol, timeframe=request.timeframe, candles=window)
@@ -65,6 +67,7 @@ def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
 
 def get_market_regime_classifier(settings: MarketRegimeSettings | None = None) -> MarketRegimeClassifier:
     selected_settings = settings or get_market_regime_settings()
+    # Rules are the default path; torch is opt-in because it needs an artifact and extra deps.
     if selected_settings.mode == "rules":
         return RuleBasedMarketRegimeClassifier()
     if selected_settings.mode == "torch":
@@ -77,6 +80,7 @@ class RuleBasedMarketRegimeClassifier:
         features = build_market_regime_features(request.candles)
         reasons: list[str] = []
 
+        # The order matters: high volatility is called out before trend labels.
         if features.volatilityPercent >= Decimal("4.00"):
             label = "HIGH_VOLATILITY"
             confidence = min(Decimal("95"), Decimal("70") + (features.volatilityPercent * Decimal("4")))

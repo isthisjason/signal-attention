@@ -24,6 +24,7 @@ def build_torch_feature_matrix(candles: list[MarketRegimeCandle]) -> list[list[f
     rows: list[list[float]] = []
 
     for index, candle in enumerate(candles):
+        # Each row describes one candle plus its relationship to prior candles in the window.
         previous_close = candles[index - 1].close if index > 0 else candle.open
         closes.append(candle.close)
         sma = mean(closes)
