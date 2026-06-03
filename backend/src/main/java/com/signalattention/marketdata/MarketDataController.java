@@ -45,6 +45,11 @@ public class MarketDataController {
         return marketDataService.findCandles(symbol, timeframe, parseInstant("start", start), parseInstant("end", end));
     }
 
+    @GetMapping("/quality")
+    public MarketDataQualityResponse quality(@RequestParam String symbol, @RequestParam String timeframe) {
+        return marketDataService.analyzeQuality(symbol, timeframe);
+    }
+
     private Instant parseInstant(String parameterName, String value) {
         if (value == null || value.isBlank()) {
             return null;
