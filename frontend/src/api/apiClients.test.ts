@@ -11,7 +11,7 @@ import {
 } from "./backtests";
 import { errorMessage, getJson } from "./client";
 import { fetchDashboardRiskAlerts, fetchDashboardSummary, fetchStrategyPerformance } from "./dashboard";
-import { importMarketData } from "./marketData";
+import { fetchMarketDataQuality, importMarketData } from "./marketData";
 import { fetchMarketRegime, runRegimeReplay } from "./marketRegime";
 import {
   createPaperSession,
@@ -99,6 +99,12 @@ describe("market data client", () => {
     expect(init?.method).toBe("POST");
     expect(init?.body).toBeInstanceOf(FormData);
     expect(init?.headers).toEqual({ Accept: "application/json" });
+  });
+
+  it("fetches market data quality for a symbol and timeframe", async () => {
+    await fetchMarketDataQuality("ETH-USD", "4h");
+
+    expect(latestFetchCall().url).toBe("http://api.test/api/market-data/quality?symbol=ETH-USD&timeframe=4h");
   });
 });
 

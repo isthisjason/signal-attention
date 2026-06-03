@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   fetchBacktestTrades: vi.fn(),
   fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
+  fetchMarketDataQuality: vi.fn(),
   fetchMarketRegime: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock("./api/marketRegime", () => ({
 }));
 
 vi.mock("./api/marketData", () => ({
+  fetchMarketDataQuality: mocks.fetchMarketDataQuality,
   importMarketData: mocks.importMarketData,
 }));
 
@@ -86,6 +88,19 @@ beforeEach(() => {
   mocks.fetchStrategyPerformance.mockResolvedValue([]);
   mocks.fetchDashboardRiskAlerts.mockResolvedValue([]);
   mocks.fetchAuditEvents.mockResolvedValue([]);
+  mocks.fetchMarketDataQuality.mockResolvedValue({
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    candleCount: 240,
+    firstOpenTime: "2024-01-01T00:00:00Z",
+    lastOpenTime: "2024-01-10T23:00:00Z",
+    expectedIntervalMinutes: 60,
+    duplicateTimestampCount: 0,
+    gapCount: 0,
+    invalidOhlcCount: 0,
+    zeroOrNegativeVolumeCount: 0,
+    warnings: ["No market data quality warnings found."],
+  });
   mocks.runBacktest.mockResolvedValue({
     id: 12,
     strategyId: 1,
@@ -256,6 +271,7 @@ describe("dashboard render states", () => {
     expect(await screen.findByText(/No strategies have been created yet/)).toBeInTheDocument();
     expect(screen.getByText(/No saved strategies yet/)).toBeInTheDocument();
     expect(screen.getByText("No import has run in this browser session.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Market data quality")).toHaveTextContent("No market data quality warnings found.");
     expect(screen.getByText(/No backtest has run in this browser session/)).toBeInTheDocument();
     expect(screen.getByText(/No paper sessions for the selected strategy/)).toBeInTheDocument();
     expect(screen.getByText("No paper orders for the selected session.")).toBeInTheDocument();
@@ -280,10 +296,11 @@ describe("dashboard render states", () => {
     mocks.fetchDashboardRiskAlerts.mockRejectedValue(new Error("Failed to fetch"));
     mocks.fetchAuditEvents.mockRejectedValue(new Error("Failed to fetch"));
     mocks.fetchStrategies.mockRejectedValue(new Error("Failed to fetch"));
+    mocks.fetchMarketDataQuality.mockRejectedValue(new Error("Failed to fetch"));
 
     render(<App />);
 
-    expect(await screen.findAllByText(/Check that the backend API is running/)).toHaveLength(5);
+    expect(await screen.findAllByText(/Check that the backend API is running/)).toHaveLength(6);
   });
 
   it("renders market regime provenance when it is present", async () => {
@@ -557,6 +574,7 @@ describe("dashboard render states", () => {
     expect(screen.getByText("Rows read")).toBeInTheDocument();
     expect(screen.getByText("Imported")).toBeInTheDocument();
     expect(mocks.importMarketData).toHaveBeenCalledWith(expect.objectContaining({ name: "candles.csv" }));
+    expect(mocks.fetchMarketDataQuality).toHaveBeenCalled();
   });
 
   it("renders CSV import validation and API errors", async () => {

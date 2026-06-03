@@ -111,6 +111,85 @@ class MarketDataServiceTests {
     }
 
     @Test
+    void reportsCleanMarketDataQuality() {
+        when(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeAsc("BTC-USD", "1h"))
+                .thenReturn(List.of(
+                        candle("2024-01-01T00:00:00Z"),
+                        candle("2024-01-01T01:00:00Z")
+                ));
+
+        MarketDataQualityResponse quality = marketDataService.analyzeQuality("BTC-USD", "1h");
+
+        assertThat(quality.candleCount()).isEqualTo(2);
+        assertThat(quality.expectedIntervalMinutes()).isEqualTo(60);
+        assertThat(quality.gapCount()).isZero();
+        assertThat(quality.invalidOhlcCount()).isZero();
+        assertThat(quality.zeroOrNegativeVolumeCount()).isZero();
+        assertThat(quality.warnings()).containsExactly("No market data quality warnings found.");
+    }
+
+    @Test
+    void reportsTimeGaps() {
+        when(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeAsc("BTC-USD", "1h"))
+                .thenReturn(List.of(
+                        candle("2024-01-01T00:00:00Z"),
+                        candle("2024-01-01T03:00:00Z")
+                ));
+
+        MarketDataQualityResponse quality = marketDataService.analyzeQuality("BTC-USD", "1h");
+
+        assertThat(quality.gapCount()).isEqualTo(1);
+        assertThat(quality.warnings()).contains("1 time gap(s) larger than the expected timeframe found.");
+    }
+
+    @Test
+    void reportsInvalidOhlcValues() {
+        when(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeAsc("BTC-USD", "1h"))
+                .thenReturn(List.of(new MarketCandle(
+                        "BTC-USD",
+                        "1h",
+                        Instant.parse("2024-01-01T00:00:00Z"),
+                        new BigDecimal("42000"),
+                        new BigDecimal("41900"),
+                        new BigDecimal("41800"),
+                        new BigDecimal("42050"),
+                        new BigDecimal("12.5")
+                )));
+
+        MarketDataQualityResponse quality = marketDataService.analyzeQuality("BTC-USD", "1h");
+
+        assertThat(quality.invalidOhlcCount()).isEqualTo(1);
+        assertThat(quality.warnings()).contains("1 candle(s) have inconsistent OHLC values.");
+    }
+
+    @Test
+    void reportsZeroOrNegativeVolume() {
+        when(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeAsc("BTC-USD", "1h"))
+                .thenReturn(List.of(new MarketCandle(
+                        "BTC-USD",
+                        "1h",
+                        Instant.parse("2024-01-01T00:00:00Z"),
+                        new BigDecimal("42000"),
+                        new BigDecimal("42100"),
+                        new BigDecimal("41900"),
+                        new BigDecimal("42050"),
+                        BigDecimal.ZERO
+                )));
+
+        MarketDataQualityResponse quality = marketDataService.analyzeQuality("BTC-USD", "1h");
+
+        assertThat(quality.zeroOrNegativeVolumeCount()).isEqualTo(1);
+        assertThat(quality.warnings()).contains("1 candle(s) have zero or negative volume.");
+    }
+
+    @Test
+    void rejectsUnsupportedQualityTimeframe() {
+        assertThatThrownBy(() -> marketDataService.analyzeQuality("BTC-USD", "daily"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("timeframe must use a supported interval such as 1m, 1h, or 1d");
+    }
+
+    @Test
     void rejectsMissingSymbol() {
         assertThatThrownBy(() -> marketDataService.findCandles("", "1h", null, null))
                 .isInstanceOf(BadRequestException.class)
