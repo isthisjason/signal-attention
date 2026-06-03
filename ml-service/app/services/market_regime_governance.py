@@ -36,3 +36,37 @@ def evaluate_promotion_gates(entry: dict[str, Any], gates: ExperimentGates = Exp
             "requireHoldout": gates.require_holdout,
         },
     }
+
+
+def promotion_score(entry: dict[str, Any]) -> tuple[float, float, float]:
+    evaluation = entry.get("evaluation") or {}
+    training = entry.get("training") or {}
+    return (
+        metric_value(evaluation.get("accuracy")),
+        metric_value(evaluation.get("liftOverBaseline")),
+        metric_value(training.get("validationAccuracy")),
+    )
+
+
+def eligible_promotion_candidates(
+    registry: dict[str, Any],
+    gates: ExperimentGates = ExperimentGates(),
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for entry in registry.get("experiments", []):
+        gate_result = evaluate_promotion_gates(entry, gates)
+        if gate_result["eligible"]:
+            candidates.append({**entry, "promotionGate": gate_result})
+    return sorted(candidates, key=promotion_score, reverse=True)
+
+
+def select_promotion_candidate(
+    registry: dict[str, Any],
+    gates: ExperimentGates = ExperimentGates(),
+) -> dict[str, Any] | None:
+    candidates = eligible_promotion_candidates(registry, gates)
+    return candidates[0] if candidates else None
+
+
+def metric_value(value: Any) -> float:
+    return float(value) if isinstance(value, (int, float)) else float("-inf")
