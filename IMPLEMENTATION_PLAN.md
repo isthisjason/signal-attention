@@ -1164,6 +1164,28 @@ Comment style:
 - Do not comment every getter, setter, record, repository, enum, or simple controller method.
 - Do not add comments that just repeat the code.
 
+## 33. ML Experiment Governance Wave
+
+Add optional governance for torch market-regime experiments without changing the default CPU-safe rules path.
+
+Planned commit-sized work:
+
+1. Document the ML experiment governance wave.
+2. Add experiment gate helpers for holdout scope, minimum accuracy, minimum lift over baseline, and artifact hash presence.
+3. Cover experiment gate helpers.
+4. Add promotion ranking helpers.
+5. Cover promotion ranking helpers.
+6. Add a market regime promotion script.
+7. Cover the promotion script.
+8. Add model card rendering helpers.
+9. Add a model card generator script.
+10. Cover model card generation.
+11. Add a market regime sweep dry-run script.
+12. Cover sweep dry-run behavior.
+13. Document the governance workflow and verification results.
+
+The generated promotion summaries, model cards, and model artifacts are local research outputs and should not be committed by default.
+
 ---
 
 ## 28. Assumptions and Defaults
