@@ -325,6 +325,16 @@ select:focus {
   margin-bottom: 6px;
 }
 
+.quality-summary {
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
+.quality-range {
+  margin: 10px 0 0;
+}
+
 .mini-table {
   display: grid;
   gap: 8px;

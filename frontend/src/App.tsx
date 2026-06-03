@@ -23,7 +23,7 @@ import {
   fetchDashboardSummary,
   fetchStrategyPerformance,
 } from "./api/dashboard";
-import { MarketDataImportSummary, importMarketData } from "./api/marketData";
+import { MarketDataImportSummary, MarketDataQuality, fetchMarketDataQuality, importMarketData } from "./api/marketData";
 import { MarketRegimeResponse, RegimeRunResponse, fetchMarketRegime, runRegimeReplay } from "./api/marketRegime";
 import {
   PaperReplayResult,
@@ -66,6 +66,11 @@ const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
   error: null,
 };
 const loadingStrategyList: LoadState<Strategy[]> = { status: "loading", data: null, error: null };
+const loadingMarketDataQuality: LoadState<MarketDataQuality> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
 
 type Notice = { tone: "success" | "error"; message: string } | null;
 
@@ -94,6 +99,8 @@ function App() {
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
   const [strategyListState, setStrategyListState] =
     useState<LoadState<Strategy[]>>(loadingStrategyList);
+  const [marketDataQualityState, setMarketDataQualityState] =
+    useState<LoadState<MarketDataQuality>>(loadingMarketDataQuality);
 
   const [selectedStrategyId, setSelectedStrategyId] = useState<number | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -143,6 +150,7 @@ function App() {
     setRiskAlertsState(loadingRiskAlerts);
     setRegimeState(loadingMarketRegime);
     setStrategyListState(loadingStrategyList);
+    setMarketDataQualityState(loadingMarketDataQuality);
 
     const summaryLoad = fetchDashboardSummary()
       .then((data) => setSummaryState({ status: "success", data, error: null }))
@@ -177,6 +185,11 @@ function App() {
       .catch((error: unknown) =>
         setStrategyListState({ status: "error", data: null, error: errorMessage(error) }),
       );
+    const qualityLoad = fetchMarketDataQuality()
+      .then((data) => setMarketDataQualityState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setMarketDataQualityState({ status: "error", data: null, error: errorMessage(error) }),
+      );
 
     await Promise.all([
       summaryLoad,
@@ -185,6 +198,7 @@ function App() {
       riskAlertsLoad,
       strategyPerformanceLoad,
       strategiesLoad,
+      qualityLoad,
     ]);
   }, []);
 
@@ -256,7 +270,8 @@ function App() {
     auditState.status === "loading" ||
     riskAlertsState.status === "loading" ||
     regimeState.status === "loading" ||
-    strategyListState.status === "loading";
+    strategyListState.status === "loading" ||
+    marketDataQualityState.status === "loading";
 
   async function runAction(action: string, work: () => Promise<void>) {
     // One wrapper keeps button busy states and notices consistent across the workbench.
@@ -304,6 +319,8 @@ function App() {
     void runAction("import", async () => {
       const summary = await importMarketData(file);
       setImportSummary(summary);
+      const quality = await fetchMarketDataQuality();
+      setMarketDataQualityState({ status: "success", data: quality, error: null });
       setNotice({ tone: "success", message: `Imported ${summary.rowsImported} candle rows.` });
       await loadDashboard();
     });
@@ -482,6 +499,7 @@ function App() {
         <MarketDataImportPanel
           busy={busyAction === "import"}
           importSummary={importSummary}
+          qualityState={marketDataQualityState}
           onSubmit={handleImportSubmit}
         />
         <StrategyWorkflowPanel
@@ -683,10 +701,12 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
 function MarketDataImportPanel({
   busy,
   importSummary,
+  qualityState,
   onSubmit,
 }: {
   busy: boolean;
   importSummary: MarketDataImportSummary | null;
+  qualityState: LoadState<MarketDataQuality>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
@@ -719,7 +739,47 @@ function MarketDataImportPanel({
           ))}
         </ul>
       ) : null}
+      <MarketDataQualityPanel state={qualityState} />
     </section>
+  );
+}
+
+function MarketDataQualityPanel({ state }: { state: LoadState<MarketDataQuality> }) {
+  if (state.status === "loading") {
+    return <p className="muted">Checking BTC-USD 1h data quality.</p>;
+  }
+  if (state.status === "error") {
+    return <p className="muted">{serviceErrorMessage(state.error, "backend")}</p>;
+  }
+
+  const quality = state.data;
+  return (
+    <div className="quality-summary" aria-label="Market data quality">
+      <div className="series-heading">
+        <h3>Data quality</h3>
+        <strong>{quality.symbol} {quality.timeframe}</strong>
+      </div>
+      <ResultGrid
+        items={[
+          ["Candles", quality.candleCount],
+          ["Gaps", quality.gapCount],
+          ["Bad OHLC", quality.invalidOhlcCount],
+          ["Bad volume", quality.zeroOrNegativeVolumeCount],
+          ["Interval", `${quality.expectedIntervalMinutes}m`],
+          ["Duplicates", quality.duplicateTimestampCount],
+        ]}
+      />
+      <p className="muted quality-range">
+        {quality.firstOpenTime && quality.lastOpenTime
+          ? `${formatDateTime(quality.firstOpenTime)} to ${formatDateTime(quality.lastOpenTime)}`
+          : "No candles found for the default market."}
+      </p>
+      <ul className="compact-list">
+        {quality.warnings.slice(0, 4).map((warning) => (
+          <li key={warning}>{warning}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
