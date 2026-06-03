@@ -1107,7 +1107,7 @@ The project should eventually include:
 - Phase 6 now has a CPU-safe foundation plus a hardened optional torch path: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, artifact-backed PyTorch Transformer inference, a local training/export script, optional torch Compose profile, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
 - Model quality and experiment tracking for the optional torch path are now implemented while keeping CPU reproducibility: a seeded mini batch training loop with per epoch validation and `--patience` early stopping that keeps the best epoch, a regularized model with light dropout and sinusoidal positional encoding, baseline aware evaluation that reports a majority class baseline and lift with an optional `--holdout-ratio`, and a versioned experiment registry (one entry per run id, seed, git commit, torch version, and per epoch history) with a `compare_market_regime_experiments.py` view.
 - The React dashboard/workbench is implemented for the local demo path: import sample candles, create SMA strategies, run backtests, score ML risk, manage paper sessions, replay candles, and review summary, risk alert, audit, anomaly, strategy comparison, chart, and market regime panels.
-- The running-stack smoke script covers service reachability, sample import, strategy creation, backtesting, persisted ML risk score, paper trading, dashboard, market regime, anomaly, and audit checks.
+- The running-stack smoke script covers service reachability, sample import, market data quality analysis, strategy creation, backtesting, persisted ML risk score, paper trading, dashboard, market regime, anomaly, and audit checks.
 - Further model quality work (richer features, independent ground truth, hyperparameter search) remains optional research and is not required for the local research baseline.
 
 ## 30. Next Implementation Wave
@@ -1127,7 +1127,23 @@ Planned commit-sized work:
 
 After each implementation wave, update `PROJECT_PROGRESS.local.md` with completed commits, verification results, blockers, and next steps. That file is intentionally local-only and should not be committed.
 
-## 31. Code Commenting Wave
+## 31. Market Data Quality Wave
+
+Add deterministic market data quality checks before larger feature work. This wave makes imported candle data easier to trust and explain in the portfolio demo without expanding into live trading or model research.
+
+Planned commit-sized work:
+
+1. Document the market data quality wave in this implementation plan.
+2. Add backend quality analysis for candle count, first/last candle time, expected interval, duplicate timestamps, missing intervals, invalid OHLC relationships, and zero or negative volume.
+3. Expose `GET /api/market-data/quality?symbol=BTC-USD&timeframe=1h`.
+4. Surface the quality summary in the React workbench after import and dashboard refresh.
+5. Cover backend quality rules and frontend quality rendering/client behavior.
+6. Include the quality endpoint in the running-stack smoke workflow and demo documentation.
+7. Update verification results and `PROJECT_PROGRESS.local.md` after implementation.
+
+Quality checks are read-only warnings. They should not mutate imported candles or block backtests.
+
+## 32. Code Commenting Wave
 
 Add short comments for future readers before doing more feature work. The comments should help a junior to intermediate developer understand why the main workflows exist and where important state changes happen.
 
