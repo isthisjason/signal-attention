@@ -257,9 +257,22 @@ python scripts/evaluate_market_regime_model.py \
   --csv-path ../data/btc-usd-1h-sample.csv \
   --artifact models/market-regime.pt \
   --output models/market-regime-evaluation.json
+python scripts/compare_market_regime_experiments.py \
+  --experiments-dir models/experiments
+python scripts/promote_market_regime_experiment.py \
+  --experiments-dir models/experiments
+python scripts/generate_market_regime_model_card.py \
+  --promotion models/experiments/promoted-market-regime.json
 ```
 
-The optional evaluation report contains accuracy, per-label metrics, a confusion matrix, confidence summary, and sample predictions. Torch-mode regime responses also include provenance fields for the dashboard; rule mode remains the default demo path.
+The optional evaluation report contains accuracy, per-label metrics, a confusion matrix, confidence summary, and sample predictions. Promotion requires holdout evaluation, enough accuracy, lift over the majority baseline, and an artifact hash. The generated model card is a local research note, not a deployment approval. Torch-mode regime responses also include provenance fields for the dashboard; rule mode remains the default demo path.
+
+Inspect the sweep commands without installing PyTorch:
+
+```bash
+cd ml-service
+python scripts/run_market_regime_sweep.py --dry-run
+```
 
 ## Audit Events
 

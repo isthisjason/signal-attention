@@ -123,6 +123,10 @@ python scripts/evaluate_market_regime_model.py \
   --experiment-name btc-sample-v1
 python scripts/compare_market_regime_experiments.py \
   --experiments-dir models/experiments
+python scripts/promote_market_regime_experiment.py \
+  --experiments-dir models/experiments
+python scripts/generate_market_regime_model_card.py \
+  --promotion models/experiments/promoted-market-regime.json
 ```
 
 The training command runs a seeded, mini batch loop with per epoch validation and early stopping (controlled by `--patience`), then keeps the best epoch. The saved model uses light dropout and sinusoidal positional encoding, and you can turn those off with `--dropout 0` and `--no-positional-encoding` when you want to compare. The artifact and a manifest are written side by side, and the manifest records the seed, git commit, torch version, and the per epoch history so a run can be reproduced.
@@ -130,6 +134,15 @@ The training command runs a seeded, mini batch loop with per epoch validation an
 The evaluation command writes a report with accuracy, per label metrics, a confusion matrix, and a confidence summary. It also reports a majority class baseline and the lift over that baseline, because the expected labels come from the rule based classifier rather than independent ground truth, so the model only matters if it beats simply guessing the most common regime. Pass `--holdout-ratio` to score only the later, unseen tail of the data.
 
 When `--experiment-name` is provided, both commands update `models/experiments/index.json`. Each run is kept under its own run id rather than overwriting the previous one, so the registry holds a real history. The compare script reads that registry and prints a table sorted by accuracy with the seed, dropout, positional encoding, git commit, and lift columns so I can see which run did best and why.
+
+The promotion script applies simple governance gates before treating any run as a local research candidate: holdout evaluation, minimum accuracy, minimum lift over the majority baseline, and an artifact hash. The model-card script turns the promoted run into a short Markdown summary with dataset hash, artifact hash, metrics, limitations, and a reminder that the default app remains rule based.
+
+To inspect a small sweep without installing PyTorch, run:
+
+```bash
+cd ml-service
+python scripts/run_market_regime_sweep.py --dry-run
+```
 
 The torch path is optional on purpose. The default service still uses the CPU safe rule classifier because I do not want the normal demo to depend on GPU setup, large dependencies, or a model artifact that only exists on my machine.
 
