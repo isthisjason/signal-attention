@@ -33,6 +33,14 @@ curl -F "file=@data/btc-usd-1h-sample.csv" \
 
 ## 2. Create an SMA Strategy
 
+Check the imported candle coverage before creating the strategy:
+
+```bash
+curl "http://localhost:8080/api/market-data/quality?symbol=BTC-USD&timeframe=1h"
+```
+
+The response includes candle count, first and last candle time, expected interval, gap count, invalid OHLC count, zero or negative volume count, and warning messages.
+
 ```bash
 curl -X POST http://localhost:8080/api/strategies \
   -H "Content-Type: application/json" \

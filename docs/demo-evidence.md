@@ -32,6 +32,14 @@ curl http://localhost:8080/v3/api-docs
 
 Expected result: JSON with a top-level `paths` field.
 
+Check imported market data quality after the smoke workflow:
+
+```bash
+curl "http://localhost:8080/api/market-data/quality?symbol=BTC-USD&timeframe=1h"
+```
+
+Expected result: JSON with `candleCount`, `gapCount`, `invalidOhlcCount`, `zeroOrNegativeVolumeCount`, and `warnings`.
+
 Check Swagger UI in a browser:
 
 ```text
