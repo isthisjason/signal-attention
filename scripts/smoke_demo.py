@@ -169,6 +169,29 @@ def check_core_workflow(config: Config) -> tuple[int, int]:
         "Market data import neither imported rows nor found existing sample candles.",
     )
 
+    log_step("checking market data quality")
+    quality = request_json(
+        f"{config.backend_url}/api/market-data/quality?symbol=BTC-USD&timeframe=1h",
+        config.timeout_seconds,
+    )
+    require_keys(
+        quality,
+        (
+            "symbol",
+            "timeframe",
+            "candleCount",
+            "expectedIntervalMinutes",
+            "gapCount",
+            "invalidOhlcCount",
+            "zeroOrNegativeVolumeCount",
+            "warnings",
+        ),
+        "Market data quality",
+    )
+    check(quality["symbol"] == "BTC-USD" and quality["timeframe"] == "1h", "Market data quality checked the wrong market.")
+    check(quality["candleCount"] > 0, "Market data quality did not find imported sample candles.")
+    check(isinstance(quality["warnings"], list) and quality["warnings"], "Market data quality did not include warnings.")
+
     log_step("creating strategy")
     strategy = post_json(
         f"{config.backend_url}/api/strategies",
