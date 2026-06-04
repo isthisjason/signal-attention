@@ -1184,6 +1184,19 @@ Planned commit-sized work:
 12. Cover sweep dry-run behavior.
 13. Document the governance workflow and verification results.
 
+## 34. ML Experiment Diagnostics Wave
+
+Add optional diagnostics for torch market-regime experiments before adding more model complexity. This wave should make local experiment results easier to interpret without changing the default CPU-safe rules path, backend APIs, frontend workflow, Docker runtime defaults, live data boundaries, or trading safety boundaries.
+
+Planned commit-sized work:
+
+1. Document the ML diagnostics wave and keep generated model artifacts local-only.
+2. Add market regime experiment diagnostics for registry summaries, incomplete runs, ranking, promotion gates, label weaknesses, and confusion pairs.
+3. Cover diagnostics helpers and script output behavior.
+4. Document the diagnostics workflow and verification results.
+
+Diagnostics should read local experiment registry data and optional evaluation reports. Generated JSON or Markdown diagnostics belong under `ml-service/models/experiments/` by default and should not be committed.
+
 The generated promotion summaries, model cards, and model artifacts are local research outputs and should not be committed by default.
 
 ---
