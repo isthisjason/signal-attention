@@ -123,6 +123,9 @@ python scripts/evaluate_market_regime_model.py \
   --experiment-name btc-sample-v1
 python scripts/compare_market_regime_experiments.py \
   --experiments-dir models/experiments
+python scripts/diagnose_market_regime_experiments.py \
+  --experiments-dir models/experiments \
+  --markdown-output models/experiments/market-regime-diagnostics.md
 python scripts/promote_market_regime_experiment.py \
   --experiments-dir models/experiments
 python scripts/generate_market_regime_model_card.py \
@@ -135,7 +138,7 @@ The evaluation command writes a report with accuracy, per label metrics, a confu
 
 When `--experiment-name` is provided, both commands update `models/experiments/index.json`. Each run is kept under its own run id rather than overwriting the previous one, so the registry holds a real history. The compare script reads that registry and prints a table sorted by accuracy with the seed, dropout, positional encoding, git commit, and lift columns so I can see which run did best and why.
 
-The promotion script applies simple governance gates before treating any run as a local research candidate: holdout evaluation, minimum accuracy, minimum lift over the majority baseline, and an artifact hash. The model-card script turns the promoted run into a short Markdown summary with dataset hash, artifact hash, metrics, limitations, and a reminder that the default app remains rule based.
+The diagnostics script summarizes the registry before promotion so weak runs are easier to explain: missing train/evaluation data, best evaluated run, promotion gate status, weakest labels, and confusion pairs when an evaluation report is available. The promotion script applies simple governance gates before treating any run as a local research candidate: holdout evaluation, minimum accuracy, minimum lift over the majority baseline, and an artifact hash. The model-card script turns the promoted run into a short Markdown summary with dataset hash, artifact hash, metrics, limitations, and a reminder that the default app remains rule based.
 
 To inspect a small sweep without installing PyTorch, run:
 

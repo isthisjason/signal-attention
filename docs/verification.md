@@ -47,6 +47,7 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 | Optional torch run is reproducible | `cd ml-service && python scripts/train_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --output /tmp/m2.pt --cpu --seed 42` then compare `finalTrainLoss` and `validationAccuracy` in the two manifests | The same seed produces the same metrics, confirming the run is deterministic on CPU. |
 | Optional torch evaluation report | `cd ml-service && python scripts/evaluate_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --artifact models/market-regime.pt --output models/market-regime-evaluation.json --holdout-ratio 0.2 --experiment-name btc-sample-v1` | Writes accuracy, per label metrics, a confusion matrix, a confidence summary, sample predictions, a majority class baseline, and the lift over that baseline, then updates the experiment registry. |
 | Optional torch experiment comparison | `cd ml-service && python scripts/compare_market_regime_experiments.py --experiments-dir models/experiments` | Prints every recorded run sorted by accuracy, with seed, dropout, positional encoding, git commit, and lift columns. Re running a name keeps each run under its own run id rather than overwriting. |
+| Optional torch diagnostics | `cd ml-service && python scripts/diagnose_market_regime_experiments.py --experiments-dir models/experiments --markdown-output models/experiments/market-regime-diagnostics.md` | Writes local JSON and Markdown diagnostics with registry counts, best evaluated run, incomplete runs, promotion gate status, weak labels, and confusion pairs when evaluation reports exist. |
 | Optional torch promotion | `cd ml-service && python scripts/promote_market_regime_experiment.py --experiments-dir models/experiments` | Writes a local promotion summary when an evaluated run passes holdout, accuracy, lift, and artifact-hash gates. |
 | Optional torch model card | `cd ml-service && python scripts/generate_market_regime_model_card.py --promotion models/experiments/promoted-market-regime.json` | Writes a local Markdown model card for the promoted research candidate. |
 | Optional torch sweep dry run | `cd ml-service && python scripts/run_market_regime_sweep.py --dry-run` | Prints train/evaluate command pairs for the default CPU sweep without requiring PyTorch. |
@@ -62,14 +63,15 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 
 ## Latest Local Verification
 
-Last checked on June 3, 2026:
+Last checked on June 4, 2026:
 
-- `cd backend && ./mvnw test`: passed, with 105 tests run and 4 Docker-backed persistence tests skipped because Docker socket access was unavailable in the sandboxed Maven run.
-- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 120 tests.
-- `cd frontend && npm run test`: passed, 30 tests.
-- `cd frontend && npm run build`: passed.
+- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 135 tests.
+- `cd ml-service && ../.venv/bin/python scripts/diagnose_market_regime_experiments.py --experiments-dir /tmp/signal-attention-empty-experiments --output /tmp/signal-attention-empty-experiments/market-regime-diagnostics.json --markdown-output /tmp/signal-attention-empty-experiments/market-regime-diagnostics.md`: passed.
 - `python3 -m unittest scripts/smoke_demo_test.py`: passed, 7 tests.
 - `docker compose config`: passed.
+- `cd backend && ./mvnw test`: not rerun in this diagnostics wave because backend code did not change.
+- `cd frontend && npm run test`: not rerun in this diagnostics wave because frontend code did not change.
+- `cd frontend && npm run build`: not rerun in this diagnostics wave because frontend code did not change.
 - `docker compose up --build -d`: not rerun in this governance wave.
 - `python3 scripts/smoke_demo.py --timeout-seconds 30`: not rerun in this governance wave because no runtime API or frontend workflow changed.
 - Portfolio screenshots were captured from the running frontend and Swagger UI and committed under `docs/assets/screenshots/`.
