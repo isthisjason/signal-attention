@@ -26,7 +26,7 @@ import {
   fetchStrategyPerformance,
 } from "./api/dashboard";
 import { MarketDataImportSummary, MarketDataQuality, fetchMarketDataQuality, importMarketData } from "./api/marketData";
-import { MarketRegimeResponse, RegimeRunResponse, fetchMarketRegime, runRegimeReplay } from "./api/marketRegime";
+import { MarketRegimeFeatures, MarketRegimeResponse, RegimeRunResponse, fetchMarketRegime, runRegimeReplay } from "./api/marketRegime";
 import {
   PaperReplayResult,
   PaperOrder,
