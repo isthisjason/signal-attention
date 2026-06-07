@@ -383,6 +383,16 @@ select:focus {
   width: 100%;
 }
 
+.chart-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.chart-frame {
+  min-width: 0;
+  width: 100%;
+}
+
 .series-chart path {
   fill: none;
   stroke: var(--accent);

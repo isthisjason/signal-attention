@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChartState } from "./ChartShell";
 import { AnomalyResponse, checkAnomaly } from "./api/anomaly";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
@@ -1557,15 +1558,6 @@ function AnomalyPanel({
         />
       )}
     </section>
-  );
-}
-
-function ChartState({ title, message }: { title: string; message: string }) {
-  return (
-    <div className="chart-state">
-      <strong>{title}</strong>
-      <p>{message}</p>
-    </div>
   );
 }
 
