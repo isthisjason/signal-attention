@@ -773,7 +773,7 @@ function MarketDataImportPanel({
 }) {
   return (
     <section className="panel">
-      <h2>Market data</h2>
+      <SectionTitle title="Market data" status={qualityState.status === "success" && qualityState.data.candleCount > 0 ? "ready" : "needs data"} />
       <form className="control-stack" onSubmit={onSubmit}>
         <label>
           Candle CSV
@@ -803,6 +803,15 @@ function MarketDataImportPanel({
       ) : null}
       <MarketDataQualityPanel state={qualityState} />
     </section>
+  );
+}
+
+function SectionTitle({ title, status }: { title: string; status: string }) {
+  return (
+    <div className="section-title">
+      <h2>{title}</h2>
+      <span>{status}</span>
+    </div>
   );
 }
 
@@ -864,7 +873,7 @@ function StrategyWorkflowPanel({
 }) {
   return (
     <section className="panel">
-      <h2>Strategy</h2>
+      <SectionTitle title="Strategy" status={selectedStrategyId ? "ready" : "needs setup"} />
       <label>
         Active strategy
         <select
@@ -939,7 +948,7 @@ function BacktestWorkflowPanel({
 }) {
   return (
     <section className="panel">
-      <h2>Backtest</h2>
+      <SectionTitle title="Backtest" status={backtestRun ? "complete" : selectedStrategy ? "ready" : "needs strategy"} />
       <p>
         {selectedStrategy
           ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}`
@@ -1048,7 +1057,7 @@ function PaperTradingPanel({
 }) {
   return (
     <section className="panel">
-      <h2>Paper trading</h2>
+      <SectionTitle title="Paper trading" status={summary?.status.toLowerCase() || (selectedSessionId ? "ready" : "optional")} />
       <label>
         Paper session
         <select value={selectedSessionId ?? ""} onChange={(event) => onSelect(event.target.value ? Number(event.target.value) : null)}>
