@@ -923,18 +923,23 @@ function StrategyWorkflowPanel({
           <TextInput label="Name" name="name" state={form} setState={onUpdate} />
           <TextInput label="Symbol" name="symbol" state={form} setState={onUpdate} />
           <TextInput label="Timeframe" name="timeframe" state={form} setState={onUpdate} />
-          <TextInput label="Short SMA" name="shortWindow" state={form} setState={onUpdate} type="number" />
-          <TextInput label="Long SMA" name="longWindow" state={form} setState={onUpdate} type="number" />
-          <TextInput label="Initial balance" name="initialBalance" state={form} setState={onUpdate} type="number" />
-          <TextInput label="Fee %" name="feePercent" state={form} setState={onUpdate} type="number" />
-          <TextInput
-            label="Position size %"
-            name="positionSizePercent"
-            state={form}
-            setState={onUpdate}
-            type="number"
-          />
         </div>
+        <details className="advanced-controls">
+          <summary>Strategy tuning</summary>
+          <div className="form-grid">
+            <TextInput label="Short SMA" name="shortWindow" state={form} setState={onUpdate} type="number" />
+            <TextInput label="Long SMA" name="longWindow" state={form} setState={onUpdate} type="number" />
+            <TextInput label="Initial balance" name="initialBalance" state={form} setState={onUpdate} type="number" />
+            <TextInput label="Fee %" name="feePercent" state={form} setState={onUpdate} type="number" />
+            <TextInput
+              label="Position size %"
+              name="positionSizePercent"
+              state={form}
+              setState={onUpdate}
+              type="number"
+            />
+          </div>
+        </details>
         <button className="button" disabled={busy} type="submit">
           {busy ? "Creating" : "Create SMA strategy"}
         </button>
