@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartShell, ChartState } from "./ChartShell";
 import { AnomalyResponse, checkAnomaly } from "./api/anomaly";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
@@ -1580,12 +1580,36 @@ function StrategyComparisonPanel({ state }: { state: LoadState<StrategyPerforman
   return (
     <section className="panel">
       <h2>Strategy comparison</h2>
+      <StrategyComparisonChart strategies={strategiesWithRuns} />
       <div className="comparison-grid">
         <ComparisonCard title="Best return" strategy={bestReturn} value={formatPercent(bestReturn.latestTotalReturn)} />
         <ComparisonCard title="Lowest drawdown" strategy={lowestDrawdown} value={formatPercent(lowestDrawdown.latestMaxDrawdown)} />
         <ComparisonCard title="Most trades" strategy={mostTrades} value={mostTrades.latestTradeCount ?? "N/A"} />
       </div>
     </section>
+  );
+}
+
+function StrategyComparisonChart({ strategies }: { strategies: StrategyPerformance[] }) {
+  const data = strategies.map((strategy) => ({
+    name: strategy.name,
+    return: strategy.latestTotalReturn ?? 0,
+    drawdown: strategy.latestMaxDrawdown ?? 0,
+    trades: strategy.latestTradeCount ?? 0,
+  }));
+
+  return (
+    <ChartShell title="Strategy metrics" height={220}>
+      <BarChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="4 5" vertical={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+        <YAxis hide />
+        <Tooltip formatter={(value, name) => name === "trades" ? Number(value).toFixed(0) : formatPercent(Number(value))} />
+        <Bar dataKey="return" fill="#0f766e" name="return" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="drawdown" fill="#b42318" name="drawdown" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="trades" fill="#2d6cdf" name="trades" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ChartShell>
   );
 }
 
