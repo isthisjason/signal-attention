@@ -1232,47 +1232,60 @@ function SeriesChart({
     );
   }
 
-  // Build one compact SVG path instead of rendering a full chart library for simple sparklines.
   const values = points.map((point) => point.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = max - min || 1;
-  const width = 320;
-  const height = 120;
-  const padding = 14;
-  const path = points
-    .map((point, index) => {
-      const x = points.length === 1
-        ? width / 2
-        : padding + (index / (points.length - 1)) * (width - padding * 2);
-      const y = height - padding - ((point.value - min) / range) * (height - padding * 2);
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
   const first = points[0];
   const last = points[points.length - 1];
   const low = min;
   const high = max;
+  const data = points.map((point) => ({
+    ...point,
+    label: formatDateTime(point.timestamp),
+  }));
 
   return (
-    <div className="series-card">
-      <div className="series-heading">
-        <h3>{title}</h3>
-        <strong>{formatValue(last.value)}</strong>
-      </div>
-      <svg className="series-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} chart`}>
-        <path d={path} />
-      </svg>
-      <div className="series-meta">
-        <span>{formatDateTime(first.timestamp)}</span>
-        <span>{formatDateTime(last.timestamp)}</span>
-      </div>
-      <div className="series-summary" aria-label={`${title} chart summary`}>
-        <span>Low {formatValue(low)}</span>
-        <span>High {formatValue(high)}</span>
-        <span>Latest {formatValue(last.value)}</span>
-      </div>
-    </div>
+    <ChartShell
+      title={title}
+      value={formatValue(last.value)}
+      footer={
+        <>
+          <div className="series-meta">
+            <span>{formatDateTime(first.timestamp)}</span>
+            <span>{formatDateTime(last.timestamp)}</span>
+          </div>
+          <div className="series-summary" aria-label={`${title} chart summary`}>
+            <span>Low {formatValue(low)}</span>
+            <span>High {formatValue(high)}</span>
+            <span>Latest {formatValue(last.value)}</span>
+          </div>
+        </>
+      }
+    >
+      <AreaChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id="drawdown-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="5%" stopColor="#b42318" stopOpacity={0.28} />
+            <stop offset="95%" stopColor="#b42318" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="4 5" vertical={false} />
+        <XAxis dataKey="label" hide />
+        <YAxis hide domain={["dataMin", "dataMax"]} />
+        <Tooltip
+          formatter={(value) => formatValue(Number(value))}
+          labelFormatter={(label) => String(label)}
+        />
+        <Area
+          dataKey="value"
+          fill="url(#drawdown-fill)"
+          isAnimationActive={false}
+          stroke="#b42318"
+          strokeWidth={3}
+          type="monotone"
+        />
+      </AreaChart>
+    </ChartShell>
   );
 }
 
