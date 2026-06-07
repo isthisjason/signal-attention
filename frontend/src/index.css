@@ -17,6 +17,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family:
@@ -148,6 +152,7 @@ p {
   background: var(--surface);
   box-shadow: var(--shadow);
   padding: 20px;
+  scroll-margin-top: 76px;
 }
 
 .panel + .panel {
@@ -873,11 +878,26 @@ td small {
     padding: 18px;
   }
 
+  .button,
+  .next-action-panel .button {
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .button-row .button {
+    flex: 1 1 140px;
+  }
+
   .form-grid,
   .result-grid,
   .mini-table div,
   .candle-detail {
     grid-template-columns: 1fr;
+  }
+
+  table {
+    min-width: 680px;
   }
 
   .analysis-panel .series-card {
