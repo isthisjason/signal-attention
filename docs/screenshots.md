@@ -13,11 +13,11 @@ docs/assets/screenshots/
 1. Dashboard overview after demo data
    - File: `docs/assets/screenshots/dashboard-overview.png`
    - Open `http://localhost:5173`.
-   - Show the summary cards, risk alerts, and at least part of the workflow controls.
+   - Show the sticky workbench navigation, next-action panel, summary cards, risk alerts, and at least part of the workflow controls.
 
 2. Backtest metrics and charts
    - File: `docs/assets/screenshots/backtest-charts.png`
-   - Show a completed backtest with return, drawdown, trade count, equity chart, and drawdown chart visible.
+   - Show a completed backtest with return, drawdown, trade count, and the responsive equity and drawdown charts visible.
 
 3. Risk alerts and audit trail
    - File: `docs/assets/screenshots/risk-audit.png`
@@ -30,7 +30,7 @@ docs/assets/screenshots/
 
 5. Market regime and anomaly panels
    - File: `docs/assets/screenshots/market-regime-anomaly.png`
-   - Show the current market regime result and an anomaly check result after sample candles are imported.
+   - Show the current market regime result, feature chart, and an anomaly check result after sample candles are imported.
 
 6. Swagger endpoint overview
    - File: `docs/assets/screenshots/swagger-endpoints.png`

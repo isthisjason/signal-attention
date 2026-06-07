@@ -8,7 +8,7 @@ docker compose up --build
 
 The React dashboard is available at `http://localhost:5173` when the frontend service or local Vite dev server is running.
 
-The dashboard can drive the same flow as the curl commands below: import candles, create the SMA strategy, run the backtest, inspect equity/drawdown charts, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
+The dashboard can drive the same flow as the curl commands below. Start from the next-action panel and sticky workbench navigation, then import candles, create the SMA strategy, run the backtest, inspect responsive equity/drawdown charts, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
 
 To run the same workflow as an automated smoke check:
 
@@ -208,6 +208,7 @@ curl http://localhost:8080/api/dashboard/risk-alerts
 ```
 
 Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, derived risk alerts, strategy performance, market regime status, and recent audit events.
+The top of the page now prioritizes scan speed with a sticky section nav, next-action panel, summary cards, and risk state before the detailed workflow controls.
 
 The dashboard also includes workbench controls for the main demo flow:
 
