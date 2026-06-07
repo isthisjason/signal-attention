@@ -1708,6 +1708,7 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
           <li key={reason}>{reason}</li>
         ))}
       </ul>
+      <FeatureBarChart title="Regime features" features={features} />
       <div className="feature-grid">
         <Feature label="Latest return" value={features.latestReturnPercent} suffix="%" />
         <Feature label="Avg return" value={features.averageReturnPercent} suffix="%" />
@@ -1755,6 +1756,7 @@ function AnomalyPanel({
               <li key={reason}>{reason}</li>
             ))}
           </ul>
+          <FeatureBarChart title="Anomaly features" features={anomaly.features} />
           <div className="feature-grid">
             <Feature label="Latest return" value={anomaly.features.latestReturnPercent} suffix="%" />
             <Feature label="Avg return" value={anomaly.features.averageReturnPercent} suffix="%" />
@@ -1783,6 +1785,29 @@ function marketRegimeProvenanceItems(regime: MarketRegimeResponse): Array<[strin
     ["Sequence", regime.sequenceLength],
     ["Artifact", regime.artifactIdentifier],
   ].filter((item): item is [string, string | number] => item[1] !== null && item[1] !== undefined && item[1] !== "");
+}
+
+function FeatureBarChart({ title, features }: { title: string; features: MarketRegimeFeatures }) {
+  const data = [
+    ["Latest", features.latestReturnPercent],
+    ["Average", features.averageReturnPercent],
+    ["Volatility", features.volatilityPercent],
+    ["Trend", features.trendSlopePercent],
+    ["SMA gap", features.smaDistancePercent],
+    ["Volume z", features.volumeZScore],
+  ].map(([name, value]) => ({ name, value }));
+
+  return (
+    <ChartShell title={title} height={180}>
+      <BarChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="4 5" vertical={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+        <YAxis hide />
+        <Tooltip formatter={(value) => Number(value).toFixed(2)} />
+        <Bar dataKey="value" fill="#2d6cdf" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ChartShell>
+  );
 }
 
 function Feature({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
