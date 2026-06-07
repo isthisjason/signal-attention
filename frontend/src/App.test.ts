@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectPaperSessionId, toInstant } from "./App";
+import { deriveWorkbenchAction, selectPaperSessionId, toInstant } from "./App";
 import { PaperSession } from "./api/paperTrading";
 
 function session(id: number): PaperSession {
@@ -45,5 +45,67 @@ describe("date input conversion", () => {
     expect(() => toInstant("", "Backtest start")).toThrow(
       "Backtest start must be a valid date and time.",
     );
+  });
+});
+
+describe("workbench next action", () => {
+  it("starts with data import when no candles are available", () => {
+    expect(
+      deriveWorkbenchAction({
+        candleCount: 0,
+        strategyCount: 0,
+        hasBacktest: false,
+        hasRiskScore: false,
+        hasRegimeReplay: false,
+      }).id,
+    ).toBe("import-data");
+  });
+
+  it("moves through the demo path as prerequisites are met", () => {
+    expect(
+      deriveWorkbenchAction({
+        candleCount: 240,
+        strategyCount: 0,
+        hasBacktest: false,
+        hasRiskScore: false,
+        hasRegimeReplay: false,
+      }).id,
+    ).toBe("create-strategy");
+    expect(
+      deriveWorkbenchAction({
+        candleCount: 240,
+        strategyCount: 1,
+        hasBacktest: false,
+        hasRiskScore: false,
+        hasRegimeReplay: false,
+      }).id,
+    ).toBe("run-backtest");
+    expect(
+      deriveWorkbenchAction({
+        candleCount: 240,
+        strategyCount: 1,
+        hasBacktest: true,
+        hasRiskScore: false,
+        hasRegimeReplay: false,
+      }).id,
+    ).toBe("score-risk");
+    expect(
+      deriveWorkbenchAction({
+        candleCount: 240,
+        strategyCount: 1,
+        hasBacktest: true,
+        hasRiskScore: true,
+        hasRegimeReplay: false,
+      }).id,
+    ).toBe("run-analysis");
+    expect(
+      deriveWorkbenchAction({
+        candleCount: 240,
+        strategyCount: 1,
+        hasBacktest: true,
+        hasRiskScore: true,
+        hasRegimeReplay: true,
+      }).id,
+    ).toBe("review-results");
   });
 });

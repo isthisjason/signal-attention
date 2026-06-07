@@ -76,6 +76,20 @@ const loadingMarketDataQuality: LoadState<MarketDataQuality> = {
 
 type Notice = { tone: "success" | "error"; message: string } | null;
 
+export type WorkbenchActionId =
+  | "import-data"
+  | "create-strategy"
+  | "run-backtest"
+  | "score-risk"
+  | "run-analysis"
+  | "review-results";
+
+export type WorkbenchAction = {
+  id: WorkbenchActionId;
+  title: string;
+  detail: string;
+};
+
 type StrategyFormState = {
   name: string;
   symbol: string;
@@ -1713,6 +1727,61 @@ export function selectPaperSessionId(
     return current;
   }
   return sessions[0]?.id ?? null;
+}
+
+export function deriveWorkbenchAction({
+  candleCount,
+  strategyCount,
+  hasBacktest,
+  hasRiskScore,
+  hasRegimeReplay,
+}: {
+  candleCount: number;
+  strategyCount: number;
+  hasBacktest: boolean;
+  hasRiskScore: boolean;
+  hasRegimeReplay: boolean;
+}): WorkbenchAction {
+  if (candleCount === 0) {
+    return {
+      id: "import-data",
+      title: "Import market data",
+      detail: "Load the BTC-USD sample candles so strategies, backtests, and analysis have data.",
+    };
+  }
+  if (strategyCount === 0) {
+    return {
+      id: "create-strategy",
+      title: "Create the SMA strategy",
+      detail: "Use the default BTC-USD 1h SMA crossover setup to unlock backtests.",
+    };
+  }
+  if (!hasBacktest) {
+    return {
+      id: "run-backtest",
+      title: "Run the backtest",
+      detail: "Generate return, drawdown, trade, equity, and risk inputs for the selected strategy.",
+    };
+  }
+  if (!hasRiskScore) {
+    return {
+      id: "score-risk",
+      title: "Score ML risk",
+      detail: "Persist an explainable risk label so the dashboard and alerts can reflect it.",
+    };
+  }
+  if (!hasRegimeReplay) {
+    return {
+      id: "run-analysis",
+      title: "Run regime replay",
+      detail: "Show candle context with regime windows and trade markers for the latest run.",
+    };
+  }
+  return {
+    id: "review-results",
+    title: "Review results",
+    detail: "The main demo path is ready: compare charts, paper trading state, risk alerts, and audit events.",
+  };
 }
 
 function formatAction(value: string) {
