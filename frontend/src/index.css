@@ -469,6 +469,15 @@ select:focus {
   padding: 12px;
 }
 
+.analysis-panel .series-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+  padding: 16px;
+}
+
+.analysis-panel .series-chart {
+  height: clamp(220px, 36vw, 340px);
+}
+
 .series-heading,
 .series-meta {
   align-items: center;
@@ -866,7 +875,12 @@ td small {
 
   .form-grid,
   .result-grid,
-  .mini-table div {
+  .mini-table div,
+  .candle-detail {
     grid-template-columns: 1fr;
+  }
+
+  .analysis-panel .series-card {
+    padding: 10px;
   }
 }

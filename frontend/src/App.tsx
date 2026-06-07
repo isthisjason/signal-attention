@@ -608,7 +608,7 @@ function RegimeReplayPanel({
   onReplay: () => void;
 }) {
   return (
-    <section className="panel" id="analysis">
+    <section className="panel analysis-panel" id="analysis">
       <div className="panel-heading">
         <div>
           <h2>Regime replay</h2>
