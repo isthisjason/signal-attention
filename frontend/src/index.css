@@ -368,6 +368,10 @@ p {
   margin-top: 12px;
 }
 
+.advanced-controls .button {
+  margin-top: 12px;
+}
+
 label {
   color: var(--muted);
   display: grid;

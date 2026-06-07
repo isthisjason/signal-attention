@@ -1111,26 +1111,32 @@ function PaperTradingPanel({
           Stop
         </button>
       </div>
-      <div className="form-grid">
-        <label>
-          Side
-          <select value={form.orderSide} onChange={(event) => onUpdate({ ...form, orderSide: event.target.value })}>
-            <option value="BUY">Buy</option>
-            <option value="SELL">Sell</option>
-          </select>
-        </label>
-        <TextInput label="Symbol" name="orderSymbol" state={form} setState={onUpdate} />
-        <TextInput label="Quantity" name="orderQuantity" state={form} setState={onUpdate} type="number" />
-        <TextInput label="Price" name="orderPrice" state={form} setState={onUpdate} type="number" />
-      </div>
-      <button className="button button-secondary" disabled={busy || !selectedSessionId} onClick={onOrder} type="button">
-        {busy ? "Working" : "Submit order"}
-      </button>
-      <div className="form-grid">
-        <DateInput label="Replay start" name="startDate" state={form} setState={onUpdate} />
-        <DateInput label="Replay end" name="endDate" state={form} setState={onUpdate} />
-        <TextInput label="Max candles" name="maxCandles" state={form} setState={onUpdate} type="number" />
-      </div>
+      <details className="advanced-controls">
+        <summary>Manual order</summary>
+        <div className="form-grid">
+          <label>
+            Side
+            <select value={form.orderSide} onChange={(event) => onUpdate({ ...form, orderSide: event.target.value })}>
+              <option value="BUY">Buy</option>
+              <option value="SELL">Sell</option>
+            </select>
+          </label>
+          <TextInput label="Symbol" name="orderSymbol" state={form} setState={onUpdate} />
+          <TextInput label="Quantity" name="orderQuantity" state={form} setState={onUpdate} type="number" />
+          <TextInput label="Price" name="orderPrice" state={form} setState={onUpdate} type="number" />
+        </div>
+        <button className="button button-secondary" disabled={busy || !selectedSessionId} onClick={onOrder} type="button">
+          {busy ? "Working" : "Submit order"}
+        </button>
+      </details>
+      <details className="advanced-controls">
+        <summary>Replay settings</summary>
+        <div className="form-grid">
+          <DateInput label="Replay start" name="startDate" state={form} setState={onUpdate} />
+          <DateInput label="Replay end" name="endDate" state={form} setState={onUpdate} />
+          <TextInput label="Max candles" name="maxCandles" state={form} setState={onUpdate} type="number" />
+        </div>
+      </details>
       <button className="button" disabled={busy || !selectedSessionId} onClick={onReplay} type="button">
         {busy ? "Working" : "Replay candles"}
       </button>
