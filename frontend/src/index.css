@@ -39,6 +39,37 @@ body {
   margin-bottom: 24px;
 }
 
+.workbench-nav {
+  background: rgb(245 247 251 / 92%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding: 6px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.workbench-nav a {
+  border-radius: 7px;
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.workbench-nav a:hover,
+.workbench-nav a:focus-visible {
+  background: var(--surface);
+  color: var(--accent-strong);
+  outline: none;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--muted);

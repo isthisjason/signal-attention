@@ -521,6 +521,7 @@ function App() {
           {loading ? "Refreshing" : "Refresh"}
         </button>
       </header>
+      <WorkbenchNav />
 
       {notice ? (
         <div aria-live="polite" className={`notice notice-${notice.tone}`}>
@@ -623,6 +624,27 @@ function RegimeReplayPanel({
         <ChartState title="No assessment chart yet" message="Run replay after selecting a strategy and date range." />
       )}
     </section>
+  );
+}
+
+function WorkbenchNav() {
+  const links = [
+    ["Overview", "#overview"],
+    ["Data", "#data"],
+    ["Strategy", "#strategy"],
+    ["Backtest", "#backtest"],
+    ["Paper", "#paper"],
+    ["Analysis", "#analysis"],
+    ["Audit", "#audit"],
+  ];
+  return (
+    <nav className="workbench-nav" aria-label="Workbench sections">
+      {links.map(([label, href]) => (
+        <a key={href} href={href}>
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -772,7 +794,7 @@ function MarketDataImportPanel({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" id="data">
       <SectionTitle title="Market data" status={qualityState.status === "success" && qualityState.data.candleCount > 0 ? "ready" : "needs data"} />
       <form className="control-stack" onSubmit={onSubmit}>
         <label>
@@ -872,7 +894,7 @@ function StrategyWorkflowPanel({
   onUpdate: (form: StrategyFormState) => void;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" id="strategy">
       <SectionTitle title="Strategy" status={selectedStrategyId ? "ready" : "needs setup"} />
       <label>
         Active strategy
@@ -947,7 +969,7 @@ function BacktestWorkflowPanel({
   onUpdate: (form: { startDate: string; endDate: string }) => void;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" id="backtest">
       <SectionTitle title="Backtest" status={backtestRun ? "complete" : selectedStrategy ? "ready" : "needs strategy"} />
       <p>
         {selectedStrategy
@@ -1056,7 +1078,7 @@ function PaperTradingPanel({
   }) => void;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" id="paper">
       <SectionTitle title="Paper trading" status={summary?.status.toLowerCase() || (selectedSessionId ? "ready" : "optional")} />
       <label>
         Paper session
@@ -1488,7 +1510,7 @@ function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
   }
 
   return (
-    <section className="panel">
+    <section className="panel" id="audit">
       <h2>Strategy performance</h2>
       <div className="table-scroll">
         <table>
