@@ -5,21 +5,23 @@ type ChartShellProps = {
   title: string;
   value?: string;
   children: ReactNode;
+  footer?: ReactNode;
   height?: number;
 };
 
-export function ChartShell({ title, value, children, height = 180 }: ChartShellProps) {
+export function ChartShell({ title, value, children, footer, height = 180 }: ChartShellProps) {
   return (
     <div className="series-card chart-shell">
       <div className="series-heading">
         <h3>{title}</h3>
         {value ? <strong>{value}</strong> : null}
       </div>
-      <div className="chart-frame" style={{ minHeight: height }}>
+      <div className="chart-frame" role="img" aria-label={`${title} chart`} style={{ minHeight: height }}>
         <ResponsiveContainer width="100%" height={height}>
           {children}
         </ResponsiveContainer>
       </div>
+      {footer}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ChartState } from "./ChartShell";
+import { Area, AreaChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartShell, ChartState } from "./ChartShell";
 import { AnomalyResponse, checkAnomaly } from "./api/anomaly";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
@@ -909,7 +910,7 @@ function BacktestWorkflowPanel({
               ["Risk", backtestRun.mlRiskLabel || riskScore?.riskLabel || "Unscored"],
             ]}
           />
-          <SeriesChart
+          <EquityChart
             title="Equity"
             points={equitySeries.map((point) => ({
               timestamp: point.timestamp,
@@ -1137,6 +1138,79 @@ function ResultGrid({ items }: { items: Array<[string, string | number]> }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+function EquityChart({
+  title,
+  points,
+  formatValue,
+}: {
+  title: string;
+  points: Array<{ timestamp: string; value: number }>;
+  formatValue: (value: number) => string;
+}) {
+  if (points.length === 0) {
+    return (
+      <ChartState
+        title={`${title} chart unavailable`}
+        message="Run a backtest with enough imported candles to populate this series."
+      />
+    );
+  }
+
+  const values = points.map((point) => point.value);
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const first = points[0];
+  const last = points[points.length - 1];
+  const data = points.map((point) => ({
+    ...point,
+    label: formatDateTime(point.timestamp),
+  }));
+
+  return (
+    <ChartShell
+      title={title}
+      value={formatValue(last.value)}
+      footer={
+        <>
+          <div className="series-meta">
+            <span>{formatDateTime(first.timestamp)}</span>
+            <span>{formatDateTime(last.timestamp)}</span>
+          </div>
+          <div className="series-summary" aria-label={`${title} chart summary`}>
+            <span>Low {formatValue(low)}</span>
+            <span>High {formatValue(high)}</span>
+            <span>Latest {formatValue(last.value)}</span>
+          </div>
+        </>
+      }
+    >
+      <AreaChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id="equity-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="5%" stopColor="#0f766e" stopOpacity={0.28} />
+            <stop offset="95%" stopColor="#0f766e" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="4 5" vertical={false} />
+        <XAxis dataKey="label" hide />
+        <YAxis hide domain={["dataMin", "dataMax"]} />
+        <Tooltip
+          formatter={(value) => formatValue(Number(value))}
+          labelFormatter={(label) => String(label)}
+        />
+        <Area
+          dataKey="value"
+          fill="url(#equity-fill)"
+          isAnimationActive={false}
+          stroke="#0f766e"
+          strokeWidth={3}
+          type="monotone"
+        />
+      </AreaChart>
+    </ChartShell>
   );
 }
 
