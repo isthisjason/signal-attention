@@ -280,6 +280,26 @@ function App() {
     return strategyListState.data.find((strategy) => strategy.id === selectedStrategyId) ?? null;
   }, [selectedStrategyId, strategyListState]);
 
+  const nextAction = deriveWorkbenchAction({
+    candleCount:
+      marketDataQualityState.status === "success"
+        ? marketDataQualityState.data.candleCount
+        : importSummary?.rowsImported ?? 0,
+    strategyCount:
+      strategyListState.status === "success"
+        ? strategyListState.data.length
+        : summaryState.status === "success"
+          ? summaryState.data.strategyCount
+          : 0,
+    hasBacktest: Boolean(backtestRun || (summaryState.status === "success" && summaryState.data.latestBacktest)),
+    hasRiskScore: Boolean(
+      riskScore ||
+        backtestRun?.mlRiskLabel ||
+        (summaryState.status === "success" && summaryState.data.latestBacktest?.mlRiskLabel),
+    ),
+    hasRegimeReplay: Boolean(regimeReplay),
+  });
+
   const loading =
     summaryState.status === "loading" ||
     strategiesState.status === "loading" ||
@@ -491,7 +511,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" id="overview">
       <header className="dashboard-header">
         <div>
           <p className="eyebrow">SignalAttention</p>
@@ -508,10 +528,11 @@ function App() {
         </div>
       ) : null}
 
+      <NextActionPanel action={nextAction} />
       <SummaryCards state={summaryState} />
       <RiskAlertsPanel state={riskAlertsState} />
 
-      <section className="workflow-grid" aria-label="Research workflow controls">
+      <section className="workflow-grid" id="workflow" aria-label="Research workflow controls">
         <MarketDataImportPanel
           busy={busyAction === "import"}
           importSummary={importSummary}
@@ -586,7 +607,7 @@ function RegimeReplayPanel({
   onReplay: () => void;
 }) {
   return (
-    <section className="panel">
+    <section className="panel" id="analysis">
       <div className="panel-heading">
         <div>
           <h2>Regime replay</h2>
@@ -603,6 +624,31 @@ function RegimeReplayPanel({
       )}
     </section>
   );
+}
+
+function NextActionPanel({ action }: { action: WorkbenchAction }) {
+  return (
+    <section className="next-action-panel" aria-label="Next recommended action">
+      <div>
+        <span>Next action</span>
+        <strong>{action.title}</strong>
+        <p>{action.detail}</p>
+      </div>
+      <a className="button" href={nextActionTarget(action.id)}>
+        Go
+      </a>
+    </section>
+  );
+}
+
+function nextActionTarget(action: WorkbenchActionId) {
+  if (action === "run-analysis") {
+    return "#analysis";
+  }
+  if (action === "review-results") {
+    return "#overview";
+  }
+  return "#workflow";
 }
 
 function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {

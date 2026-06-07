@@ -251,6 +251,42 @@ p {
   color: var(--danger);
 }
 
+.next-action-panel {
+  align-items: center;
+  background: #102a2a;
+  border: 1px solid rgb(15 118 110 / 35%);
+  border-radius: 8px;
+  color: #ffffff;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+}
+
+.next-action-panel span {
+  color: rgb(255 255 255 / 68%);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.next-action-panel strong {
+  display: block;
+  font-size: 1.2rem;
+  margin-top: 4px;
+}
+
+.next-action-panel p {
+  color: rgb(255 255 255 / 78%);
+  margin: 6px 0 0;
+}
+
+.next-action-panel .button {
+  flex: 0 0 auto;
+}
+
 .control-stack {
   display: grid;
   gap: 12px;
@@ -740,6 +776,11 @@ td small {
   }
 
   .panel-heading {
+    flex-direction: column;
+  }
+
+  .next-action-panel {
+    align-items: flex-start;
     flex-direction: column;
   }
 }
