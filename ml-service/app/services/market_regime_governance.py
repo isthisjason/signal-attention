@@ -14,6 +14,7 @@ def evaluate_promotion_gates(entry: dict[str, Any], gates: ExperimentGates = Exp
     artifact = entry.get("artifact") or evaluation.get("artifact") or {}
     failures: list[str] = []
 
+    # Promotion requires holdout performance and artifact identity, not just a good training run.
     accuracy = evaluation.get("accuracy")
     lift = evaluation.get("liftOverBaseline")
     if not evaluation:
@@ -41,6 +42,7 @@ def evaluate_promotion_gates(entry: dict[str, Any], gates: ExperimentGates = Exp
 def promotion_score(entry: dict[str, Any]) -> tuple[float, float, float]:
     evaluation = entry.get("evaluation") or {}
     training = entry.get("training") or {}
+    # Sort candidates by deployment-facing metrics first, then training validation as a tiebreaker.
     return (
         metric_value(evaluation.get("accuracy")),
         metric_value(evaluation.get("liftOverBaseline")),

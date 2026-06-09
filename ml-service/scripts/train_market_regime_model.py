@@ -117,6 +117,7 @@ def main() -> None:
 def seed_everything(torch, seed: int) -> None:
     import random
 
+    # Seed Python and torch so repeated local runs are comparable when config is unchanged.
     random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -278,6 +279,7 @@ def validate_validation_ratio(validation_ratio: float) -> None:
 
 
 def split_training_windows(items: list, validation_ratio: float) -> tuple[list, list]:
+    # Keep training before validation in time; random splits would leak future regimes backward.
     split_index = chronological_split_index(len(items), validation_ratio)
     return items[:split_index], items[split_index:]
 
@@ -347,6 +349,7 @@ def normalization_stats(windows: list[list[list[float]]]) -> tuple[list[float], 
         sum((row[index] - means[index]) ** 2 for row in flattened) / len(flattened)
         for index in range(feature_count)
     ]
+    # Constant features get std 1.0 so normalization stays finite without changing that feature.
     stds = [variance ** 0.5 if variance > 0 else 1.0 for variance in variances]
     return means, stds
 
@@ -427,6 +430,7 @@ def write_experiment_manifest(
     reproducibility: dict,
     device: str,
 ) -> tuple[Path, dict]:
+    # The manifest is the audit trail for a local artifact: data hash, config, metrics, and environment.
     manifest = build_experiment_manifest(
         csv_path=args.csv_path,
         output_path=args.output,
@@ -528,6 +532,7 @@ def summarize_time_range(values: list[str]) -> dict[str, str | None]:
 def register_training_experiment(args: argparse.Namespace, manifest_path: Path, manifest: dict, run_id: str) -> None:
     registry_path = args.experiments_dir / "index.json"
     registry = load_experiment_registry(registry_path)
+    # Training and evaluation share a run id so later evaluation can merge into the same registry entry.
     registry = append_or_merge_run(registry, build_training_registry_entry(args, manifest_path, manifest, run_id))
     write_experiment_registry(registry_path, registry)
 

@@ -103,6 +103,7 @@ def apply_holdout(examples: list[dict[str, Any]], holdout_ratio: float | None) -
         return examples, "full"
     if len(examples) < 2:
         return examples, "full"
+    # Holdout evaluation uses the later chronological tail to approximate unseen future windows.
     split_index = chronological_split_index(len(examples), holdout_ratio)
     return examples[split_index:], "holdout"
 
@@ -174,6 +175,7 @@ def predict_examples(torch, model, metadata: dict[str, Any], examples: list[dict
     predictions: list[dict[str, Any]] = []
     with torch.no_grad():
         for example in examples:
+            # Use artifact metadata normalization so evaluation matches service inference.
             normalized_features = normalize_features(example["features"], metadata)
             input_tensor = torch.tensor([normalized_features], dtype=torch.float32, device=device)
             probabilities = torch.softmax(model(input_tensor), dim=-1)[0]
@@ -270,6 +272,7 @@ def write_report(output: Path | None, report: dict[str, Any]) -> None:
     if output is None:
         print(payload, end="")
         return
+    # Reports are plain JSON so promotion and diagnostics can read them without importing torch.
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(payload, encoding="utf-8")
 
@@ -301,6 +304,7 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
 def register_evaluation_report(args: argparse.Namespace, report: dict[str, Any], run_id: str | None) -> None:
     registry_path = args.experiments_dir / "index.json"
     registry = load_experiment_registry(registry_path)
+    # Evaluation merges into the matching run when the artifact metadata carries a run id.
     registry = append_or_merge_run(registry, build_evaluation_registry_entry(args, report, run_id))
     write_experiment_registry(registry_path, registry)
 

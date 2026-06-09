@@ -21,6 +21,7 @@ def load_experiment_registry(registry_path: Path) -> dict[str, Any]:
 
 
 def write_experiment_registry(registry_path: Path, registry: dict[str, Any]) -> None:
+    # The registry is intentionally append-friendly so local sweeps preserve history.
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
 
@@ -78,6 +79,7 @@ def describe_path(path: Path) -> dict[str, Any]:
         return summary
     digest = hashlib.sha256()
     with path.open("rb") as file:
+        # Hash large artifacts in chunks so model files do not have to fit in memory.
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     summary["sizeBytes"] = path.stat().st_size
