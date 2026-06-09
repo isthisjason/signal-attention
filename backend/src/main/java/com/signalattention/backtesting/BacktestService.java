@@ -68,6 +68,7 @@ public class BacktestService {
     @Transactional
     public BacktestRunResponse runBacktest(Long strategyId, BacktestRequest request) {
         validateDateRange(request);
+        // The strategy is loaded first so all downstream audit records can tie failures to a real user object.
         Strategy strategy = strategyRepository.findById(strategyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Strategy not found: " + strategyId));
 
@@ -109,6 +110,7 @@ public class BacktestService {
     @Transactional(readOnly = true)
     public List<BacktestEquityPointResponse> getEquitySeries(Long id) {
         BacktestRun run = findRun(id);
+        // The chart uses closed trades only; open-position marks are handled during simulation metrics.
         List<BacktestTrade> trades = backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(id)
                 .stream()
                 .filter(trade -> trade.getExitTime() != null && trade.getNetPnl() != null)
@@ -210,6 +212,7 @@ public class BacktestService {
         SimulationResult result = simulate(run, candles, rules, initialBalance, feePercent, positionSizePercent);
         backtestTradeRepository.saveAll(result.trades());
 
+        // Store derived metrics on the run so dashboard summaries do not need to replay the simulation.
         run.setFinalBalance(scaleMoney(result.finalBalance()));
         run.setTotalReturn(percentChange(result.finalBalance(), initialBalance));
         run.setMaxDrawdown(scaleMetric(result.maxDrawdown()));
@@ -239,6 +242,7 @@ public class BacktestService {
                 .stream()
                 .collect(Collectors.toMap(CrossoverSignal::index, CrossoverSignal::type));
 
+        // These variables represent the entire simulated account state at the current candle.
         BigDecimal cash = initialBalance;
         BigDecimal quantity = BigDecimal.ZERO;
         BigDecimal entryPrice = BigDecimal.ZERO;
@@ -258,6 +262,7 @@ public class BacktestService {
                 entryFee = percentOf(allocation, feePercent);
                 BigDecimal entryNotional = allocation.subtract(entryFee);
                 if (entryNotional.signum() > 0) {
+                    // Fees reduce deployed notional immediately, which keeps cash and trade P&L consistent.
                     quantity = entryNotional.divide(candle.getClose(), MONEY_SCALE, RoundingMode.HALF_UP);
                     entryPrice = candle.getClose();
                     entryTime = candle.getOpenTime();
@@ -391,6 +396,7 @@ public class BacktestService {
                 .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (grossLoss.signum() == 0) {
+            // Cap all-win runs at a large finite value so API consumers never see Infinity or divide-by-zero output.
             return grossProfit.signum() == 0
                     ? BigDecimal.ZERO.setScale(METRIC_SCALE, RoundingMode.HALF_UP)
                     : BigDecimal.valueOf(999).setScale(METRIC_SCALE, RoundingMode.HALF_UP);
@@ -423,6 +429,7 @@ public class BacktestService {
         try {
             return objectMapper.readValue(strategy.getRulesJson(), SmaCrossoverRulesRequest.class);
         } catch (JsonProcessingException exception) {
+            // Bad stored rules are treated as a client-visible strategy configuration problem.
             throw new BadRequestException("Invalid strategy rules", exception);
         }
     }
@@ -452,6 +459,7 @@ public class BacktestService {
 
     private String metadataJson(BacktestRun run) {
         try {
+            // Completion metadata is intentionally compact because the full metrics live on the run record.
             return objectMapper.writeValueAsString(Map.of(
                     "backtestRunId", run.getId(),
                     "strategyId", run.getStrategy().getId(),
