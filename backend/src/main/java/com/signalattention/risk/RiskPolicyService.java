@@ -30,6 +30,7 @@ public class RiskPolicyService {
     public RiskPolicyResponse upsert(Long strategyId, RiskPolicyRequest request) {
         Strategy strategy = strategyRepository.findById(strategyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Strategy not found: " + strategyId));
+        // One policy belongs to one strategy; repeated saves update the existing guardrails in place.
         RiskPolicy policy = riskPolicyRepository.findByStrategyId(strategyId)
                 .orElseGet(() -> new RiskPolicy(
                         strategy,

@@ -195,6 +195,7 @@ public class PaperTradingService {
                 request.endDate()
         );
         if (request.maxCandles() != null && candles.size() > request.maxCandles()) {
+            // Limit from the front of the requested range so repeated replays stay deterministic.
             candles = candles.subList(0, request.maxCandles());
         }
         if (candles.isEmpty()) {
@@ -296,6 +297,7 @@ public class PaperTradingService {
     ) {
         if (signal == CrossoverSignalType.BULLISH_CROSSOVER) {
             if (openPosition(session.getId(), strategy.getSymbol()) != null) {
+                // Replay stays single-position like the backtest engine; it does not pyramid into trends.
                 return null;
             }
             // Bullish replay orders use the strategy's configured position-size percent.
@@ -348,6 +350,7 @@ public class PaperTradingService {
     }
 
     private String replayMetadata(PaperSessionReplayResponse response) {
+        // Replay metadata records counts instead of every order because individual replay orders are audited separately.
         return "{\"paperSessionId\":" + response.paperSessionId()
                 + ",\"candlesRead\":" + response.candlesRead()
                 + ",\"signalsProcessed\":" + response.signalsProcessed()

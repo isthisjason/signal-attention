@@ -61,6 +61,7 @@ public class PaperOrderExecutor {
     }
 
     private String rejectionReason(PaperSession session, PaperOrderRequest request, BigDecimal notional) {
+        // Cash and position checks run before policy checks so obvious simulation constraints get clearer messages.
         if (request.side() == PaperOrderSide.BUY && session.getCashBalance().compareTo(notional) < 0) {
             return "Insufficient paper cash balance.";
         }
@@ -80,6 +81,7 @@ public class PaperOrderExecutor {
     }
 
     private RiskDecision riskDecision(PaperSession session, PaperOrderRequest request, BigDecimal notional, PaperPosition openPosition) {
+        // Paper trading has no live account equity feed, so cash/notional is the local equity proxy.
         RiskEvaluationResponse response = riskEvaluationService.evaluate(new RiskEvaluationRequest(
                 session.getStrategy().getId(),
                 request.symbol(),

@@ -51,6 +51,7 @@ public class RiskEvaluationService {
         reasonCodes.add(RiskReasonCode.POLICY_FOUND);
         reasons.add("Risk policy found.");
 
+        // The response accumulates all reasons so users can see every policy signal, not just the first failure.
         RiskDecision decision = RiskDecision.APPROVED;
         if (positionSizePercent.compareTo(policy.getMaxPositionSizePercent()) > 0) {
             decision = RiskDecision.REJECTED;
@@ -73,6 +74,7 @@ public class RiskEvaluationService {
 
         Instant evaluatedAt = request.evaluatedAt() == null ? Instant.now() : request.evaluatedAt();
         if (request.lastRiskRejectionAt() != null && policy.getCooldownMinutes() > 0) {
+            // Caller-provided timestamps make the rule deterministic in tests and replay scenarios.
             Instant cooldownEndsAt = request.lastRiskRejectionAt().plus(policy.getCooldownMinutes(), ChronoUnit.MINUTES);
             if (cooldownEndsAt.isAfter(evaluatedAt)) {
                 // Cooldown blocks another order after a recent rejection even if size checks pass.
@@ -106,6 +108,7 @@ public class RiskEvaluationService {
                 List.copyOf(reasonCodes),
                 List.copyOf(reasons)
         );
+        // Every evaluation is audited, including approvals, because policy decisions explain paper-order history.
         auditService.record(
                 ENTITY_TYPE,
                 request.strategyId().toString(),

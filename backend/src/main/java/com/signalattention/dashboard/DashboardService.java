@@ -84,6 +84,7 @@ public class DashboardService {
         if (run.getMaxDrawdown() == null || run.getMaxDrawdown().compareTo(MEDIUM_DRAWDOWN_THRESHOLD) < 0) {
             return null;
         }
+        // Drawdown thresholds are presentation-level alerts; they do not change strategy or risk-policy state.
         DashboardAlertSeverity severity = run.getMaxDrawdown().compareTo(HIGH_DRAWDOWN_THRESHOLD) >= 0
                 ? DashboardAlertSeverity.HIGH
                 : DashboardAlertSeverity.MEDIUM;
@@ -98,6 +99,7 @@ public class DashboardService {
     }
 
     private DashboardRiskAlertResponse mlRiskAlert(BacktestRun run) {
+        // Only warning-level ML labels become dashboard alerts; low-risk or unscored runs stay quiet.
         DashboardAlertSeverity severity = switch (String.valueOf(run.getMlRiskLabel())) {
             case "LIKELY_OVERFIT", "HIGH_RISK" -> DashboardAlertSeverity.HIGH;
             case "MEDIUM_RISK" -> DashboardAlertSeverity.MEDIUM;
