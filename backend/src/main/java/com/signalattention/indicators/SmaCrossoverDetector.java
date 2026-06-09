@@ -23,6 +23,7 @@ public class SmaCrossoverDetector {
         List<CrossoverSignal> signals = new ArrayList<>();
 
         for (int index = 1; index < closePrices.size(); index++) {
+            // Both SMA windows must be available at the previous and current candle to detect a crossing.
             Optional<BigDecimal> previousShort = shortSma.get(index - 1);
             Optional<BigDecimal> previousLong = longSma.get(index - 1);
             Optional<BigDecimal> currentShort = shortSma.get(index);
@@ -60,6 +61,7 @@ public class SmaCrossoverDetector {
             throw new IllegalArgumentException("closePrices are required");
         }
         if (closePrices.size() < longWindow) {
+            // An empty signal list is valid when callers ask about a range shorter than the long SMA.
             return;
         }
         if (closePrices.stream().anyMatch(price -> price == null)) {

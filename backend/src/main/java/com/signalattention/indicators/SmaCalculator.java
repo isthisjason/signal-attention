@@ -15,6 +15,7 @@ public class SmaCalculator {
     public List<Optional<BigDecimal>> calculate(List<BigDecimal> prices, int window) {
         validate(prices, window);
 
+        // Optional.empty preserves alignment with the source candles before enough prices exist.
         List<Optional<BigDecimal>> values = new ArrayList<>(prices.size());
         BigDecimal rollingSum = BigDecimal.ZERO;
 

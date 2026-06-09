@@ -58,6 +58,7 @@ public class CandleCsvParser {
     ) {
         String[] columns = line.split(",", -1);
         if (columns.length != COLUMN_COUNT) {
+            // Keep the parser strict so bad CSV shape cannot shift numeric fields into the wrong columns.
             errors.add(new MarketDataImportError(rowNumber, "Expected 8 columns but found " + columns.length));
             return;
         }
@@ -84,6 +85,7 @@ public class CandleCsvParser {
         BigDecimal close = parsePositiveDecimal(rowNumber, "close", columns[6], errors);
         BigDecimal volume = parsePositiveDecimal(rowNumber, "volume", columns[7], errors);
         if (open == null || high == null || low == null || close == null || volume == null) {
+            // A row with any invalid numeric field is skipped as a unit to avoid partial candle records.
             return;
         }
 

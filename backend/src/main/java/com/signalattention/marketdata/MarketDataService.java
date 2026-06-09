@@ -48,6 +48,7 @@ public class MarketDataService {
         Set<String> seenImportKeys = new HashSet<>();
 
         for (ParsedMarketCandle parsedCandle : parseResult.candles()) {
+            // Check duplicates in the upload before checking the database so error rows point to the CSV source.
             String importKey = importKey(parsedCandle);
             if (!seenImportKeys.add(importKey)) {
                 errors.add(new MarketDataImportError(parsedCandle.rowNumber(), "Duplicate candle in CSV"));
@@ -123,6 +124,7 @@ public class MarketDataService {
     @Transactional(readOnly = true)
     public MarketDataQualityResponse analyzeQuality(String symbol, String timeframe) {
         validateMarket(symbol, timeframe);
+        // Quality checks assume the stored candles are sorted chronologically for gap detection.
         long expectedIntervalMinutes = expectedIntervalMinutes(timeframe);
         List<MarketCandle> candles = marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeAsc(
                 symbol,
@@ -214,6 +216,7 @@ public class MarketDataService {
             throw new BadRequestException("timeframe amount must be positive");
         }
 
+        // Only fixed minute/hour/day intervals are supported by the local sample-data workflow.
         return switch (trimmed.charAt(trimmed.length() - 1)) {
             case 'm' -> amount;
             case 'h' -> amount * 60;

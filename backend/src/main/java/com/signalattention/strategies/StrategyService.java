@@ -27,6 +27,7 @@ public class StrategyService {
 
     @Transactional
     public StrategyResponse create(StrategyCreateRequest request) {
+        // Strategy rules are persisted as JSON so the core strategy table can stay small and type-agnostic.
         Strategy strategy = new Strategy(
                 request.name(),
                 request.symbol(),
@@ -82,6 +83,7 @@ public class StrategyService {
     }
 
     private StrategyResponse toResponse(Strategy strategy) {
+        // API responses deserialize rules back into the typed SMA shape expected by the dashboard.
         return new StrategyResponse(
                 strategy.getId(),
                 strategy.getName(),
@@ -113,6 +115,7 @@ public class StrategyService {
 
     private String metadataJson(Strategy strategy) {
         try {
+            // Audit metadata keeps stable identifiers and routing fields, not the full strategy payload.
             Map<String, Object> metadata = new LinkedHashMap<>();
             metadata.put("strategyId", strategy.getId());
             metadata.put("symbol", strategy.getSymbol());
