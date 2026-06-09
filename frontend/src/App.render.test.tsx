@@ -547,6 +547,7 @@ describe("dashboard render states", () => {
     await user.click(screen.getByRole("button", { name: "Run backtest" }));
 
     expect(await screen.findByText("Backtest #12 completed.")).toBeInTheDocument();
+    // Date expectations allow timezone conversion while still verifying ISO instants reach the API layer.
     expect(mocks.runBacktest).toHaveBeenCalledWith(1, expect.objectContaining({
       startDate: expect.stringMatching(/2024-01-01T\d{2}:00:00.000Z/),
       endDate: expect.stringMatching(/2024-01-10T\d{2}:00:00.000Z/),
@@ -676,6 +677,7 @@ describe("dashboard render states", () => {
 
     await user.click(screen.getByRole("button", { name: "Replay candles" }));
     expect(await screen.findByText("Replay filled 1 orders.")).toBeInTheDocument();
+    // Replay uses the selected session and the numeric form value after string-to-number conversion.
     expect(mocks.replayPaperSession).toHaveBeenCalledWith(9, expect.objectContaining({ maxCandles: 250 }));
 
     await user.click(screen.getByRole("button", { name: "Stop" }));

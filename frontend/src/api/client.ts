@@ -28,6 +28,7 @@ export async function postJson<T>(path: string, body?: unknown): Promise<T> {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
+    // Undefined bodies are omitted so empty POST actions do not send the JSON string "undefined".
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
@@ -75,6 +76,7 @@ export function apiBaseUrl() {
 
 async function toApiError(response: Response): Promise<ApiError> {
   try {
+    // Spring and FastAPI use slightly different error fields, so normalize both shapes here.
     const body = (await response.json()) as { message?: string; error?: string };
     return {
       message: body.message || body.error || `Request failed with status ${response.status}`,

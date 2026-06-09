@@ -301,6 +301,7 @@ function App() {
   });
 
   const loading =
+    // The top-level refresh button reflects all dashboard bootstrap requests.
     summaryState.status === "loading" ||
     strategiesState.status === "loading" ||
     auditState.status === "loading" ||
@@ -373,6 +374,7 @@ function App() {
         startDate: toInstant(backtestForm.startDate, "Backtest start"),
         endDate: toInstant(backtestForm.endDate, "Backtest end"),
       });
+      // Backtest charts are loaded with the run so the result panel is internally consistent.
       const [trades, equity, drawdown] = await Promise.all([
         fetchBacktestTrades(run.id),
         fetchBacktestEquitySeries(run.id),
@@ -395,6 +397,7 @@ function App() {
     }
     void runAction("risk", async () => {
       const score = await scoreBacktestRisk(backtestRun.id);
+      // Refresh the run because the backend persists the ML score onto the backtest record.
       const refreshed = await fetchBacktest(backtestRun.id);
       setRiskScore(score);
       setBacktestRun(refreshed);
@@ -472,6 +475,7 @@ function App() {
         quantity: Number(paperForm.orderQuantity),
         price: Number(paperForm.orderPrice),
       });
+      // Orders can affect both cash and positions, so all paper panes reload together.
       setPaperOrders(await fetchPaperOrders(selectedPaperSessionId));
       setPaperPositions(await fetchPaperPositions(selectedPaperSessionId));
       setPaperSummary(await fetchPaperSessionSummary(selectedPaperSessionId));
@@ -664,6 +668,7 @@ function NextActionPanel({ action }: { action: WorkbenchAction }) {
 }
 
 function nextActionTarget(action: WorkbenchActionId) {
+  // Most workflow actions live in the main control grid; analysis and review have dedicated anchors.
   if (action === "run-analysis") {
     return "#analysis";
   }
@@ -679,6 +684,7 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
   const width = 900;
   const height = 280;
   const pad = { top: 18, right: 72, bottom: 34, left: 18 };
+  // Price bounds come from high/low so every wick fits inside the chart area.
   const highs = replay.candles.map((c) => c.high);
   const lows = replay.candles.map((c) => c.low);
   const min = Math.min(...lows);
@@ -726,6 +732,7 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
               onFocus={() => setSelectedIndex(i)}
               onMouseEnter={() => setSelectedIndex(i)}
             >
+              {/* Wider transparent targets make dense candle charts easier to inspect. */}
               <rect x={wickX - 6} y={pad.top} width="12" height={height - pad.top - pad.bottom} fill="transparent" />
               <line x1={wickX} x2={wickX} y1={hi} y2={lo} stroke="#7c8796" strokeWidth="1" />
               <rect
