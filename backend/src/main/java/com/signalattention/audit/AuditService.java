@@ -15,6 +15,7 @@ public class AuditService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AuditEvent record(String entityType, String entityId, String action, String message, String metadataJson) {
+        // Audit writes use their own transaction so failure records survive when the caller rolls back.
         AuditEvent event = new AuditEvent(entityType, entityId, action, message, metadataJson);
         return auditEventRepository.save(event);
     }

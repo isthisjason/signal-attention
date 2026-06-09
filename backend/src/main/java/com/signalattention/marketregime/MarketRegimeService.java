@@ -76,6 +76,7 @@ public class MarketRegimeService {
         String timeframe = requireText(request.timeframe(), "timeframe");
         int windowSize = request.windowSize() == null ? DEFAULT_CANDLE_LIMIT : request.windowSize();
         int stride = request.stride() == null ? 8 : request.stride();
+        // Anomalies default on so the replay view can correlate regime shifts with unusual candles.
         boolean includeAnomalies = request.includeAnomalies() == null || request.includeAnomalies();
         List<MarketCandle> candles = marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
                 symbol, timeframe, request.startDate(), request.endDate()
@@ -153,6 +154,7 @@ public class MarketRegimeService {
 
     private int normalizeLimit(Integer requestedLimit) {
         int limit = requestedLimit == null ? DEFAULT_CANDLE_LIMIT : requestedLimit;
+        // Bound request size so local ML calls stay fast and predictable on CPU.
         if (limit < MIN_CANDLE_LIMIT) {
             throw new BadRequestException("limit must be at least " + MIN_CANDLE_LIMIT);
         }
@@ -180,6 +182,7 @@ public class MarketRegimeService {
         }
         List<BacktestTrade> trades = backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(backtestId);
         return trades.stream()
+                // Filter by entry time because markers are placed where trades begin on the candle chart.
                 .filter(trade -> !trade.getEntryTime().isBefore(startDate) && !trade.getEntryTime().isAfter(endDate))
                 .map(trade -> new RegimeRunResponse.RegimeTradeMarker(
                         trade.getId(),

@@ -22,6 +22,7 @@ public class MlRiskClient {
     }
 
     MlRiskClient(RestClient restClient) {
+        // The client is intentionally small: the backend translates domain data before it crosses this boundary.
         this.restClient = restClient;
     }
 
@@ -36,6 +37,7 @@ public class MlRiskClient {
                     .retrieve()
                     .body(MlStrategyRiskResponse.class);
             if (response == null) {
+                // Treat protocol-level emptiness the same as an unavailable service for callers.
                 throw new ExternalServiceException("ML service returned an empty response", null);
             }
             return response;
@@ -85,6 +87,7 @@ public class MlRiskClient {
     // Regime replay asks ML for rolling-window labels while the backend adds candle and trade context.
     public MlRegimeRunResponse predictRegimeRun(MlRegimeRunRequest request) {
         try {
+            // The ML service owns rolling-window classification; persistence and chart context remain in the backend.
             MlRegimeRunResponse response = restClient.post()
                     .uri("/predict/regime-run")
                     .contentType(MediaType.APPLICATION_JSON)

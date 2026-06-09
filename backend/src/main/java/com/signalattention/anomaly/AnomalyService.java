@@ -80,6 +80,7 @@ public class AnomalyService {
 
     private int normalizeLimit(Integer requestedLimit) {
         int limit = requestedLimit == null ? DEFAULT_CANDLE_LIMIT : requestedLimit;
+        // Match market-regime bounds so both ML endpoints operate on comparable candle windows.
         if (limit < MIN_CANDLE_LIMIT) {
             throw new BadRequestException("limit must be at least " + MIN_CANDLE_LIMIT);
         }
