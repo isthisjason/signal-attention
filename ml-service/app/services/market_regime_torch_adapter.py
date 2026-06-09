@@ -99,6 +99,7 @@ def validate_artifact_path(settings: MarketRegimeSettings) -> Path:
 
 def select_device(torch):
     if torch.cuda.is_available():
+        # GPU is used opportunistically; the default Docker path remains CPU-safe when CUDA is absent.
         return torch.device("cuda")
     return torch.device("cpu")
 
@@ -137,6 +138,7 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(labels, list) or not labels or not all(isinstance(label, str) for label in labels):
         raise RuntimeError("Market regime artifact metadata.labels must be a non-empty string list.")
     if len(labels) != len(set(labels)):
+        # Duplicate labels would make class indexes ambiguous in responses and evaluation reports.
         raise RuntimeError("Market regime artifact metadata.labels must not contain duplicates.")
     metadata["labels"] = labels
 

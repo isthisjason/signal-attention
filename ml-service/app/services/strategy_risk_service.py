@@ -47,6 +47,7 @@ def score_strategy_risk(request: StrategyRiskRequest) -> StrategyRiskResponse:
         score += Decimal("15")
         reasons.append("High equity volatility raises fragility.")
     elif request.volatility <= Decimal("2"):
+        # Quiet equity curves reduce the risk score only after drawdown and profit factor are checked.
         score -= Decimal("5")
         reasons.append("Equity volatility is low.")
 

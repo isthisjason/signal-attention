@@ -101,6 +101,7 @@ class RuleBasedMarketRegimeClassifier:
         if abs(features.volumeZScore) >= Decimal("2.00"):
             reasons.append("Latest volume is unusually far from the sequence average.")
 
+        # Rules responses include provenance fields so the backend can display which classifier path ran.
         return MarketRegimeResponse(
             regimeLabel=label,
             confidence=quantize_confidence(confidence),

@@ -20,6 +20,7 @@ TORCH_MARKET_REGIME_FEATURE_ORDER = [
 
 def build_torch_feature_matrix(candles: list[MarketRegimeCandle]) -> list[list[float]]:
     closes: list[Decimal] = []
+    # Volume z-scores are calculated against the observed prefix to avoid leaking future candles into a row.
     volumes = [candle.volume for candle in candles]
     rows: list[list[float]] = []
 

@@ -10,6 +10,7 @@ def detect_anomaly(request: AnomalyRequest) -> AnomalyResponse:
     score = Decimal("0")
     reasons: list[str] = []
 
+    # Latest return catches sudden candle moves even when the whole window is not volatile yet.
     latest_return = abs(features.latestReturnPercent)
     if latest_return >= Decimal("3.00"):
         score += Decimal("35")
@@ -52,6 +53,7 @@ def detect_anomaly(request: AnomalyRequest) -> AnomalyResponse:
 
 
 def anomaly_label(score: Decimal) -> str:
+    # Labels are coarse on purpose; the numeric score and reasons carry the detail.
     if score >= Decimal("70"):
         return "ANOMALY"
     if score >= Decimal("35"):

@@ -64,6 +64,7 @@ def build_transformer_model(
         def forward(self, inputs):
             projected = self.input_projection(inputs)
             if use_positional_encoding:
+                # Positional encoding gives the encoder order information without adding trained parameters.
                 positions = self.positional_encoding(
                     projected.shape[1],
                     projected.device,
@@ -71,6 +72,7 @@ def build_transformer_model(
                 )
                 projected = projected + positions
             encoded = self.encoder(projected)
+            # Mean pooling keeps inference independent of a special classification token.
             pooled = encoded.mean(dim=1)
             return self.classifier(pooled)
 

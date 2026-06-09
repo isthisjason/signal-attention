@@ -15,6 +15,7 @@ def build_market_regime_features(candles: list[MarketRegimeCandle]) -> MarketReg
     latest_return = returns[-1]
     average_return = mean(returns)
     volatility = standard_deviation(returns)
+    # Trend slope normalizes the start-to-end move by sequence length so longer windows do not dominate.
     trend_slope = percent_change(closes[0], closes[-1]) / Decimal(len(closes) - 1)
     sma = mean(closes)
     sma_distance = percent_change(sma, closes[-1])
@@ -53,6 +54,7 @@ def standard_deviation(values: list[Decimal]) -> Decimal:
 def z_score(values: list[Decimal], latest: Decimal) -> Decimal:
     deviation = standard_deviation(values)
     if deviation == 0:
+        # Flat volume windows have no meaningful z-score, so treat the latest value as normal.
         return Decimal("0")
     return (latest - mean(values)) / deviation
 
