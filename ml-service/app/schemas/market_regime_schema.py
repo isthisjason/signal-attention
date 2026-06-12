@@ -57,6 +57,20 @@ class MarketRegimeResponse(BaseModel):
     artifactIdentifier: str | None = None
 
 
+class MarketRegimeStatusResponse(BaseModel):
+    mode: str
+    effectiveMode: str
+    classifierSource: str
+    ready: bool
+    artifactConfigured: bool
+    artifactExists: bool
+    artifactIdentifier: str | None = None
+    modelVersion: str | None = None
+    featureVersion: str | None = None
+    sequenceLength: int | None = None
+    warnings: list[str] = []
+
+
 class RegimeRunRequest(BaseModel):
     symbol: str = Field(min_length=1)
     timeframe: str = Field(min_length=1)

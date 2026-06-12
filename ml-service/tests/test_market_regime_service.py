@@ -6,6 +6,7 @@ from app.services.market_regime_config import MarketRegimeSettings
 from app.services.market_regime_service import (
     classify_market_regime,
     get_market_regime_classifier,
+    market_regime_status,
     run_market_regime,
 )
 from app.schemas.market_regime_schema import RegimeRunRequest
@@ -84,6 +85,31 @@ def test_selects_torch_market_regime_mode() -> None:
     classifier = get_market_regime_classifier(settings)
 
     assert isinstance(classifier, TorchMarketRegimeClassifier)
+
+
+def test_auto_mode_falls_back_to_rules_when_artifact_is_missing(tmp_path) -> None:
+    settings = MarketRegimeSettings(mode="auto", artifact_path=str(tmp_path / "missing.pt"))
+
+    classifier = get_market_regime_classifier(settings)
+    status = market_regime_status(settings)
+
+    assert classifier.__class__.__name__ == "RuleBasedMarketRegimeClassifier"
+    assert status.mode == "auto"
+    assert status.effectiveMode == "rules"
+    assert status.ready is True
+    assert status.warnings
+
+
+def test_auto_mode_reports_torch_artifact_when_present(tmp_path) -> None:
+    artifact = tmp_path / "market-regime.pt"
+    artifact.write_text("placeholder")
+    settings = MarketRegimeSettings(mode="auto", artifact_path=str(artifact))
+
+    status = market_regime_status(settings)
+
+    assert status.effectiveMode == "torch"
+    assert status.artifactExists is True
+    assert status.artifactIdentifier is not None
 
 
 def test_classifies_sideways() -> None:

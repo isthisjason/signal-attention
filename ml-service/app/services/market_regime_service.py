@@ -1,8 +1,10 @@
 from decimal import Decimal, ROUND_HALF_UP
+from pathlib import Path
 
 from app.schemas.market_regime_schema import (
     MarketRegimeRequest,
     MarketRegimeResponse,
+    MarketRegimeStatusResponse,
     RegimeRunPoint,
     RegimeRunRequest,
     RegimeRunResponse,
@@ -10,8 +12,8 @@ from app.schemas.market_regime_schema import (
 from app.services.anomaly_service import detect_anomaly
 from app.schemas.anomaly_schema import AnomalyRequest
 from app.services.market_regime_classifier import MarketRegimeClassifier
-from app.services.market_regime_config import MarketRegimeSettings, get_market_regime_settings
-from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION
+from app.services.market_regime_config import AUTO_MARKET_REGIME_MODE, MarketRegimeSettings, get_market_regime_settings
+from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, describe_path
 from app.services.market_regime_features import build_market_regime_features
 from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 
@@ -19,6 +21,25 @@ from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
     # Mode selection stays behind the classifier interface so routes do not care about rules vs torch.
     return get_market_regime_classifier().classify(request)
+
+
+def market_regime_status(settings: MarketRegimeSettings | None = None) -> MarketRegimeStatusResponse:
+    selected_settings = settings or get_market_regime_settings()
+    effective_settings, warnings = resolve_effective_settings(selected_settings)
+    artifact_summary = describe_artifact(effective_settings.artifact_path)
+    return MarketRegimeStatusResponse(
+        mode=selected_settings.mode,
+        effectiveMode=effective_settings.mode,
+        classifierSource=effective_settings.mode,
+        ready=effective_settings.mode == "rules" or artifact_summary["exists"],
+        artifactConfigured=bool(selected_settings.artifact_path),
+        artifactExists=artifact_summary["exists"],
+        artifactIdentifier=artifact_summary["sha256"],
+        modelVersion=None,
+        featureVersion=MARKET_REGIME_FEATURE_VERSION,
+        sequenceLength=None,
+        warnings=warnings,
+    )
 
 
 def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
@@ -67,12 +88,34 @@ def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
 
 def get_market_regime_classifier(settings: MarketRegimeSettings | None = None) -> MarketRegimeClassifier:
     selected_settings = settings or get_market_regime_settings()
+    selected_settings, _warnings = resolve_effective_settings(selected_settings)
     # Rules are the default path; torch is opt-in because it needs an artifact and extra deps.
     if selected_settings.mode == "rules":
         return RuleBasedMarketRegimeClassifier()
     if selected_settings.mode == "torch":
         return TorchMarketRegimeClassifier(selected_settings)
     raise ValueError(f"Unsupported market regime mode: {selected_settings.mode}")
+
+
+def resolve_effective_settings(settings: MarketRegimeSettings) -> tuple[MarketRegimeSettings, list[str]]:
+    warnings: list[str] = []
+    if settings.mode != AUTO_MARKET_REGIME_MODE:
+        return settings, warnings
+
+    artifact_path = settings.artifact_path
+    # Auto mode keeps demos reproducible by preferring torch only when a local artifact is actually available.
+    if artifact_path and Path(artifact_path).is_file():
+        return MarketRegimeSettings(mode="torch", artifact_path=artifact_path), warnings
+
+    warnings.append("auto mode fell back to rules because no loadable torch artifact was configured")
+    return MarketRegimeSettings(mode="rules", artifact_path=artifact_path), warnings
+
+
+def describe_artifact(artifact_path: str | None) -> dict:
+    if not artifact_path:
+        return {"exists": False, "sha256": None}
+    summary = describe_path(Path(artifact_path))
+    return {"exists": summary["sizeBytes"] is not None, "sha256": summary["sha256"]}
 
 
 class RuleBasedMarketRegimeClassifier:

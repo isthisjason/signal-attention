@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from app.main import app
 from app.routes.market_regime import (
+    get_market_regime_status,
     MarketRegimeRequest,
     RegimeRunRequest,
     predict_market_regime,
@@ -25,6 +26,7 @@ def test_market_regime_route_is_registered() -> None:
     paths = {route.path for route in app.routes}
 
     assert "/predict/market-regime" in paths
+    assert "/predict/market-regime/status" in paths
 
 
 def test_predict_market_regime_route_function() -> None:
@@ -39,6 +41,13 @@ def test_predict_market_regime_route_function() -> None:
     assert response.regimeLabel == "TRENDING_UP"
     assert response.confidence > Decimal("0")
     assert response.reasons
+
+
+def test_market_regime_status_route_function() -> None:
+    response = get_market_regime_status()
+
+    assert response.ready is True
+    assert response.effectiveMode in {"rules", "torch"}
 
 
 def test_predict_market_regime_run_route_function() -> None:
