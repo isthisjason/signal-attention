@@ -217,3 +217,29 @@ Traditional indicators and rule based methods stay in the project as baselines a
 UI polish comes last, after the ML workflow and assistant behavior are implemented.
 
 The document avoids dash characters so the writing matches the requested style.
+
+## 14. Next Implementation Wave
+
+The next wave makes the market regime workflow real as an ML first product path before adding the assistant layer.
+
+Planned commit sized work:
+
+1. Document the ML first regime wave and track progress locally.
+
+2. Add model status to the ML service so the app can explain whether rules, auto, or torch mode is active.
+
+3. Expose model status through the backend.
+
+4. Persist regime run history and prediction points.
+
+5. Save regime replay results and expose retrieval endpoints.
+
+6. Compare the primary classifier against the rule based baseline.
+
+7. Add backtest performance analysis grouped by inferred regime.
+
+8. Surface model status, saved runs, baseline disagreement, and regime grouped backtest results in the dashboard.
+
+9. Extend the smoke workflow and verification docs around the ML first regime path.
+
+This wave deliberately keeps the default local setup CPU safe. Auto mode may use a promoted torch artifact when one is configured and loadable, but a fresh clone must still run with the rule based classifier.
