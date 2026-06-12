@@ -119,6 +119,40 @@ class MlRiskClientTests {
     }
 
     @Test
+    void getMarketRegimeStatusMapsModelReadiness() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MlRiskClient client = new MlRiskClient(builder.build());
+
+        server.expect(requestTo("http://ml-service:8000/predict/market-regime/status"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
+                .andRespond(withSuccess("""
+                        {
+                          "mode": "auto",
+                          "effectiveMode": "rules",
+                          "classifierSource": "rules",
+                          "ready": true,
+                          "artifactConfigured": false,
+                          "artifactExists": false,
+                          "artifactIdentifier": null,
+                          "modelVersion": null,
+                          "featureVersion": "torch-market-regime-features/v1",
+                          "sequenceLength": null,
+                          "warnings": ["auto mode fell back to rules"]
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MlMarketRegimeStatusResponse response = client.getMarketRegimeStatus();
+
+        assertThat(response.mode()).isEqualTo("auto");
+        assertThat(response.effectiveMode()).isEqualTo("rules");
+        assertThat(response.ready()).isTrue();
+        assertThat(response.warnings()).hasSize(1);
+        server.verify();
+    }
+
+    @Test
     void predictAnomalyPostsRecentCandles() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

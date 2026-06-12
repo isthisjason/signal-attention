@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeResponse;
+import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -24,6 +25,31 @@ class MarketRegimeControllerTests {
 
         assertThat(actual).isSameAs(expected);
         verify(service).predictMarketRegime("BTC-USD", "1h", 128);
+    }
+
+    @Test
+    void getMarketRegimeStatusDelegatesToService() {
+        MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
+        MarketRegimeController controller = new MarketRegimeController(service);
+        MlMarketRegimeStatusResponse expected = new MlMarketRegimeStatusResponse(
+                "auto",
+                "rules",
+                "rules",
+                true,
+                false,
+                false,
+                null,
+                null,
+                "torch-market-regime-features/v1",
+                null,
+                List.of()
+        );
+        when(service.getModelStatus()).thenReturn(expected);
+
+        MlMarketRegimeStatusResponse actual = controller.getMarketRegimeStatus();
+
+        assertThat(actual).isSameAs(expected);
+        verify(service).getModelStatus();
     }
 
     @Test

@@ -65,6 +65,23 @@ public class MlRiskClient {
         }
     }
 
+    public MlMarketRegimeStatusResponse getMarketRegimeStatus() {
+        try {
+            // Status is read-only model provenance, so the backend can expose it without candle context.
+            MlMarketRegimeStatusResponse response = restClient.get()
+                    .uri("/predict/market-regime/status")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(MlMarketRegimeStatusResponse.class);
+            if (response == null) {
+                throw new ExternalServiceException("ML service returned an empty response", null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
+        }
+    }
+
     // A null body is treated as a service failure because the dashboard needs a complete payload.
     public MlAnomalyResponse predictAnomaly(MlMarketRegimeRequest request) {
         try {

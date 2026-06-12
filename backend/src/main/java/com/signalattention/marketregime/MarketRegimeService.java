@@ -11,6 +11,7 @@ import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlMarketRegimeCandle;
 import com.signalattention.ml.MlMarketRegimeRequest;
 import com.signalattention.ml.MlMarketRegimeResponse;
+import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import com.signalattention.ml.MlRegimeRunRequest;
 import com.signalattention.ml.MlRegimeRunResponse;
 import com.signalattention.ml.MlRiskClient;
@@ -44,6 +45,11 @@ public class MarketRegimeService {
         this.mlRiskClient = mlRiskClient;
         this.backtestRunRepository = backtestRunRepository;
         this.backtestTradeRepository = backtestTradeRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public MlMarketRegimeStatusResponse getModelStatus() {
+        return mlRiskClient.getMarketRegimeStatus();
     }
 
     @Transactional(readOnly = true)

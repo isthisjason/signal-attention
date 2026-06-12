@@ -1,6 +1,7 @@
 package com.signalattention.marketregime;
 
 import com.signalattention.ml.MlMarketRegimeResponse;
+import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +25,11 @@ public class MarketRegimeController {
             @RequestParam(defaultValue = "128") Integer limit
     ) {
         return marketRegimeService.predictMarketRegime(symbol, timeframe, limit);
+    }
+
+    @GetMapping("/api/market-regime/status")
+    public MlMarketRegimeStatusResponse getMarketRegimeStatus() {
+        return marketRegimeService.getModelStatus();
     }
 
     @PostMapping("/api/regime-runs")
