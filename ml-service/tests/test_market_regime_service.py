@@ -154,3 +154,5 @@ def test_run_market_regime_batches_windows_and_stride() -> None:
     assert response.pointCount == 3
     assert response.points[0].windowStart < response.points[0].windowEnd
     assert response.points[0].anomalyLabel is None
+    assert response.points[0].baselineRegimeLabel == "TRENDING_UP"
+    assert response.points[0].disagreesWithBaseline is False

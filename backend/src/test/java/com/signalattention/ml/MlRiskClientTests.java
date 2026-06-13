@@ -210,7 +210,27 @@ class MlRiskClientTests {
                 .andRespond(withSuccess("""
                         {
                           "pointCount": 1,
-                          "points": []
+                          "points": [{
+                            "windowStart": "2024-01-01T00:00:00Z",
+                            "windowEnd": "2024-01-01T19:00:00Z",
+                            "regimeLabel": "TRENDING_UP",
+                            "confidence": "80.00",
+                            "reasons": ["Torch sequence model selected TRENDING_UP."],
+                            "features": {
+                              "latestReturnPercent": "0.50",
+                              "averageReturnPercent": "0.25",
+                              "volatilityPercent": "0.10",
+                              "trendSlopePercent": "0.20",
+                              "smaDistancePercent": "1.50",
+                              "volumeZScore": "0.00"
+                            },
+                            "anomalyScore": null,
+                            "anomalyLabel": null,
+                            "anomalyReasons": null,
+                            "baselineRegimeLabel": "SIDEWAYS",
+                            "baselineConfidence": "65.00",
+                            "disagreesWithBaseline": true
+                          }]
                         }
                         """, MediaType.APPLICATION_JSON));
 
@@ -231,6 +251,8 @@ class MlRiskClientTests {
         ));
 
         assertThat(response.pointCount()).isEqualTo(1);
+        assertThat(response.points().getFirst().baselineRegimeLabel()).isEqualTo("SIDEWAYS");
+        assertThat(response.points().getFirst().disagreesWithBaseline()).isTrue();
         server.verify();
     }
 }

@@ -65,7 +65,8 @@ public class RegimePrediction {
 
     public RegimePrediction(RegimeRun regimeRun, Instant windowStart, Instant windowEnd, String regimeLabel,
                             BigDecimal confidence, String reasonsJson, String featuresJson,
-                            BigDecimal anomalyScore, String anomalyLabel, String anomalyReasonsJson) {
+                            BigDecimal anomalyScore, String anomalyLabel, String anomalyReasonsJson,
+                            String baselineRegimeLabel, BigDecimal baselineConfidence, Boolean disagreesWithBaseline) {
         this.regimeRun = regimeRun;
         this.windowStart = windowStart;
         this.windowEnd = windowEnd;
@@ -76,6 +77,9 @@ public class RegimePrediction {
         this.anomalyScore = anomalyScore;
         this.anomalyLabel = anomalyLabel;
         this.anomalyReasonsJson = anomalyReasonsJson;
+        this.baselineRegimeLabel = baselineRegimeLabel;
+        this.baselineConfidence = baselineConfidence;
+        this.disagreesWithBaseline = disagreesWithBaseline;
     }
 
     public Long getId() {

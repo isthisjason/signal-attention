@@ -44,11 +44,15 @@ def market_regime_status(settings: MarketRegimeSettings | None = None) -> Market
 
 def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
     classifier = get_market_regime_classifier()
+    baseline_classifier = RuleBasedMarketRegimeClassifier()
     points: list[RegimeRunPoint] = []
     for end_index in range(request.windowSize, len(request.candles) + 1, request.stride):
         # Each point classifies one rolling candle window ending at end_index.
         window = request.candles[end_index - request.windowSize : end_index]
         regime = classifier.classify(
+            MarketRegimeRequest(symbol=request.symbol, timeframe=request.timeframe, candles=window)
+        )
+        baseline = baseline_classifier.classify(
             MarketRegimeRequest(symbol=request.symbol, timeframe=request.timeframe, candles=window)
         )
         anomaly_score = None
@@ -72,6 +76,9 @@ def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
                 anomalyScore=anomaly_score,
                 anomalyLabel=anomaly_label,
                 anomalyReasons=anomaly_reasons,
+                baselineRegimeLabel=baseline.regimeLabel,
+                baselineConfidence=baseline.confidence,
+                disagreesWithBaseline=regime.regimeLabel != baseline.regimeLabel,
             )
         )
 

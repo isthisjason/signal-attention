@@ -158,7 +158,10 @@ class MarketRegimeServiceTests {
                         response().features(),
                         null,
                         null,
-                        null
+                        null,
+                        "TRENDING_UP",
+                        new BigDecimal("80.00"),
+                        false
                 ))
         ));
         when(regimePredictionRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));

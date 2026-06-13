@@ -99,6 +99,9 @@ class RegimeRunPoint(BaseModel):
     anomalyScore: Decimal | None = None
     anomalyLabel: str | None = None
     anomalyReasons: list[str] | None = None
+    baselineRegimeLabel: str | None = None
+    baselineConfidence: Decimal | None = None
+    disagreesWithBaseline: bool | None = None
 
 
 class RegimeRunResponse(BaseModel):

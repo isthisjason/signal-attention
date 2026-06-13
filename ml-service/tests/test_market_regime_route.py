@@ -65,4 +65,5 @@ def test_predict_market_regime_run_route_function() -> None:
 
     assert response.pointCount == 3
     assert response.points[0].regimeLabel == "TRENDING_UP"
+    assert response.points[0].baselineRegimeLabel == "TRENDING_UP"
     assert response.points[0].anomalyLabel is not None

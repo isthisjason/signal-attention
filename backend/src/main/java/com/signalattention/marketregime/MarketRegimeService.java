@@ -141,7 +141,10 @@ public class MarketRegimeService {
                         toJson(point.features()),
                         point.anomalyScore(),
                         point.anomalyLabel(),
-                        toJson(point.anomalyReasons())
+                        toJson(point.anomalyReasons()),
+                        point.baselineRegimeLabel(),
+                        point.baselineConfidence(),
+                        point.disagreesWithBaseline()
                 ))
                 .toList();
         regimePredictionRepository.saveAll(predictions);

@@ -13,6 +13,9 @@ public record MlRegimeRunPoint(
         MlMarketRegimeFeatures features,
         BigDecimal anomalyScore,
         String anomalyLabel,
-        List<String> anomalyReasons
+        List<String> anomalyReasons,
+        String baselineRegimeLabel,
+        BigDecimal baselineConfidence,
+        Boolean disagreesWithBaseline
 ) {
 }
