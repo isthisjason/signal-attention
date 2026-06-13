@@ -9,6 +9,10 @@ import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ExternalServiceException;
 import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.backtesting.BacktestTradeRepository;
+import com.signalattention.backtesting.BacktestRun;
+import com.signalattention.backtesting.BacktestStatus;
+import com.signalattention.backtesting.BacktestTrade;
+import com.signalattention.backtesting.TradeSide;
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlMarketRegimeFeatures;
@@ -17,6 +21,9 @@ import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import com.signalattention.ml.MlRiskClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.signalattention.strategies.Strategy;
+import com.signalattention.strategies.StrategyStatus;
+import com.signalattention.strategies.StrategyType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -175,6 +182,58 @@ class MarketRegimeServiceTests {
         assertThat(response.points().getFirst().regimeLabel()).isEqualTo("TRENDING_UP");
     }
 
+    @Test
+    void analyzeBacktestByRegimeGroupsTradesByEntryWindow() {
+        Strategy strategy = new Strategy("SMA", "BTC-USD", "1h", StrategyType.SMA_CROSSOVER, "{}", StrategyStatus.ACTIVE);
+        BacktestRun backtest = new BacktestRun(
+                strategy,
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-02T00:00:00Z"),
+                new BigDecimal("10000"),
+                BacktestStatus.COMPLETED
+        );
+        RegimeRun run = new RegimeRun(
+                "BTC-USD",
+                "1h",
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-02T00:00:00Z"),
+                20,
+                5,
+                false
+        );
+        RegimePrediction prediction = new RegimePrediction(
+                run,
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-01T20:00:00Z"),
+                "TRENDING_UP",
+                new BigDecimal("80.00"),
+                "[]",
+                "{}",
+                null,
+                null,
+                null,
+                "SIDEWAYS",
+                new BigDecimal("65.00"),
+                true
+        );
+        BacktestTrade winner = trade(backtest, "2024-01-01T05:00:00Z", "25.00", "2.500000");
+        BacktestTrade loser = trade(backtest, "2024-01-01T06:00:00Z", "-5.00", "-0.500000");
+        when(backtestRunRepository.findById(10L)).thenReturn(java.util.Optional.of(backtest));
+        when(regimeRunRepository.findById(20L)).thenReturn(java.util.Optional.of(run));
+        when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(20L)).thenReturn(List.of(prediction));
+        when(backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(10L)).thenReturn(List.of(winner, loser));
+
+        RegimeBacktestAnalysisResponse response = service.analyzeBacktestByRegime(10L, 20L);
+
+        assertThat(response.regimes()).hasSize(1);
+        RegimeBacktestAnalysisResponse.RegimeBacktestBucket bucket = response.regimes().getFirst();
+        assertThat(bucket.regimeLabel()).isEqualTo("TRENDING_UP");
+        assertThat(bucket.tradeCount()).isEqualTo(2);
+        assertThat(bucket.winRate()).isEqualByComparingTo("50.000000");
+        assertThat(bucket.totalNetPnl()).isEqualByComparingTo("20.00");
+        assertThat(bucket.baselineDisagreementCount()).isEqualTo(2);
+    }
+
     private List<MarketCandle> candlesDescending(int count) {
         return java.util.stream.IntStream.range(0, count)
                 .mapToObj(index -> candle(count - index))
@@ -193,6 +252,19 @@ class MarketRegimeServiceTests {
                 close,
                 new BigDecimal("1000")
         );
+    }
+
+    private BacktestTrade trade(BacktestRun run, String entryTime, String netPnl, String returnPercent) {
+        BacktestTrade trade = new BacktestTrade(
+                run,
+                TradeSide.LONG,
+                Instant.parse(entryTime),
+                new BigDecimal("100"),
+                BigDecimal.ONE
+        );
+        trade.setNetPnl(new BigDecimal(netPnl));
+        trade.setReturnPercent(new BigDecimal(returnPercent));
+        return trade;
     }
 
     private MlMarketRegimeResponse response() {

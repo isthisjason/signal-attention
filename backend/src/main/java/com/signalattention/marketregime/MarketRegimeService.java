@@ -4,6 +4,7 @@ import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ResourceNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.signalattention.backtesting.BacktestRun;
 import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.backtesting.BacktestTrade;
 import com.signalattention.backtesting.BacktestTradeRepository;
@@ -21,7 +22,10 @@ import com.signalattention.ml.MlRiskClient;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -184,6 +188,36 @@ public class MarketRegimeService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public RegimeBacktestAnalysisResponse analyzeBacktestByRegime(Long backtestId, Long regimeRunId) {
+        BacktestRun backtest = backtestRunRepository.findById(backtestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Backtest run not found: " + backtestId));
+        RegimeRun regimeRun = regimeRunRepository.findById(regimeRunId)
+                .orElseThrow(() -> new ResourceNotFoundException("Regime run not found: " + regimeRunId));
+        String symbol = backtest.getStrategy().getSymbol();
+        String timeframe = backtest.getStrategy().getTimeframe();
+        if (!symbol.equals(regimeRun.getSymbol()) || !timeframe.equals(regimeRun.getTimeframe())) {
+            throw new BadRequestException("regimeRunId does not match the backtest symbol/timeframe");
+        }
+
+        List<RegimePrediction> predictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(regimeRunId);
+        List<BacktestTrade> trades = backtestTradeRepository.findByBacktestRunIdOrderByEntryTimeAsc(backtestId);
+        return new RegimeBacktestAnalysisResponse(
+                backtestId,
+                regimeRunId,
+                symbol,
+                timeframe,
+                trades.stream()
+                        .filter(trade -> trade.getNetPnl() != null)
+                        .collect(java.util.stream.Collectors.groupingBy(trade -> labelForTrade(trade, predictions)))
+                        .entrySet()
+                        .stream()
+                        .map(entry -> toBucket(entry.getKey(), entry.getValue(), predictions))
+                        .sorted(Comparator.comparing(RegimeBacktestAnalysisResponse.RegimeBacktestBucket::regimeLabel))
+                        .toList()
+        );
+    }
+
     private List<MarketCandle> latestCandlesAscending(String symbol, String timeframe, int limit) {
         // Repository query is newest-first for limiting, then reversed for time-series processing.
         List<MarketCandle> candles = new ArrayList<>(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeDesc(
@@ -281,6 +315,59 @@ public class MarketRegimeService {
                 predictions.stream().map(this::toPointResponse).toList(),
                 loadTradeMarkers(backtestId, run.getSymbol(), run.getTimeframe(), run.getStartDate(), run.getEndDate())
         );
+    }
+
+    private String labelForTrade(BacktestTrade trade, List<RegimePrediction> predictions) {
+        return predictionForTrade(trade, predictions)
+                .map(RegimePrediction::getRegimeLabel)
+                .orElse("UNCLASSIFIED");
+    }
+
+    private RegimeBacktestAnalysisResponse.RegimeBacktestBucket toBucket(
+            String regimeLabel,
+            List<BacktestTrade> trades,
+            List<RegimePrediction> predictions
+    ) {
+        BigDecimal totalPnl = trades.stream()
+                .map(BacktestTrade::getNetPnl)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long wins = trades.stream()
+                .filter(trade -> trade.getNetPnl().compareTo(BigDecimal.ZERO) > 0)
+                .count();
+        BigDecimal winRate = BigDecimal.valueOf(wins)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(trades.size()), 6, RoundingMode.HALF_UP);
+        BigDecimal averageReturn = trades.stream()
+                .map(BacktestTrade::getReturnPercent)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(trades.size()), 6, RoundingMode.HALF_UP);
+        BigDecimal bestTrade = trades.stream().map(BacktestTrade::getNetPnl).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        BigDecimal worstTrade = trades.stream().map(BacktestTrade::getNetPnl).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        long disagreements = trades.stream()
+                .map(trade -> predictionForTrade(trade, predictions))
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .filter(prediction -> Boolean.TRUE.equals(prediction.getDisagreesWithBaseline()))
+                .count();
+        return new RegimeBacktestAnalysisResponse.RegimeBacktestBucket(
+                regimeLabel,
+                trades.size(),
+                winRate,
+                totalPnl,
+                averageReturn,
+                bestTrade,
+                worstTrade,
+                disagreements
+        );
+    }
+
+    private java.util.Optional<RegimePrediction> predictionForTrade(BacktestTrade trade, List<RegimePrediction> predictions) {
+        // Entry time is the cleanest join point because trades are opened against a specific candle context.
+        return predictions.stream()
+                .filter(prediction -> !trade.getEntryTime().isBefore(prediction.getWindowStart())
+                        && !trade.getEntryTime().isAfter(prediction.getWindowEnd()))
+                .findFirst();
     }
 
     private RegimeRunResponse.RegimeRunPoint toPointResponse(RegimePrediction prediction) {

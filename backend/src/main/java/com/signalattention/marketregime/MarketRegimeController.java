@@ -52,4 +52,12 @@ public class MarketRegimeController {
     ) {
         return marketRegimeService.listRegimeRuns(symbol, timeframe, limit);
     }
+
+    @GetMapping("/api/backtests/{id}/regime-analysis")
+    public RegimeBacktestAnalysisResponse analyzeBacktestByRegime(
+            @PathVariable Long id,
+            @RequestParam Long regimeRunId
+    ) {
+        return marketRegimeService.analyzeBacktestByRegime(id, regimeRunId);
+    }
 }
