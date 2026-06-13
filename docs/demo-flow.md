@@ -230,6 +230,28 @@ curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=
 
 The response includes a regime label, confidence, reasons, and derived features. The default service uses deterministic rule-based analysis. Optional torch-backed inference can be enabled only when a compatible local artifact is provided.
 
+Check model status and save a regime run:
+
+```bash
+curl http://localhost:8080/api/market-regime/status
+curl -X POST http://localhost:8080/api/regime-runs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "BTC-USD",
+    "timeframe": "1h",
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2024-01-10T00:00:00Z",
+    "windowSize": 64,
+    "stride": 8,
+    "includeAnomalies": true,
+    "backtestId": BACKTEST_ID
+  }'
+curl http://localhost:8080/api/regime-runs/REGIME_RUN_ID
+curl "http://localhost:8080/api/backtests/BACKTEST_ID/regime-analysis?regimeRunId=REGIME_RUN_ID"
+```
+
+Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, and candle windows. The regime analysis endpoint groups completed backtest trades by the inferred regime active at trade entry time.
+
 Run a simple anomaly check against the same recent candle window:
 
 ```bash

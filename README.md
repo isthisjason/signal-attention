@@ -176,7 +176,7 @@ Smoke check against a running local stack:
 python3 scripts/smoke_demo.py
 ```
 
-The smoke script checks that the services are reachable, imports the sample CSV, creates an SMA strategy, runs a backtest, saves an ML risk score, exercises paper trading, and checks dashboard, market regime, anomaly, and audit endpoints. It is safe to rerun against an existing local database. Duplicate sample candles are treated as a sign that the data is already loaded.
+The smoke script checks that the services are reachable, imports the sample CSV, creates an SMA strategy, runs a backtest, saves an ML risk score, exercises paper trading, and checks dashboard, model status, persisted regime runs, regime grouped backtest analysis, anomaly, and audit endpoints. It is safe to rerun against an existing local database. Duplicate sample candles are treated as a sign that the data is already loaded.
 
 It also checks the market data quality endpoint so the sample candles have an explainable coverage summary before the rest of the demo depends on them.
 
@@ -223,6 +223,11 @@ After the stack starts, I usually use Swagger at `http://localhost:8080/swagger-
 - `GET /api/dashboard/strategy-performance`
 - `GET /api/dashboard/risk-alerts`
 - `GET /api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128`
+- `GET /api/market-regime/status`
+- `POST /api/regime-runs`
+- `GET /api/regime-runs/{id}`
+- `GET /api/regime-runs?symbol=BTC-USD&timeframe=1h&limit=10`
+- `GET /api/backtests/{id}/regime-analysis?regimeRunId={id}`
 - `POST /api/anomaly-check`
 
 See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl based walkthrough.
@@ -263,7 +268,7 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, CPU safe market regime classification, optional torch backed regime inference, a simple anomaly check, baseline risk policies, paper trading sessions, dashboard summary APIs, candlestick assessment feedback in the React workbench, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, persisted market regime runs, baseline versus primary regime comparison, regime grouped backtest analysis, CPU safe market regime classification, optional torch backed regime inference, a simple anomaly check, baseline risk policies, paper trading sessions, dashboard summary APIs, candlestick assessment feedback in the React workbench, and a smoke script for the running stack.
 
 Backend, ML service, frontend tests, frontend build, smoke helper tests, Compose config, full Docker Compose startup, and the running stack smoke demo were verified locally on June 3, 2026.
 

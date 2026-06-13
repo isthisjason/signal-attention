@@ -370,6 +370,66 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Market regime features",
     )
 
+    log_step("checking market regime model status")
+    model_status = request_json(f"{config.backend_url}/api/market-regime/status", config.timeout_seconds)
+    require_keys(
+        model_status,
+        ("mode", "effectiveMode", "classifierSource", "ready", "artifactExists", "featureVersion", "warnings"),
+        "Market regime status",
+    )
+    check(model_status["ready"] is True, "Market regime model status was not ready.")
+
+    log_step("creating persisted regime run")
+    regime_run = post_json(
+        f"{config.backend_url}/api/regime-runs",
+        config.timeout_seconds,
+        {
+            "symbol": "BTC-USD",
+            "timeframe": "1h",
+            "startDate": "2024-01-01T00:00:00Z",
+            "endDate": "2024-01-10T00:00:00Z",
+            "windowSize": 64,
+            "stride": 8,
+            "includeAnomalies": True,
+            "backtestId": backtest_id,
+        },
+    )
+    require_keys(
+        regime_run,
+        ("id", "symbol", "timeframe", "effectiveMode", "pointCount", "points", "tradeMarkers"),
+        "Persisted regime run",
+    )
+    regime_run_id = int(regime_run["id"])
+    check(regime_run["pointCount"] > 0 and regime_run["points"], "Persisted regime run did not include points.")
+    require_keys(
+        regime_run["points"][0],
+        ("regimeLabel", "confidence", "baselineRegimeLabel", "disagreesWithBaseline"),
+        "Persisted regime point",
+    )
+
+    log_step("checking persisted regime run retrieval")
+    saved_regime_run = request_json(f"{config.backend_url}/api/regime-runs/{regime_run_id}", config.timeout_seconds)
+    require_keys(saved_regime_run, ("id", "points", "candles"), "Saved regime run")
+    check(int(saved_regime_run["id"]) == regime_run_id, "Saved regime run returned the wrong id.")
+
+    recent_runs = request_json(
+        f"{config.backend_url}/api/regime-runs?symbol=BTC-USD&timeframe=1h&limit=5",
+        config.timeout_seconds,
+    )
+    check(
+        isinstance(recent_runs, list) and any(int(run["id"]) == regime_run_id for run in recent_runs),
+        "Regime run list did not include the saved run.",
+    )
+
+    log_step("checking regime grouped backtest analysis")
+    regime_analysis = request_json(
+        f"{config.backend_url}/api/backtests/{backtest_id}/regime-analysis?regimeRunId={regime_run_id}",
+        config.timeout_seconds,
+    )
+    require_keys(regime_analysis, ("backtestId", "regimeRunId", "regimes"), "Regime backtest analysis")
+    check(int(regime_analysis["backtestId"]) == backtest_id, "Regime analysis returned the wrong backtest id.")
+    check(isinstance(regime_analysis["regimes"], list), "Regime analysis regimes field was not a list.")
+
     log_step("checking anomaly analysis")
     anomaly = post_json(
         f"{config.backend_url}/api/anomaly-check",

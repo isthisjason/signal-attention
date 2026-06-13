@@ -39,8 +39,8 @@ flowchart LR
 ## Runtime Services
 
 - `postgres`: Stores strategies, candles, backtests, trades, risk policies, paper sessions, positions, orders, and audit events.
-- `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, equity/drawdown chart data, risk evaluation, paper trading, dashboard aggregation, derived risk alerts, market regime proxying, and anomaly proxying.
-- `ml-service`: Provides CPU-first rule-based strategy risk scoring, market regime classification, and anomaly checks.
+- `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, equity/drawdown chart data, risk evaluation, paper trading, dashboard aggregation, derived risk alerts, model status proxying, persisted regime runs, regime grouped backtest analysis, and anomaly proxying.
+- `ml-service`: Provides CPU-first rule-based strategy risk scoring, market regime classification, rolling regime runs with rule baseline comparison, model status, and anomaly checks.
 - `frontend`: Provides a local React dashboard/workbench for importing candles, creating SMA strategies, running backtests, scoring ML risk, managing paper sessions, and reviewing summary, charts, risk alerts, strategy comparison, audit, anomaly, and market regime status.
 
 ## Market Regime Modes
