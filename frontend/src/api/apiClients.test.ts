@@ -6,13 +6,14 @@ import {
   fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries,
   fetchBacktestTrades,
+  fetchRegimeBacktestAnalysis,
   runBacktest,
   scoreBacktestRisk,
 } from "./backtests";
 import { errorMessage, getJson } from "./client";
 import { fetchDashboardRiskAlerts, fetchDashboardSummary, fetchStrategyPerformance } from "./dashboard";
 import { fetchMarketDataQuality, importMarketData } from "./marketData";
-import { fetchMarketRegime, runRegimeReplay } from "./marketRegime";
+import { fetchMarketRegime, fetchMarketRegimeStatus, fetchRegimeRuns, runRegimeReplay } from "./marketRegime";
 import {
   createPaperSession,
   fetchPaperOrders,
@@ -157,6 +158,9 @@ describe("backtest client", () => {
     await scoreBacktestRisk(11);
     expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/ml-risk-score");
     expect(latestFetchCall().init?.method).toBe("POST");
+
+    await fetchRegimeBacktestAnalysis(11, 22);
+    expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/regime-analysis?regimeRunId=22");
   });
 });
 
@@ -221,6 +225,12 @@ describe("dashboard and analysis clients", () => {
     expect(latestFetchCall().url).toBe(
       "http://api.test/api/market-regime?symbol=ETH-USD&timeframe=4h&limit=64",
     );
+
+    await fetchMarketRegimeStatus();
+    expect(latestFetchCall().url).toBe("http://api.test/api/market-regime/status");
+
+    await fetchRegimeRuns("ETH-USD", "4h", 3);
+    expect(latestFetchCall().url).toBe("http://api.test/api/regime-runs?symbol=ETH-USD&timeframe=4h&limit=3");
 
     await checkAnomaly("ETH-USD", "4h", 64);
     expect(latestFetchCall().url).toBe("http://api.test/api/anomaly-check");

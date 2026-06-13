@@ -9,10 +9,12 @@ import {
   BacktestDrawdownPoint,
   BacktestEquityPoint,
   MlRiskScore,
+  RegimeBacktestAnalysis,
   fetchBacktest,
   fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries,
   fetchBacktestTrades,
+  fetchRegimeBacktestAnalysis,
   runBacktest,
   scoreBacktestRisk,
 } from "./api/backtests";
@@ -26,7 +28,17 @@ import {
   fetchStrategyPerformance,
 } from "./api/dashboard";
 import { MarketDataImportSummary, MarketDataQuality, fetchMarketDataQuality, importMarketData } from "./api/marketData";
-import { MarketRegimeFeatures, MarketRegimeResponse, RegimeRunResponse, fetchMarketRegime, runRegimeReplay } from "./api/marketRegime";
+import {
+  MarketRegimeFeatures,
+  MarketRegimeResponse,
+  MarketRegimeStatus,
+  RegimeRunResponse,
+  RegimeRunSummary,
+  fetchMarketRegime,
+  fetchMarketRegimeStatus,
+  fetchRegimeRuns,
+  runRegimeReplay,
+} from "./api/marketRegime";
 import {
   PaperReplayResult,
   PaperOrder,
@@ -63,6 +75,16 @@ const loadingRiskAlerts: LoadState<DashboardRiskAlert[]> = {
   error: null,
 };
 const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+const loadingMarketRegimeStatus: LoadState<MarketRegimeStatus> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+const loadingRegimeRuns: LoadState<RegimeRunSummary[]> = {
   status: "loading",
   data: null,
   error: null,
@@ -113,6 +135,10 @@ function App() {
     useState<LoadState<DashboardRiskAlert[]>>(loadingRiskAlerts);
   const [regimeState, setRegimeState] =
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
+  const [regimeStatusState, setRegimeStatusState] =
+    useState<LoadState<MarketRegimeStatus>>(loadingMarketRegimeStatus);
+  const [regimeRunsState, setRegimeRunsState] =
+    useState<LoadState<RegimeRunSummary[]>>(loadingRegimeRuns);
   const [strategyListState, setStrategyListState] =
     useState<LoadState<Strategy[]>>(loadingStrategyList);
   const [marketDataQualityState, setMarketDataQualityState] =
@@ -157,6 +183,7 @@ function App() {
   const [paperPositions, setPaperPositions] = useState<PaperPosition[]>([]);
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
+  const [regimeAnalysis, setRegimeAnalysis] = useState<RegimeBacktestAnalysis | null>(null);
 
   const loadDashboard = useCallback(async () => {
     // Refresh each panel independently so one failed endpoint does not blank the whole dashboard.
@@ -165,6 +192,8 @@ function App() {
     setAuditState(loadingAuditEvents);
     setRiskAlertsState(loadingRiskAlerts);
     setRegimeState(loadingMarketRegime);
+    setRegimeStatusState(loadingMarketRegimeStatus);
+    setRegimeRunsState(loadingRegimeRuns);
     setStrategyListState(loadingStrategyList);
     setMarketDataQualityState(loadingMarketDataQuality);
 
@@ -177,6 +206,16 @@ function App() {
       .then((data) => setRegimeState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRegimeState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    const regimeStatusLoad = fetchMarketRegimeStatus()
+      .then((data) => setRegimeStatusState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setRegimeStatusState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    const regimeRunsLoad = fetchRegimeRuns()
+      .then((data) => setRegimeRunsState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setRegimeRunsState({ status: "error", data: null, error: errorMessage(error) }),
       );
     const auditLoad = fetchAuditEvents()
       .then((data) => setAuditState({ status: "success", data, error: null }))
@@ -210,6 +249,8 @@ function App() {
     await Promise.all([
       summaryLoad,
       regimeLoad,
+      regimeStatusLoad,
+      regimeRunsLoad,
       auditLoad,
       riskAlertsLoad,
       strategyPerformanceLoad,
@@ -510,6 +551,12 @@ function App() {
         backtestId: backtestRun?.id ?? null,
       });
       setRegimeReplay(replay);
+      const analysis =
+        backtestRun && replay.id ? await fetchRegimeBacktestAnalysis(backtestRun.id, replay.id) : null;
+      setRegimeAnalysis(analysis);
+      await fetchRegimeRuns(selectedStrategy.symbol, selectedStrategy.timeframe).then((data) =>
+        setRegimeRunsState({ status: "success", data, error: null }),
+      );
       setNotice({ tone: "success", message: `Regime replay loaded ${replay.pointCount} windows.` });
     });
   }
@@ -590,8 +637,11 @@ function App() {
       <MarketRegimePanel state={regimeState} />
       <RegimeReplayPanel
         busy={busyAction === "regime-replay"}
+        analysis={regimeAnalysis}
         replay={regimeReplay}
+        runsState={regimeRunsState}
         selectedStrategy={selectedStrategy}
+        statusState={regimeStatusState}
         onReplay={handleRegimeReplay}
       />
       <AnomalyPanel anomaly={anomaly} busy={busyAction === "anomaly"} onCheck={handleAnomalyCheck} />
@@ -601,14 +651,20 @@ function App() {
 }
 
 function RegimeReplayPanel({
+  analysis,
   busy,
   replay,
+  runsState,
   selectedStrategy,
+  statusState,
   onReplay,
 }: {
+  analysis: RegimeBacktestAnalysis | null;
   busy: boolean;
   replay: RegimeRunResponse | null;
+  runsState: LoadState<RegimeRunSummary[]>;
   selectedStrategy: Strategy | null;
+  statusState: LoadState<MarketRegimeStatus>;
   onReplay: () => void;
 }) {
   return (
@@ -622,12 +678,98 @@ function RegimeReplayPanel({
           {busy ? "Loading" : "Run replay"}
         </button>
       </div>
+      <ModelStatusStrip state={statusState} />
       {replay ? (
-        <CandlestickReplayChart replay={replay} />
+        <>
+          <ResultGrid
+            items={[
+              ["Run", `#${replay.id}`],
+              ["Mode", replay.effectiveMode || replay.classifierSource || "unknown"],
+              ["Windows", replay.pointCount],
+              ["Baseline gaps", replay.points.filter((point) => point.disagreesWithBaseline).length],
+            ]}
+          />
+          <CandlestickReplayChart replay={replay} />
+          <RegimeAnalysisTable analysis={analysis} />
+        </>
       ) : (
         <ChartState title="No assessment chart yet" message="Run replay after selecting a strategy and date range." />
       )}
+      <SavedRegimeRuns state={runsState} />
     </section>
+  );
+}
+
+function ModelStatusStrip({ state }: { state: LoadState<MarketRegimeStatus> }) {
+  if (state.status === "loading") {
+    return <p className="muted">Loading model status.</p>;
+  }
+  if (state.status === "error") {
+    return <p className="error-text">{state.error}</p>;
+  }
+  return (
+    <ResultGrid
+      items={[
+        ["Requested", state.data.mode],
+        ["Effective", `${state.data.effectiveMode} mode`],
+        ["Ready", state.data.ready ? "yes" : "no"],
+        ["Artifact status", state.data.artifactExists ? "loaded" : "not loaded"],
+      ]}
+    />
+  );
+}
+
+function RegimeAnalysisTable({ analysis }: { analysis: RegimeBacktestAnalysis | null }) {
+  if (!analysis) {
+    return <p className="muted">Run a backtest first to break trades down by inferred regime.</p>;
+  }
+  if (analysis.regimes.length === 0) {
+    return <p className="muted">No completed trades overlapped the saved regime windows.</p>;
+  }
+  return (
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Regime</th>
+          <th>Trades</th>
+          <th>Win rate</th>
+          <th>Net PnL</th>
+          <th>Baseline gaps</th>
+        </tr>
+      </thead>
+      <tbody>
+        {analysis.regimes.map((regime) => (
+          <tr key={regime.regimeLabel}>
+            <td>{formatAction(regime.regimeLabel)}</td>
+            <td>{regime.tradeCount}</td>
+            <td>{formatPercent(regime.winRate)}</td>
+            <td>{formatCurrency(regime.totalNetPnl)}</td>
+            <td>{regime.baselineDisagreementCount}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function SavedRegimeRuns({ state }: { state: LoadState<RegimeRunSummary[]> }) {
+  if (state.status === "loading") {
+    return <p className="muted">Loading saved regime runs.</p>;
+  }
+  if (state.status === "error") {
+    return <p className="error-text">{state.error}</p>;
+  }
+  if (state.data.length === 0) {
+    return <p className="muted">No saved regime runs yet.</p>;
+  }
+  return (
+    <div className="mini-list">
+      {state.data.slice(0, 3).map((run) => (
+        <span key={run.id}>
+          #{run.id} {run.effectiveMode || run.classifierSource || "unknown"} · {run.pointCount} windows
+        </span>
+      ))}
+    </div>
   );
 }
 

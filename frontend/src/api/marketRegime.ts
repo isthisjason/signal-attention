@@ -22,6 +22,20 @@ export type MarketRegimeResponse = {
   artifactIdentifier?: string | null;
 };
 
+export type MarketRegimeStatus = {
+  mode: string;
+  effectiveMode: string;
+  classifierSource: string;
+  ready: boolean;
+  artifactConfigured: boolean;
+  artifactExists: boolean;
+  artifactIdentifier?: string | null;
+  modelVersion?: string | null;
+  featureVersion?: string | null;
+  sequenceLength?: number | null;
+  warnings: string[];
+};
+
 export type RegimeRunRequest = {
   symbol: string;
   timeframe: string;
@@ -34,11 +48,23 @@ export type RegimeRunRequest = {
 };
 
 export type RegimeRunResponse = {
+  id: number;
   symbol: string;
   timeframe: string;
+  startDate: string;
+  endDate: string;
   windowSize: number;
   stride: number;
   includeAnomalies: boolean;
+  requestedMode?: string | null;
+  effectiveMode?: string | null;
+  classifierSource?: string | null;
+  modelVersion?: string | null;
+  featureVersion?: string | null;
+  artifactIdentifier?: string | null;
+  status: string;
+  createdAt: string;
+  completedAt?: string | null;
   pointCount: number;
   candles: Array<{
     openTime: string;
@@ -57,6 +83,9 @@ export type RegimeRunResponse = {
     anomalyScore?: number | null;
     anomalyLabel?: string | null;
     anomalyReasons?: string[] | null;
+    baselineRegimeLabel?: string | null;
+    baselineConfidence?: number | null;
+    disagreesWithBaseline?: boolean | null;
   }>;
   tradeMarkers: Array<{
     tradeId: number;
@@ -67,6 +96,8 @@ export type RegimeRunResponse = {
   }>;
 };
 
+export type RegimeRunSummary = Omit<RegimeRunResponse, "candles" | "points" | "tradeMarkers">;
+
 export function fetchMarketRegime(symbol = "BTC-USD", timeframe = "1h", limit = 128) {
   const params = new URLSearchParams({
     symbol,
@@ -74,6 +105,15 @@ export function fetchMarketRegime(symbol = "BTC-USD", timeframe = "1h", limit = 
     limit: String(limit),
   });
   return getJson<MarketRegimeResponse>(`/api/market-regime?${params.toString()}`);
+}
+
+export function fetchMarketRegimeStatus() {
+  return getJson<MarketRegimeStatus>("/api/market-regime/status");
+}
+
+export function fetchRegimeRuns(symbol = "BTC-USD", timeframe = "1h", limit = 10) {
+  const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
+  return getJson<RegimeRunSummary[]>(`/api/regime-runs?${params.toString()}`);
 }
 
 export function runRegimeReplay(request: RegimeRunRequest) {

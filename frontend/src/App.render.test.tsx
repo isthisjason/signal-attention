@@ -9,10 +9,13 @@ const mocks = vi.hoisted(() => ({
   fetchBacktestDrawdownSeries: vi.fn(),
   fetchBacktestEquitySeries: vi.fn(),
   fetchBacktestTrades: vi.fn(),
+  fetchRegimeBacktestAnalysis: vi.fn(),
   fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
   fetchMarketDataQuality: vi.fn(),
   fetchMarketRegime: vi.fn(),
+  fetchMarketRegimeStatus: vi.fn(),
+  fetchRegimeRuns: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
   createStrategy: vi.fn(),
@@ -36,6 +39,7 @@ vi.mock("./api/backtests", () => ({
   fetchBacktestDrawdownSeries: mocks.fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries: mocks.fetchBacktestEquitySeries,
   fetchBacktestTrades: mocks.fetchBacktestTrades,
+  fetchRegimeBacktestAnalysis: mocks.fetchRegimeBacktestAnalysis,
   runBacktest: mocks.runBacktest,
   scoreBacktestRisk: mocks.scoreBacktestRisk,
 }));
@@ -52,6 +56,8 @@ vi.mock("./api/dashboard", () => ({
 
 vi.mock("./api/marketRegime", () => ({
   fetchMarketRegime: mocks.fetchMarketRegime,
+  fetchMarketRegimeStatus: mocks.fetchMarketRegimeStatus,
+  fetchRegimeRuns: mocks.fetchRegimeRuns,
   runRegimeReplay: mocks.runRegimeReplay,
 }));
 
@@ -136,12 +142,45 @@ beforeEach(() => {
   mocks.fetchBacktest.mockResolvedValue(null);
   mocks.scoreBacktestRisk.mockResolvedValue(null);
   mocks.fetchMarketRegime.mockRejectedValue(new Error("Not enough candles"));
-  mocks.runRegimeReplay.mockResolvedValue({
+  mocks.fetchMarketRegimeStatus.mockResolvedValue({
+    mode: "auto",
+    effectiveMode: "rules",
+    classifierSource: "rules",
+    ready: true,
+    artifactConfigured: false,
+    artifactExists: false,
+    artifactIdentifier: null,
+    modelVersion: null,
+    featureVersion: "torch-market-regime-features/v1",
+    sequenceLength: null,
+    warnings: [],
+  });
+  mocks.fetchRegimeRuns.mockResolvedValue([]);
+  mocks.fetchRegimeBacktestAnalysis.mockResolvedValue({
+    backtestId: 12,
+    regimeRunId: 33,
     symbol: "BTC-USD",
     timeframe: "1h",
+    regimes: [],
+  });
+  mocks.runRegimeReplay.mockResolvedValue({
+    id: 33,
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    startDate: "2024-01-01T00:00:00Z",
+    endDate: "2024-01-02T00:00:00Z",
     windowSize: 64,
     stride: 8,
     includeAnomalies: true,
+    requestedMode: "auto",
+    effectiveMode: "rules",
+    classifierSource: "rules",
+    modelVersion: null,
+    featureVersion: "torch-market-regime-features/v1",
+    artifactIdentifier: null,
+    status: "COMPLETED",
+    createdAt: "2024-01-01T00:00:00Z",
+    completedAt: "2024-01-01T00:00:01Z",
     pointCount: 1,
     candles: [
       {
@@ -168,6 +207,9 @@ beforeEach(() => {
         regimeLabel: "TRENDING_UP",
         confidence: 75,
         reasons: ["Trend is rising."],
+        baselineRegimeLabel: "TRENDING_UP",
+        baselineConfidence: 75,
+        disagreesWithBaseline: false,
       },
     ],
     tradeMarkers: [
