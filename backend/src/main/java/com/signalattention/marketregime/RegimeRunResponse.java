@@ -8,11 +8,23 @@ import java.time.Instant;
 import java.util.List;
 
 public record RegimeRunResponse(
+        Long id,
         String symbol,
         String timeframe,
+        Instant startDate,
+        Instant endDate,
         Integer windowSize,
         Integer stride,
         Boolean includeAnomalies,
+        String requestedMode,
+        String effectiveMode,
+        String classifierSource,
+        String modelVersion,
+        String featureVersion,
+        String artifactIdentifier,
+        RegimeRunStatus status,
+        Instant createdAt,
+        Instant completedAt,
         Integer pointCount,
         List<CandleResponse> candles,
         List<RegimeRunPoint> points,
@@ -27,7 +39,10 @@ public record RegimeRunResponse(
             MlMarketRegimeFeatures features,
             BigDecimal anomalyScore,
             String anomalyLabel,
-            List<String> anomalyReasons
+            List<String> anomalyReasons,
+            String baselineRegimeLabel,
+            BigDecimal baselineConfidence,
+            Boolean disagreesWithBaseline
     ) {
     }
 

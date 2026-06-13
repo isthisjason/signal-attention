@@ -2,6 +2,8 @@ package com.signalattention.marketregime;
 
 import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ResourceNotFoundException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.backtesting.BacktestTrade;
 import com.signalattention.backtesting.BacktestTradeRepository;
@@ -9,6 +11,7 @@ import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.CandleResponse;
 import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlMarketRegimeCandle;
+import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeRequest;
 import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
@@ -34,17 +37,26 @@ public class MarketRegimeService {
     private final MlRiskClient mlRiskClient;
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestTradeRepository backtestTradeRepository;
+    private final RegimeRunRepository regimeRunRepository;
+    private final RegimePredictionRepository regimePredictionRepository;
+    private final ObjectMapper objectMapper;
 
     public MarketRegimeService(
             MarketCandleRepository marketCandleRepository,
             MlRiskClient mlRiskClient,
             BacktestRunRepository backtestRunRepository,
-            BacktestTradeRepository backtestTradeRepository
+            BacktestTradeRepository backtestTradeRepository,
+            RegimeRunRepository regimeRunRepository,
+            RegimePredictionRepository regimePredictionRepository,
+            ObjectMapper objectMapper
     ) {
         this.marketCandleRepository = marketCandleRepository;
         this.mlRiskClient = mlRiskClient;
         this.backtestRunRepository = backtestRunRepository;
         this.backtestTradeRepository = backtestTradeRepository;
+        this.regimeRunRepository = regimeRunRepository;
+        this.regimePredictionRepository = regimePredictionRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +85,7 @@ public class MarketRegimeService {
         ));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public RegimeRunResponse runRegimeReplay(RegimeRunRequest request) {
         if (request.startDate().isAfter(request.endDate())) {
             throw new BadRequestException("startDate must be before or equal to endDate");
@@ -94,7 +106,18 @@ public class MarketRegimeService {
             throw new BadRequestException("windowSize must be less than or equal to candle count");
         }
 
-        // ML returns rolling regime points; the backend returns those points with the source candles.
+        var modelStatus = mlRiskClient.getMarketRegimeStatus();
+        RegimeRun run = regimeRunRepository.save(new RegimeRun(
+                symbol,
+                timeframe,
+                request.startDate(),
+                request.endDate(),
+                windowSize,
+                stride,
+                includeAnomalies
+        ));
+
+        // ML returns rolling regime points; the backend persists those points with model provenance.
         MlRegimeRunResponse mlResponse = mlRiskClient.predictRegimeRun(
                 new MlRegimeRunRequest(
                         symbol,
@@ -105,28 +128,57 @@ public class MarketRegimeService {
                         includeAnomalies
                 )
         );
-
-        return new RegimeRunResponse(
-                symbol,
-                timeframe,
-                windowSize,
-                stride,
-                includeAnomalies,
-                mlResponse.pointCount(),
-                candles.stream().map(CandleResponse::from).toList(),
-                mlResponse.points().stream().map(point -> new RegimeRunResponse.RegimeRunPoint(
+        run.completeFromStatus(modelStatus, mlResponse.pointCount());
+        regimeRunRepository.save(run);
+        List<RegimePrediction> predictions = mlResponse.points().stream()
+                .map(point -> new RegimePrediction(
+                        run,
                         point.windowStart(),
                         point.windowEnd(),
                         point.regimeLabel(),
                         point.confidence(),
-                        point.reasons(),
-                        point.features(),
+                        toJson(point.reasons()),
+                        toJson(point.features()),
                         point.anomalyScore(),
                         point.anomalyLabel(),
-                        point.anomalyReasons()
-                )).toList(),
-                loadTradeMarkers(request.backtestId(), symbol, timeframe, request.startDate(), request.endDate())
+                        toJson(point.anomalyReasons())
+                ))
+                .toList();
+        regimePredictionRepository.saveAll(predictions);
+
+        return toResponse(run, predictions, candles, request.backtestId());
+    }
+
+    @Transactional(readOnly = true)
+    public RegimeRunResponse getRegimeRun(Long id) {
+        RegimeRun run = regimeRunRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Regime run not found: " + id));
+        List<MarketCandle> candles = marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
+                run.getSymbol(), run.getTimeframe(), run.getStartDate(), run.getEndDate()
         );
+        return toResponse(
+                run,
+                regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(id),
+                candles,
+                null
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<RegimeRunSummaryResponse> listRegimeRuns(String symbol, String timeframe, Integer requestedLimit) {
+        String normalizedSymbol = requireText(symbol, "symbol");
+        String normalizedTimeframe = requireText(timeframe, "timeframe");
+        int limit = requestedLimit == null ? 10 : requestedLimit;
+        if (limit < 1 || limit > 50) {
+            throw new BadRequestException("limit must be between 1 and 50");
+        }
+        return regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
+                        normalizedSymbol,
+                        normalizedTimeframe,
+                        PageRequest.of(0, limit)
+                ).stream()
+                .map(RegimeRunSummaryResponse::from)
+                .toList();
     }
 
     private List<MarketCandle> latestCandlesAscending(String symbol, String timeframe, int limit) {
@@ -200,5 +252,78 @@ public class MarketRegimeService {
                         trade.getNetPnl()
                 ))
                 .toList();
+    }
+
+    private RegimeRunResponse toResponse(RegimeRun run, List<RegimePrediction> predictions, List<MarketCandle> candles, Long backtestId) {
+        return new RegimeRunResponse(
+                run.getId(),
+                run.getSymbol(),
+                run.getTimeframe(),
+                run.getStartDate(),
+                run.getEndDate(),
+                run.getWindowSize(),
+                run.getStride(),
+                run.getIncludeAnomalies(),
+                run.getRequestedMode(),
+                run.getEffectiveMode(),
+                run.getClassifierSource(),
+                run.getModelVersion(),
+                run.getFeatureVersion(),
+                run.getArtifactIdentifier(),
+                run.getStatus(),
+                run.getCreatedAt(),
+                run.getCompletedAt(),
+                run.getPointCount(),
+                candles.stream().map(CandleResponse::from).toList(),
+                predictions.stream().map(this::toPointResponse).toList(),
+                loadTradeMarkers(backtestId, run.getSymbol(), run.getTimeframe(), run.getStartDate(), run.getEndDate())
+        );
+    }
+
+    private RegimeRunResponse.RegimeRunPoint toPointResponse(RegimePrediction prediction) {
+        return new RegimeRunResponse.RegimeRunPoint(
+                prediction.getWindowStart(),
+                prediction.getWindowEnd(),
+                prediction.getRegimeLabel(),
+                prediction.getConfidence(),
+                fromJsonList(prediction.getReasonsJson()),
+                fromJsonFeatures(prediction.getFeaturesJson()),
+                prediction.getAnomalyScore(),
+                prediction.getAnomalyLabel(),
+                fromJsonList(prediction.getAnomalyReasonsJson()),
+                prediction.getBaselineRegimeLabel(),
+                prediction.getBaselineConfidence(),
+                prediction.getDisagreesWithBaseline()
+        );
+    }
+
+    private String toJson(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException exception) {
+            throw new BadRequestException("Unable to serialize regime prediction details");
+        }
+    }
+
+    private List<String> fromJsonList(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+        } catch (JsonProcessingException exception) {
+            return List.of();
+        }
+    }
+
+    private MlMarketRegimeFeatures fromJsonFeatures(String json) {
+        try {
+            return objectMapper.readValue(json, MlMarketRegimeFeatures.class);
+        } catch (JsonProcessingException exception) {
+            return new MlMarketRegimeFeatures(null, null, null, null, null, null);
+        }
     }
 }

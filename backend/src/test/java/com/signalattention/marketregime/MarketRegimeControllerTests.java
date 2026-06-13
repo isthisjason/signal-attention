@@ -66,7 +66,29 @@ class MarketRegimeControllerTests {
                 true,
                 null
         );
-        RegimeRunResponse expected = new RegimeRunResponse("BTC-USD", "1h", 128, 8, true, 0, List.of(), List.of(), List.of());
+        RegimeRunResponse expected = new RegimeRunResponse(
+                1L,
+                "BTC-USD",
+                "1h",
+                request.startDate(),
+                request.endDate(),
+                128,
+                8,
+                true,
+                "auto",
+                "rules",
+                "rules",
+                null,
+                "torch-market-regime-features/v1",
+                null,
+                RegimeRunStatus.COMPLETED,
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-01T00:00:01Z"),
+                0,
+                List.of(),
+                List.of(),
+                List.of()
+        );
         when(service.runRegimeReplay(request)).thenReturn(expected);
 
         RegimeRunResponse actual = controller.runRegimeReplay(request);

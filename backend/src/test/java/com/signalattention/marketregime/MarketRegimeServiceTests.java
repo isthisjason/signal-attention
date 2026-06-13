@@ -14,7 +14,9 @@ import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeRequest;
 import com.signalattention.ml.MlMarketRegimeResponse;
+import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import com.signalattention.ml.MlRiskClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -38,6 +40,10 @@ class MarketRegimeServiceTests {
     private BacktestRunRepository backtestRunRepository;
     @Mock
     private BacktestTradeRepository backtestTradeRepository;
+    @Mock
+    private RegimeRunRepository regimeRunRepository;
+    @Mock
+    private RegimePredictionRepository regimePredictionRepository;
 
     private MarketRegimeService service;
 
@@ -47,7 +53,10 @@ class MarketRegimeServiceTests {
                 marketCandleRepository,
                 mlRiskClient,
                 backtestRunRepository,
-                backtestTradeRepository
+                backtestTradeRepository,
+                regimeRunRepository,
+                regimePredictionRepository,
+                new ObjectMapper()
         );
     }
 
@@ -113,6 +122,56 @@ class MarketRegimeServiceTests {
                 .isInstanceOf(ExternalServiceException.class);
     }
 
+    @Test
+    void runRegimeReplayPersistsRunAndPredictions() {
+        RegimeRunRequest request = new RegimeRunRequest(
+                "BTC-USD",
+                "1h",
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-02T06:00:00Z"),
+                20,
+                5,
+                false,
+                null
+        );
+        List<MarketCandle> candles = java.util.stream.IntStream.range(0, 30)
+                .mapToObj(this::candle)
+                .toList();
+        when(marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
+                "BTC-USD", "1h", request.startDate(), request.endDate()
+        )).thenReturn(candles);
+        when(mlRiskClient.getMarketRegimeStatus()).thenReturn(status());
+        when(regimeRunRepository.save(any(RegimeRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mlRiskClient.predictRegimeRun(any())).thenReturn(new com.signalattention.ml.MlRegimeRunResponse(
+                "BTC-USD",
+                "1h",
+                20,
+                5,
+                false,
+                1,
+                List.of(new com.signalattention.ml.MlRegimeRunPoint(
+                        candles.get(0).getOpenTime(),
+                        candles.get(19).getOpenTime(),
+                        "TRENDING_UP",
+                        new BigDecimal("80.00"),
+                        List.of("Price is rising."),
+                        response().features(),
+                        null,
+                        null,
+                        null
+                ))
+        ));
+        when(regimePredictionRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RegimeRunResponse response = service.runRegimeReplay(request);
+
+        assertThat(response.symbol()).isEqualTo("BTC-USD");
+        assertThat(response.effectiveMode()).isEqualTo("rules");
+        assertThat(response.pointCount()).isEqualTo(1);
+        assertThat(response.points()).hasSize(1);
+        assertThat(response.points().getFirst().regimeLabel()).isEqualTo("TRENDING_UP");
+    }
+
     private List<MarketCandle> candlesDescending(int count) {
         return java.util.stream.IntStream.range(0, count)
                 .mapToObj(index -> candle(count - index))
@@ -152,6 +211,22 @@ class MarketRegimeServiceTests {
                 "torch-market-regime-features/v1",
                 20,
                 null
+        );
+    }
+
+    private MlMarketRegimeStatusResponse status() {
+        return new MlMarketRegimeStatusResponse(
+                "auto",
+                "rules",
+                "rules",
+                true,
+                false,
+                false,
+                null,
+                null,
+                "torch-market-regime-features/v1",
+                null,
+                List.of()
         );
     }
 }

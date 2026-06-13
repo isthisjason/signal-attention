@@ -6,8 +6,10 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 public class MarketRegimeController {
@@ -35,5 +37,19 @@ public class MarketRegimeController {
     @PostMapping("/api/regime-runs")
     public RegimeRunResponse runRegimeReplay(@Valid @RequestBody RegimeRunRequest request) {
         return marketRegimeService.runRegimeReplay(request);
+    }
+
+    @GetMapping("/api/regime-runs/{id}")
+    public RegimeRunResponse getRegimeRun(@PathVariable Long id) {
+        return marketRegimeService.getRegimeRun(id);
+    }
+
+    @GetMapping("/api/regime-runs")
+    public List<RegimeRunSummaryResponse> listRegimeRuns(
+            @RequestParam String symbol,
+            @RequestParam String timeframe,
+            @RequestParam(defaultValue = "10") Integer limit
+    ) {
+        return marketRegimeService.listRegimeRuns(symbol, timeframe, limit);
     }
 }
