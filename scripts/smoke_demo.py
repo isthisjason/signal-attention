@@ -388,7 +388,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
             "timeframe": "1h",
             "startDate": "2024-01-01T00:00:00Z",
             "endDate": "2024-01-10T00:00:00Z",
-            "windowSize": 64,
+            "windowSize": 20,
             "stride": 8,
             "includeAnomalies": True,
             "backtestId": backtest_id,

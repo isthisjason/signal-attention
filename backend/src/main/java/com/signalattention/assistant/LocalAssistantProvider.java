@@ -68,7 +68,7 @@ public class LocalAssistantProvider implements AssistantProvider {
         payload.put("strategyId", context.strategyId());
         payload.put("startDate", context.startDate().toString());
         payload.put("endDate", context.endDate().toString());
-        payload.put("windowSize", 64);
+        payload.put("windowSize", 20);
         payload.put("stride", 8);
         payload.put("includeAnomalies", true);
         if (context.backtestId() != null) {

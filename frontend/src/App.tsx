@@ -555,7 +555,7 @@ function App() {
         timeframe: selectedStrategy.timeframe,
         startDate: toInstant(backtestForm.startDate, "Replay start"),
         endDate: toInstant(backtestForm.endDate, "Replay end"),
-        windowSize: 64,
+        windowSize: 20,
         stride: 8,
         includeAnomalies: true,
         backtestId: backtestRun?.id ?? null,
