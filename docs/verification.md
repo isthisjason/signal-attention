@@ -30,7 +30,7 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 | Frontend tests | `cd frontend && npm run test` | API client and dashboard state tests pass. |
 | Frontend build | `cd frontend && npm run build` | TypeScript and Vite production build complete. |
 | Smoke helper tests | `python3 -m unittest scripts/smoke_demo_test.py` | Smoke script validation helpers pass. |
-| Running-stack smoke demo | `python3 scripts/smoke_demo.py` | Service reachability, import, market data quality, strategy, backtest, ML score, paper trading, dashboard, model status, persisted regime runs, regime grouped backtest analysis, anomaly, and audit checks pass when the stack is running. |
+| Running-stack smoke demo | `python3 scripts/smoke_demo.py` | Service reachability, import, market data quality, strategy, backtest, ML score, paper trading, dashboard, model status, persisted regime runs, regime grouped backtest analysis, assistant reviewable actions, anomaly, and audit checks pass when the stack is running. |
 | Compose syntax | `docker compose config` | Compose file renders without errors. |
 | Full local stack | `docker compose up --build` | PostgreSQL, backend, and ML service start. |
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
@@ -42,6 +42,7 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 | Dashboard risk alerts | `curl http://localhost:8080/api/dashboard/risk-alerts` | Returns derived drawdown and ML-risk alerts, or an empty list. |
 | Market regime flow | `curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"` | Returns a regime label, confidence, reasons, and derived features after candles are imported. |
 | Persisted regime flow | `POST /api/regime-runs`, then `GET /api/regime-runs/{id}` and `GET /api/backtests/{id}/regime-analysis?regimeRunId={id}` | Saves model provenance, prediction points, baseline comparison fields, and grouped backtest metrics. |
+| Assistant review flow | `POST /api/assistant/sessions`, `POST /api/assistant/sessions/{id}/messages`, then confirm or reject a proposed action | Persists messages, creates whitelisted action proposals, requires confirmation before execution, and records assistant audit events. |
 | Backtest chart data | `curl http://localhost:8080/api/backtests/BACKTEST_ID/equity-series` and `curl http://localhost:8080/api/backtests/BACKTEST_ID/drawdown-series` | Returns timestamped points for dashboard charts. |
 | Anomaly check | `curl -X POST http://localhost:8080/api/anomaly-check -H "Content-Type: application/json" -d '{"symbol":"BTC-USD","timeframe":"1h","limit":128}'` | Returns an anomaly score, label, reasons, feature details, and classifier source. |
 | Optional torch training metadata | `cd ml-service && python scripts/train_market_regime_model.py --csv-path ../data/btc-usd-1h-sample.csv --output models/market-regime.pt --cpu --seed 42 --experiment-name btc-sample-v1` | Writes `models/market-regime.pt`, `models/market-regime.pt.manifest.json`, and updates `models/experiments/index.json`. The manifest records the seed, git commit, torch version, per epoch history, best epoch, and whether early stopping fired. |

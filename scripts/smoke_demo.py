@@ -460,6 +460,42 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
     )
 
 
+def check_assistant_workflow(config: Config, strategy_id: int, backtest_id: int) -> None:
+    # The assistant smoke path verifies reviewability without executing another mutating action.
+    log_step("creating assistant session")
+    session = post_json(f"{config.backend_url}/api/assistant/sessions", config.timeout_seconds, {"title": "Smoke assistant"})
+    require_keys(session, ("id", "messages", "actions"), "Assistant session")
+    session_id = int(session["id"])
+
+    log_step("asking assistant for regime replay")
+    updated = post_json(
+        f"{config.backend_url}/api/assistant/sessions/{session_id}/messages",
+        config.timeout_seconds,
+        {
+            "prompt": "Run a regime replay for review",
+            "strategyId": strategy_id,
+            "backtestId": backtest_id,
+            "startDate": "2024-01-01T00:00:00Z",
+            "endDate": "2024-01-10T00:00:00Z",
+        },
+    )
+    require_keys(updated, ("id", "messages", "actions"), "Assistant message")
+    check(len(updated["messages"]) >= 2, "Assistant did not persist the user and assistant messages.")
+    proposed = [action for action in updated["actions"] if action["status"] == "PROPOSED"]
+    check(proposed, "Assistant did not propose a reviewable action.")
+    action = proposed[0]
+    require_keys(action, ("id", "actionType", "status", "summary", "payloadJson"), "Assistant action")
+    check(action["actionType"] == "RUN_REGIME_REPLAY", "Assistant proposed the wrong action type.")
+
+    log_step("rejecting assistant action")
+    rejected = post_json(
+        f"{config.backend_url}/api/assistant/actions/{int(action['id'])}/reject",
+        config.timeout_seconds,
+    )
+    require_keys(rejected, ("id", "status", "rejectedAt"), "Assistant action reject")
+    check(rejected["status"] == "REJECTED", "Assistant action was not rejected.")
+
+
 def main() -> int:
     config = parse_args()
     try:
@@ -467,12 +503,13 @@ def main() -> int:
         strategy_id, backtest_id = check_core_workflow(config)
         session_id = check_paper_workflow(config, strategy_id)
         check_analysis_workflow(config, strategy_id, backtest_id)
+        check_assistant_workflow(config, strategy_id, backtest_id)
     except (HTTPError, URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as error:
         print(f"smoke check failed: {error}", file=sys.stderr)
         return 1
 
     print(
-        "stack, core, paper, and analysis workflow smoke checks passed "
+        "stack, core, paper, analysis, and assistant workflow smoke checks passed "
         f"for strategy #{strategy_id}, backtest #{backtest_id}, session #{session_id}"
     )
     return 0
