@@ -386,7 +386,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -397,9 +398,65 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--accent);
   outline: 2px solid rgb(15 118 110 / 16%);
+}
+
+textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.assistant-panel {
+  margin-bottom: 20px;
+}
+
+.assistant-form {
+  display: grid;
+  gap: 12px;
+}
+
+.assistant-messages,
+.assistant-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.assistant-message,
+.assistant-action {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.assistant-message span,
+.assistant-action span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.assistant-message p,
+.assistant-action p {
+  margin: 6px 0 0;
+}
+
+.assistant-message-assistant {
+  background: var(--surface-muted);
+}
+
+.assistant-action strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.assistant-action .button-row {
+  margin-top: 12px;
 }
 
 .result-grid {

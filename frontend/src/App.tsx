@@ -2,6 +2,14 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartShell, ChartState } from "./ChartShell";
 import { AnomalyResponse, checkAnomaly } from "./api/anomaly";
+import {
+  AssistantAction,
+  AssistantSession,
+  confirmAssistantAction,
+  createAssistantSession,
+  rejectAssistantAction,
+  sendAssistantMessage,
+} from "./api/assistant";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
   BacktestRun,
@@ -184,6 +192,8 @@ function App() {
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
   const [regimeAnalysis, setRegimeAnalysis] = useState<RegimeBacktestAnalysis | null>(null);
+  const [assistantSession, setAssistantSession] = useState<AssistantSession | null>(null);
+  const [assistantPrompt, setAssistantPrompt] = useState("What should I inspect next?");
 
   const loadDashboard = useCallback(async () => {
     // Refresh each panel independently so one failed endpoint does not blank the whole dashboard.
@@ -561,6 +571,65 @@ function App() {
     });
   }
 
+  function handleAssistantMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void runAction("assistant-message", async () => {
+      const session = assistantSession ?? await createAssistantSession();
+      // The prompt carries the current workbench selection so proposals are concrete and reviewable.
+      const updated = await sendAssistantMessage(session.id, {
+        prompt: assistantPrompt,
+        strategyId: selectedStrategyId,
+        backtestId: backtestRun?.id ?? null,
+        paperSessionId: selectedPaperSessionId,
+        startDate: toInstant(backtestForm.startDate, "Assistant start"),
+        endDate: toInstant(backtestForm.endDate, "Assistant end"),
+      });
+      setAssistantSession(updated);
+      setAssistantPrompt("");
+    });
+  }
+
+  function handleAssistantActionConfirm(action: AssistantAction) {
+    void runAction(`assistant-confirm-${action.id}`, async () => {
+      const updatedAction = await confirmAssistantAction(action.id);
+      await refreshAfterAssistantAction(updatedAction);
+      if (assistantSession) {
+        setAssistantSession({
+          ...assistantSession,
+          actions: assistantSession.actions.map((existing) =>
+            existing.id === updatedAction.id ? updatedAction : existing,
+          ),
+        });
+      }
+      setNotice({ tone: updatedAction.status === "EXECUTED" ? "success" : "error", message: assistantActionNotice(updatedAction) });
+    });
+  }
+
+  function handleAssistantActionReject(action: AssistantAction) {
+    void runAction(`assistant-reject-${action.id}`, async () => {
+      const updatedAction = await rejectAssistantAction(action.id);
+      if (assistantSession) {
+        setAssistantSession({
+          ...assistantSession,
+          actions: assistantSession.actions.map((existing) =>
+            existing.id === updatedAction.id ? updatedAction : existing,
+          ),
+        });
+      }
+      setNotice({ tone: "success", message: "Assistant action rejected." });
+    });
+  }
+
+  async function refreshAfterAssistantAction(action: AssistantAction) {
+    // Confirmed actions can update several panels, so reload the dashboard and targeted details.
+    await loadDashboard();
+    if (selectedPaperSessionId !== null && action.actionType.startsWith("REPLAY_PAPER")) {
+      setPaperSummary(await fetchPaperSessionSummary(selectedPaperSessionId));
+      setPaperOrders(await fetchPaperOrders(selectedPaperSessionId));
+      setPaperPositions(await fetchPaperPositions(selectedPaperSessionId));
+    }
+  }
+
   return (
     <main className="app-shell" id="overview">
       <header className="dashboard-header">
@@ -581,6 +650,15 @@ function App() {
       ) : null}
 
       <NextActionPanel action={nextAction} />
+      <AssistantPanel
+        busy={busyAction?.startsWith("assistant") ?? false}
+        prompt={assistantPrompt}
+        session={assistantSession}
+        onConfirm={handleAssistantActionConfirm}
+        onPrompt={setAssistantPrompt}
+        onReject={handleAssistantActionReject}
+        onSubmit={handleAssistantMessage}
+      />
       <SummaryCards state={summaryState} />
       <RiskAlertsPanel state={riskAlertsState} />
 
@@ -650,6 +728,81 @@ function App() {
   );
 }
 
+function AssistantPanel({
+  busy,
+  prompt,
+  session,
+  onConfirm,
+  onPrompt,
+  onReject,
+  onSubmit,
+}: {
+  busy: boolean;
+  prompt: string;
+  session: AssistantSession | null;
+  onConfirm: (action: AssistantAction) => void;
+  onPrompt: (prompt: string) => void;
+  onReject: (action: AssistantAction) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const proposedActions = session?.actions.filter((action) => action.status === "PROPOSED") ?? [];
+  return (
+    <section className="panel assistant-panel" aria-label="Research assistant">
+      <div className="panel-heading">
+        <div>
+          <h2>Assistant</h2>
+          <p>Explain state and prepare reviewable research actions.</p>
+        </div>
+      </div>
+      <form className="assistant-form" onSubmit={onSubmit}>
+        <label>
+          Prompt
+          <textarea
+            value={prompt}
+            onChange={(event) => onPrompt(event.target.value)}
+            placeholder="Ask about regimes, backtests, or paper replay"
+            rows={3}
+          />
+        </label>
+        <button className="button" disabled={busy || prompt.trim().length === 0} type="submit">
+          {busy ? "Working" : "Send"}
+        </button>
+      </form>
+      <div className="assistant-messages" aria-label="Assistant messages">
+        {session?.messages.length ? (
+          session.messages.map((message) => (
+            <article className={`assistant-message assistant-message-${message.role.toLowerCase()}`} key={message.id}>
+              <span>{message.role === "USER" ? "You" : "Assistant"}</span>
+              <p>{message.content}</p>
+            </article>
+          ))
+        ) : (
+          <p className="muted">Ask for a regime replay, backtest check, or paper replay suggestion.</p>
+        )}
+      </div>
+      {proposedActions.length ? (
+        <div className="assistant-actions" aria-label="Proposed assistant actions">
+          {proposedActions.map((action) => (
+            <article className="assistant-action" key={action.id}>
+              <span>{formatAction(action.actionType)}</span>
+              <strong>{action.summary}</strong>
+              <p>{assistantPayloadSummary(action)}</p>
+              <div className="button-row">
+                <button className="button" disabled={busy} onClick={() => onConfirm(action)} type="button">
+                  Confirm
+                </button>
+                <button className="button button-secondary" disabled={busy} onClick={() => onReject(action)} type="button">
+                  Reject
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function RegimeReplayPanel({
   analysis,
   busy,
@@ -698,6 +851,25 @@ function RegimeReplayPanel({
       <SavedRegimeRuns state={runsState} />
     </section>
   );
+}
+
+function assistantPayloadSummary(action: AssistantAction) {
+  try {
+    const payload = JSON.parse(action.payloadJson) as Record<string, unknown>;
+    const ids = ["strategyId", "backtestId", "paperSessionId"]
+      .filter((key) => payload[key] !== undefined)
+      .map((key) => `${key}: ${payload[key]}`);
+    return ids.length ? ids.join(" | ") : "Ready for review.";
+  } catch {
+    return "Payload preview unavailable.";
+  }
+}
+
+function assistantActionNotice(action: AssistantAction) {
+  if (action.status === "EXECUTED") {
+    return `${formatAction(action.actionType)} executed.`;
+  }
+  return action.failureMessage || `${formatAction(action.actionType)} failed.`;
 }
 
 function ModelStatusStrip({ state }: { state: LoadState<MarketRegimeStatus> }) {
