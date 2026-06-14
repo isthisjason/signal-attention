@@ -33,4 +33,14 @@ public class AssistantController {
     ) {
         return assistantService.sendMessage(id, request);
     }
+
+    @PostMapping("/api/assistant/actions/{id}/confirm")
+    public AssistantActionResponse confirmAction(@PathVariable Long id) {
+        return assistantService.confirmAction(id);
+    }
+
+    @PostMapping("/api/assistant/actions/{id}/reject")
+    public AssistantActionResponse rejectAction(@PathVariable Long id) {
+        return assistantService.rejectAction(id);
+    }
 }

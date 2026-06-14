@@ -23,6 +23,7 @@ public class AssistantService {
     private final AssistantMessageRepository messageRepository;
     private final AssistantActionRepository actionRepository;
     private final AssistantProvider assistantProvider;
+    private final AssistantActionExecutor actionExecutor;
     private final ObjectMapper objectMapper;
     private final StrategyRepository strategyRepository;
     private final BacktestRunRepository backtestRunRepository;
@@ -35,6 +36,7 @@ public class AssistantService {
             AssistantMessageRepository messageRepository,
             AssistantActionRepository actionRepository,
             AssistantProvider assistantProvider,
+            AssistantActionExecutor actionExecutor,
             ObjectMapper objectMapper,
             StrategyRepository strategyRepository,
             BacktestRunRepository backtestRunRepository,
@@ -46,6 +48,7 @@ public class AssistantService {
         this.messageRepository = messageRepository;
         this.actionRepository = actionRepository;
         this.assistantProvider = assistantProvider;
+        this.actionExecutor = actionExecutor;
         this.objectMapper = objectMapper;
         this.strategyRepository = strategyRepository;
         this.backtestRunRepository = backtestRunRepository;
@@ -80,6 +83,32 @@ public class AssistantService {
         session.touch();
         sessionRepository.save(session);
         return toResponse(session);
+    }
+
+    @Transactional
+    public AssistantActionResponse confirmAction(Long actionId) {
+        AssistantAction action = findAction(actionId);
+        confirmActionBoundary(action);
+        action.markConfirmed();
+        actionRepository.save(action);
+        actionExecutor.auditAction(action, "ASSISTANT_ACTION_CONFIRMED", "Assistant action confirmed");
+        try {
+            String resultJson = actionExecutor.execute(action);
+            action.markExecuted(resultJson);
+            actionExecutor.auditAction(action, "ASSISTANT_ACTION_EXECUTED", "Assistant action executed");
+        } catch (RuntimeException exception) {
+            action.markFailed(exception.getMessage());
+            actionExecutor.auditAction(action, "ASSISTANT_ACTION_FAILED", exception.getMessage());
+        }
+        return AssistantActionResponse.from(actionRepository.save(action));
+    }
+
+    @Transactional
+    public AssistantActionResponse rejectAction(Long actionId) {
+        AssistantAction action = findAction(actionId);
+        action.markRejected();
+        actionExecutor.auditAction(action, "ASSISTANT_ACTION_REJECTED", "Assistant action rejected");
+        return AssistantActionResponse.from(actionRepository.save(action));
     }
 
     AssistantContext buildContextSnapshot(AssistantMessageRequest request) {
@@ -122,6 +151,14 @@ public class AssistantService {
                 ))
                 .toList();
         actionRepository.saveAll(actions);
+        actions.forEach(action -> actionExecutor.auditAction(action, "ASSISTANT_ACTION_PROPOSED", action.getSummary()));
+    }
+
+    private void confirmActionBoundary(AssistantAction action) {
+        // A proposed action is the only mutable assistant state that may cross into domain services.
+        if (action.getStatus() != AssistantActionStatus.PROPOSED) {
+            throw new BadRequestException("Only proposed assistant actions can be confirmed");
+        }
     }
 
     private String requirePrompt(AssistantMessageRequest request) {
@@ -134,6 +171,11 @@ public class AssistantService {
     private AssistantSession findSession(Long id) {
         return sessionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Assistant session not found: " + id));
+    }
+
+    private AssistantAction findAction(Long id) {
+        return actionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Assistant action not found: " + id));
     }
 
     private AssistantSessionResponse toResponse(AssistantSession session) {
