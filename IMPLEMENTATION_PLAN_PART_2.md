@@ -243,3 +243,29 @@ Planned commit sized work:
 9. Extend the smoke workflow and verification docs around the ML first regime path.
 
 This wave deliberately keeps the default local setup CPU safe. Auto mode may use a promoted torch artifact when one is configured and loadable, but a fresh clone must still run with the rule based classifier.
+
+## 15. Assistant Orchestration Wave
+
+The next wave adds the provider neutral assistant layer after the ML first regime workflow is in place.
+
+The assistant should explain current research state, propose reviewable actions, and require explicit confirmation before any state changing workflow runs. The first provider should be local and deterministic so the app stays reproducible without external LLM credentials.
+
+Planned commit sized work:
+
+1. Document the assistant orchestration wave and track progress locally.
+
+2. Add assistant persistence for sessions, messages, proposed actions, statuses, payloads, execution results, and confirmation timestamps.
+
+3. Add a provider neutral assistant contract with a local provider that can summarize dashboard, regime, backtest, and paper testing state.
+
+4. Add reviewable action proposal APIs for backtests, regime replay, paper session start, and paper replay.
+
+5. Add confirmation and rejection APIs that execute only whitelisted actions and record audit events.
+
+6. Surface an assistant panel in the React workbench with message history, proposed actions, confirmation controls, and action refresh behavior.
+
+7. Extend smoke and verification docs around the assistant action flow.
+
+8. Verify the assistant orchestration wave and record results locally.
+
+This wave does not add external LLM configuration, auth, broker connections, live trading, or investment advice.
