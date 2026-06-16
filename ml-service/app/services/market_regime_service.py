@@ -2,6 +2,9 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 from app.schemas.market_regime_schema import (
+    AttentionTimestepEvidence,
+    FeatureEvidence,
+    MarketRegimeDiagnosticsResponse,
     MarketRegimeRequest,
     MarketRegimeResponse,
     MarketRegimeStatusResponse,
@@ -21,6 +24,39 @@ from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
     # Mode selection stays behind the classifier interface so routes do not care about rules vs torch.
     return get_market_regime_classifier().classify(request)
+
+
+def diagnose_market_regime(request: MarketRegimeRequest) -> MarketRegimeDiagnosticsResponse:
+    regime = classify_market_regime(request)
+    baseline = RuleBasedMarketRegimeClassifier().classify(request)
+    feature_evidence = rank_feature_evidence(regime.features)
+    top_timesteps = rank_timestep_evidence(request)
+    evidence_source = "attention" if regime.classifierSource == "torch" and regime.mode == "torch" else "attribution"
+    reasons = [
+        *regime.reasons,
+        "Evidence ranks recent sequence points and feature magnitudes; v1 artifacts use deterministic attribution fallback.",
+    ]
+    return MarketRegimeDiagnosticsResponse(
+        symbol=request.symbol,
+        timeframe=request.timeframe,
+        windowStart=request.candles[0].openTime,
+        windowEnd=request.candles[-1].openTime,
+        regimeLabel=regime.regimeLabel,
+        confidence=regime.confidence,
+        baselineRegimeLabel=baseline.regimeLabel,
+        baselineConfidence=baseline.confidence,
+        disagreesWithBaseline=regime.regimeLabel != baseline.regimeLabel,
+        evidenceSource=evidence_source,
+        reasons=reasons,
+        topTimesteps=top_timesteps,
+        featureEvidence=feature_evidence,
+        classifierSource=regime.classifierSource,
+        mode=regime.mode,
+        modelVersion=regime.modelVersion,
+        featureVersion=regime.featureVersion,
+        sequenceLength=regime.sequenceLength,
+        artifactIdentifier=regime.artifactIdentifier,
+    )
 
 
 def market_regime_status(settings: MarketRegimeSettings | None = None) -> MarketRegimeStatusResponse:
@@ -98,6 +134,48 @@ def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:
         pointCount=len(points),
         points=points,
     )
+
+
+def rank_timestep_evidence(request: MarketRegimeRequest) -> list[AttentionTimestepEvidence]:
+    scored = []
+    previous_close = request.candles[0].close
+    for index, candle in enumerate(request.candles):
+        if index == 0:
+            return_percent = Decimal("0")
+        else:
+            return_percent = ((candle.close - previous_close) / previous_close * Decimal("100")).quantize(Decimal("0.01"))
+        # The fallback evidence favors recent candles with larger movement because v1 artifacts
+        # cannot expose internal attention weights after inference.
+        recency_weight = Decimal(index + 1) / Decimal(len(request.candles))
+        movement_weight = abs(return_percent) + Decimal("1")
+        score = (recency_weight * movement_weight).quantize(Decimal("0.01"))
+        scored.append((score, candle, return_percent))
+        previous_close = candle.close
+    return [
+        AttentionTimestepEvidence(
+            openTime=candle.openTime,
+            attentionScore=score,
+            close=candle.close,
+            returnPercent=return_percent,
+        )
+        for score, candle, return_percent in sorted(scored, key=lambda item: item[0], reverse=True)[:5]
+    ]
+
+
+def rank_feature_evidence(features) -> list[FeatureEvidence]:
+    values = {
+        "latestReturnPercent": features.latestReturnPercent,
+        "averageReturnPercent": features.averageReturnPercent,
+        "volatilityPercent": features.volatilityPercent,
+        "trendSlopePercent": features.trendSlopePercent,
+        "smaDistancePercent": features.smaDistancePercent,
+        "volumeZScore": features.volumeZScore,
+    }
+    ranked = sorted(values.items(), key=lambda item: abs(item[1]), reverse=True)
+    return [
+        FeatureEvidence(name=name, value=value, importance=abs(value).quantize(Decimal("0.01")))
+        for name, value in ranked[:6]
+    ]
 
 
 def get_market_regime_classifier(settings: MarketRegimeSettings | None = None) -> MarketRegimeClassifier:

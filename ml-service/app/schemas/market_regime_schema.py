@@ -57,6 +57,41 @@ class MarketRegimeResponse(BaseModel):
     artifactIdentifier: str | None = None
 
 
+class AttentionTimestepEvidence(BaseModel):
+    openTime: datetime
+    attentionScore: Decimal
+    close: Decimal
+    returnPercent: Decimal
+
+
+class FeatureEvidence(BaseModel):
+    name: str
+    value: Decimal
+    importance: Decimal
+
+
+class MarketRegimeDiagnosticsResponse(BaseModel):
+    symbol: str
+    timeframe: str
+    windowStart: datetime
+    windowEnd: datetime
+    regimeLabel: str
+    confidence: Decimal
+    baselineRegimeLabel: str
+    baselineConfidence: Decimal
+    disagreesWithBaseline: bool
+    evidenceSource: str
+    reasons: list[str]
+    topTimesteps: list[AttentionTimestepEvidence]
+    featureEvidence: list[FeatureEvidence]
+    classifierSource: str | None = None
+    mode: str | None = None
+    modelVersion: str | None = None
+    featureVersion: str | None = None
+    sequenceLength: int | None = None
+    artifactIdentifier: str | None = None
+
+
 class MarketRegimeStatusResponse(BaseModel):
     mode: str
     effectiveMode: str

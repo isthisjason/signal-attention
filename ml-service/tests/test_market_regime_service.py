@@ -5,6 +5,7 @@ from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeReq
 from app.services.market_regime_config import MarketRegimeSettings
 from app.services.market_regime_service import (
     classify_market_regime,
+    diagnose_market_regime,
     get_market_regime_classifier,
     market_regime_status,
     run_market_regime,
@@ -12,6 +13,7 @@ from app.services.market_regime_service import (
 from app.schemas.market_regime_schema import RegimeRunRequest
 from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
 from app.services.market_regime_torch_features import TORCH_MARKET_REGIME_FEATURE_ORDER
+from app.services.market_regime_torch_model import TORCH_MODEL_ARCHITECTURE_V2
 
 
 def candle(index: int, close: Decimal, volume: Decimal = Decimal("1000")) -> MarketRegimeCandle:
@@ -123,7 +125,7 @@ def test_status_reports_artifact_metadata_when_loadable(tmp_path, monkeypatch) -
         "sequenceLength": 32,
         "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
         "labels": ["SIDEWAYS", "TRENDING_UP"],
-        "architecture": "transformer-v2",
+        "architecture": TORCH_MODEL_ARCHITECTURE_V2,
         "model": {"dModel": 32},
     }
     monkeypatch.setattr("app.services.market_regime_service.load_torch", lambda: FakeStatusTorch({"metadata": metadata, "modelStateDict": {"weight": "value"}}))
@@ -136,7 +138,7 @@ def test_status_reports_artifact_metadata_when_loadable(tmp_path, monkeypatch) -
     assert status.modelVersion == "demo-v2"
     assert status.sequenceLength == 32
     assert status.artifactName == "market-regime.pt"
-    assert status.architecture == "transformer-v2"
+    assert status.architecture == TORCH_MODEL_ARCHITECTURE_V2
     assert status.labels == ["SIDEWAYS", "TRENDING_UP"]
     assert status.modelConfig == {"dModel": 32}
 
@@ -156,6 +158,20 @@ def test_classifies_high_volatility() -> None:
 
     assert response.regimeLabel == "HIGH_VOLATILITY"
     assert response.confidence >= Decimal("70")
+
+
+def test_diagnoses_market_regime_with_ranked_evidence() -> None:
+    closes = [Decimal("100") + Decimal(index) for index in range(20)]
+
+    response = diagnose_market_regime(request_for(closes))
+
+    assert response.regimeLabel == "TRENDING_UP"
+    assert response.baselineRegimeLabel == "TRENDING_UP"
+    assert response.disagreesWithBaseline is False
+    assert response.evidenceSource == "attribution"
+    assert response.topTimesteps
+    assert response.topTimesteps[0].attentionScore >= response.topTimesteps[-1].attentionScore
+    assert response.featureEvidence
 
 
 def test_mentions_unusual_volume() -> None:
