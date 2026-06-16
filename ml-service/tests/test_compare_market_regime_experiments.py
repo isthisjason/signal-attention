@@ -34,7 +34,14 @@ def test_build_comparison_rows_pulls_training_and_evaluation_fields() -> None:
                 "name": "demo",
                 "runId": "run-1",
                 "training": {"validationAccuracy": 0.8, "dropout": 0.1, "usePositionalEncoding": True},
-                "evaluation": {"accuracy": 0.7, "liftOverBaseline": 0.2},
+                "evaluation": {
+                    "accuracy": 0.7,
+                    "liftOverBaseline": 0.2,
+                    "confidenceSummary": {"mean": 0.74},
+                    "baselineDisagreementRate": 0.15,
+                    "labelDistributionDrift": {"SIDEWAYS": -0.1, "TRENDING_UP": 0.2},
+                },
+                "diagnostics": {"attentionConcentration": 0.61},
                 "reproducibility": {"seed": 42, "gitCommit": "abcdef1234567890"},
             }
         ]
@@ -49,6 +56,10 @@ def test_build_comparison_rows_pulls_training_and_evaluation_fields() -> None:
             "valAccuracy": 0.8,
             "evalAccuracy": 0.7,
             "liftOverBaseline": 0.2,
+            "meanConfidence": 0.74,
+            "rulesDisagreementRate": 0.15,
+            "labelDrift": 0.2,
+            "attentionConcentration": 0.61,
             "seed": 42,
             "gitCommit": "abcdef12",
             "dropout": 0.1,

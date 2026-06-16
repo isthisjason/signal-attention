@@ -15,6 +15,10 @@ COLUMNS = [
     ("valAccuracy", "val acc"),
     ("evalAccuracy", "eval acc"),
     ("liftOverBaseline", "lift"),
+    ("meanConfidence", "conf"),
+    ("rulesDisagreementRate", "rule diff"),
+    ("labelDrift", "label drift"),
+    ("attentionConcentration", "attn conc"),
     ("seed", "seed"),
     ("dropout", "dropout"),
     ("positionalEncoding", "pos enc"),
@@ -44,6 +48,7 @@ def build_comparison_rows(registry: dict[str, Any]) -> list[dict[str, Any]]:
     for experiment in registry.get("experiments", []):
         training = experiment.get("training", {}) or {}
         evaluation = experiment.get("evaluation", {}) or {}
+        diagnostics = experiment.get("diagnostics", {}) or {}
         reproducibility = experiment.get("reproducibility", {}) or {}
         rows.append(
             {
@@ -52,6 +57,18 @@ def build_comparison_rows(registry: dict[str, Any]) -> list[dict[str, Any]]:
                 "valAccuracy": training.get("validationAccuracy"),
                 "evalAccuracy": evaluation.get("accuracy"),
                 "liftOverBaseline": evaluation.get("liftOverBaseline"),
+                "meanConfidence": confidence_mean(evaluation),
+                "rulesDisagreementRate": first_present(
+                    diagnostics.get("rulesDisagreementRate"),
+                    evaluation.get("rulesDisagreementRate"),
+                    evaluation.get("baselineDisagreementRate"),
+                ),
+                "labelDrift": label_drift_summary(diagnostics.get("labelDistributionDrift") or evaluation.get("labelDistributionDrift")),
+                "attentionConcentration": first_present(
+                    diagnostics.get("attentionConcentration"),
+                    diagnostics.get("meanAttentionConcentration"),
+                    evaluation.get("attentionConcentration"),
+                ),
                 "seed": reproducibility.get("seed"),
                 "gitCommit": short_commit(reproducibility.get("gitCommit")),
                 "dropout": training.get("dropout"),
@@ -68,6 +85,30 @@ def sort_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key=lambda row: (sortable(row["evalAccuracy"]), sortable(row["valAccuracy"])),
         reverse=True,
     )
+
+
+def confidence_mean(evaluation: dict[str, Any]) -> Any:
+    summary = evaluation.get("confidenceSummary")
+    if isinstance(summary, dict):
+        return first_present(summary.get("mean"), summary.get("average"))
+    return evaluation.get("meanConfidence")
+
+
+def first_present(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def label_drift_summary(value: Any) -> Any:
+    if isinstance(value, (int, float)):
+        return value
+    if not isinstance(value, dict) or not value:
+        return None
+    # Collapse per-label drift into the largest absolute shift so runs remain table-comparable.
+    numeric_values = [abs(float(item)) for item in value.values() if isinstance(item, (int, float))]
+    return max(numeric_values) if numeric_values else None
 
 
 def sortable(value: Any) -> float:
