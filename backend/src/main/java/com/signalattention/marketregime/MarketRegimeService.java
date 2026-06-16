@@ -2,6 +2,7 @@ package com.signalattention.marketregime;
 
 import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ResourceNotFoundException;
+import com.signalattention.audit.AuditService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalattention.backtesting.BacktestRun;
@@ -15,6 +16,7 @@ import com.signalattention.ml.MlMarketRegimeCandle;
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeRequest;
 import com.signalattention.ml.MlMarketRegimeResponse;
+import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import com.signalattention.ml.MlRegimeRunRequest;
 import com.signalattention.ml.MlRegimeRunResponse;
@@ -44,6 +46,7 @@ public class MarketRegimeService {
     private final RegimeRunRepository regimeRunRepository;
     private final RegimePredictionRepository regimePredictionRepository;
     private final ObjectMapper objectMapper;
+    private final AuditService auditService;
 
     public MarketRegimeService(
             MarketCandleRepository marketCandleRepository,
@@ -52,7 +55,8 @@ public class MarketRegimeService {
             BacktestTradeRepository backtestTradeRepository,
             RegimeRunRepository regimeRunRepository,
             RegimePredictionRepository regimePredictionRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            AuditService auditService
     ) {
         this.marketCandleRepository = marketCandleRepository;
         this.mlRiskClient = mlRiskClient;
@@ -61,6 +65,7 @@ public class MarketRegimeService {
         this.regimeRunRepository = regimeRunRepository;
         this.regimePredictionRepository = regimePredictionRepository;
         this.objectMapper = objectMapper;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +92,44 @@ public class MarketRegimeService {
                 normalizedTimeframe,
                 candles.stream().map(this::toMlCandle).toList()
         ));
+    }
+
+    @Transactional
+    public MlMarketRegimeDiagnosticsResponse diagnoseMarketRegime(
+            String symbol,
+            String timeframe,
+            Integer requestedLimit,
+            Instant windowEnd
+    ) {
+        String normalizedSymbol = requireText(symbol, "symbol");
+        String normalizedTimeframe = requireText(timeframe, "timeframe");
+        int limit = normalizeLimit(requestedLimit);
+        List<MarketCandle> candles = windowEnd == null
+                ? latestCandlesAscending(normalizedSymbol, normalizedTimeframe, limit)
+                : candlesUpToWindowEnd(normalizedSymbol, normalizedTimeframe, windowEnd, limit);
+        if (candles.size() < MIN_CANDLE_LIMIT) {
+            throw new BadRequestException("At least " + MIN_CANDLE_LIMIT + " candles are required for market regime diagnostics");
+        }
+
+        MlMarketRegimeDiagnosticsResponse response = mlRiskClient.diagnoseMarketRegime(new MlMarketRegimeRequest(
+                normalizedSymbol,
+                normalizedTimeframe,
+                candles.stream().map(this::toMlCandle).toList()
+        ));
+        // Diagnostics are read-only analysis, but they are still audited because they influence research decisions.
+        auditService.record(
+                "MARKET_REGIME",
+                normalizedSymbol + ":" + normalizedTimeframe,
+                "MARKET_REGIME_DIAGNOSTIC",
+                "Ran market regime attention diagnostics",
+                toJson(java.util.Map.of(
+                        "windowStart", response.windowStart().toString(),
+                        "windowEnd", response.windowEnd().toString(),
+                        "regimeLabel", response.regimeLabel(),
+                        "evidenceSource", response.evidenceSource()
+                ))
+        );
+        return response;
     }
 
     @Transactional
@@ -227,6 +270,20 @@ public class MarketRegimeService {
         ));
         Collections.reverse(candles);
         return candles;
+    }
+
+    private List<MarketCandle> candlesUpToWindowEnd(String symbol, String timeframe, Instant windowEnd, int limit) {
+        List<MarketCandle> candles = marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
+                symbol,
+                timeframe,
+                Instant.EPOCH,
+                windowEnd
+        );
+        if (candles.size() <= limit) {
+            return candles;
+        }
+        // Keep the requested diagnostic window aligned to its end point while bounding ML payload size.
+        return candles.subList(candles.size() - limit, candles.size());
     }
 
     private MlMarketRegimeCandle toMlCandle(MarketCandle candle) {

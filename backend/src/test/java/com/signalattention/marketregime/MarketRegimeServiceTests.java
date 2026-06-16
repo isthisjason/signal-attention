@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ExternalServiceException;
+import com.signalattention.audit.AuditService;
 import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.backtesting.BacktestTradeRepository;
 import com.signalattention.backtesting.BacktestRun;
@@ -16,6 +17,9 @@ import com.signalattention.backtesting.TradeSide;
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlMarketRegimeFeatures;
+import com.signalattention.ml.MlAttentionTimestepEvidence;
+import com.signalattention.ml.MlFeatureEvidence;
+import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeRequest;
 import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
@@ -51,6 +55,8 @@ class MarketRegimeServiceTests {
     private RegimeRunRepository regimeRunRepository;
     @Mock
     private RegimePredictionRepository regimePredictionRepository;
+    @Mock
+    private AuditService auditService;
 
     private MarketRegimeService service;
 
@@ -63,7 +69,8 @@ class MarketRegimeServiceTests {
                 backtestTradeRepository,
                 regimeRunRepository,
                 regimePredictionRepository,
-                new ObjectMapper()
+                new ObjectMapper(),
+                auditService
         );
     }
 
@@ -127,6 +134,30 @@ class MarketRegimeServiceTests {
 
         assertThatThrownBy(() -> service.predictMarketRegime("BTC-USD", "1h", 20))
                 .isInstanceOf(ExternalServiceException.class);
+    }
+
+    @Test
+    void diagnoseMarketRegimeSendsWindowToMlAndAuditsResult() {
+        List<MarketCandle> descendingCandles = candlesDescending(20);
+        MlMarketRegimeDiagnosticsResponse diagnostics = diagnosticsResponse();
+        when(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeDesc("BTC-USD", "1h", PageRequest.of(0, 20)))
+                .thenReturn(descendingCandles);
+        when(mlRiskClient.diagnoseMarketRegime(any(MlMarketRegimeRequest.class))).thenReturn(diagnostics);
+
+        MlMarketRegimeDiagnosticsResponse response = service.diagnoseMarketRegime("BTC-USD", "1h", 20, null);
+
+        assertThat(response.regimeLabel()).isEqualTo("TRENDING_UP");
+        ArgumentCaptor<MlMarketRegimeRequest> requestCaptor = ArgumentCaptor.forClass(MlMarketRegimeRequest.class);
+        org.mockito.Mockito.verify(mlRiskClient).diagnoseMarketRegime(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().candles()).hasSize(20);
+        assertThat(requestCaptor.getValue().candles().getFirst().openTime()).isBefore(requestCaptor.getValue().candles().getLast().openTime());
+        org.mockito.Mockito.verify(auditService).record(
+                org.mockito.Mockito.eq("MARKET_REGIME"),
+                org.mockito.Mockito.eq("BTC-USD:1h"),
+                org.mockito.Mockito.eq("MARKET_REGIME_DIAGNOSTIC"),
+                org.mockito.Mockito.eq("Ran market regime attention diagnostics"),
+                org.mockito.Mockito.contains("TRENDING_UP")
+        );
     }
 
     @Test
@@ -289,6 +320,35 @@ class MarketRegimeServiceTests {
         );
     }
 
+    private MlMarketRegimeDiagnosticsResponse diagnosticsResponse() {
+        return new MlMarketRegimeDiagnosticsResponse(
+                "BTC-USD",
+                "1h",
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-01T19:00:00Z"),
+                "TRENDING_UP",
+                new BigDecimal("80.00"),
+                "TRENDING_UP",
+                new BigDecimal("75.00"),
+                false,
+                "attribution",
+                List.of("Price is rising."),
+                List.of(new MlAttentionTimestepEvidence(
+                        Instant.parse("2024-01-01T19:00:00Z"),
+                        new BigDecimal("1.00"),
+                        new BigDecimal("119"),
+                        new BigDecimal("0.85")
+                )),
+                List.of(new MlFeatureEvidence("trendSlopePercent", BigDecimal.ONE, BigDecimal.ONE)),
+                "rules",
+                "rules",
+                null,
+                "torch-market-regime-features/v1",
+                20,
+                null
+        );
+    }
+
     private MlMarketRegimeStatusResponse status() {
         return new MlMarketRegimeStatusResponse(
                 "auto",
@@ -300,6 +360,12 @@ class MarketRegimeServiceTests {
                 null,
                 null,
                 "torch-market-regime-features/v1",
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
                 null,
                 List.of()
         );

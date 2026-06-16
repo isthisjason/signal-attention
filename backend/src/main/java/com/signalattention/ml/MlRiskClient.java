@@ -82,6 +82,25 @@ public class MlRiskClient {
         }
     }
 
+    public MlMarketRegimeDiagnosticsResponse diagnoseMarketRegime(MlMarketRegimeRequest request) {
+        try {
+            // Diagnostics share the normal regime request shape but return explanation evidence for one window.
+            MlMarketRegimeDiagnosticsResponse response = restClient.post()
+                    .uri("/predict/market-regime/diagnostics")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(MlMarketRegimeDiagnosticsResponse.class);
+            if (response == null) {
+                throw new ExternalServiceException("ML service returned an empty response", null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
+        }
+    }
+
     // A null body is treated as a service failure because the dashboard needs a complete payload.
     public MlAnomalyResponse predictAnomaly(MlMarketRegimeRequest request) {
         try {

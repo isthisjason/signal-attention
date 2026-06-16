@@ -153,6 +153,67 @@ class MlRiskClientTests {
     }
 
     @Test
+    void diagnoseMarketRegimePostsWindowAndMapsEvidence() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MlRiskClient client = new MlRiskClient(builder.build());
+
+        server.expect(requestTo("http://ml-service:8000/predict/market-regime/diagnostics"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {
+                          "symbol": "BTC-USD",
+                          "timeframe": "1h",
+                          "windowStart": "2024-01-01T00:00:00Z",
+                          "windowEnd": "2024-01-01T19:00:00Z",
+                          "regimeLabel": "TRENDING_UP",
+                          "confidence": "80.00",
+                          "baselineRegimeLabel": "SIDEWAYS",
+                          "baselineConfidence": "65.00",
+                          "disagreesWithBaseline": true,
+                          "evidenceSource": "attribution",
+                          "reasons": ["Price is rising."],
+                          "topTimesteps": [{
+                            "openTime": "2024-01-01T19:00:00Z",
+                            "attentionScore": "1.00",
+                            "close": "119.00",
+                            "returnPercent": "0.85"
+                          }],
+                          "featureEvidence": [{
+                            "name": "trendSlopePercent",
+                            "value": "1.00",
+                            "importance": "1.00"
+                          }],
+                          "classifierSource": "rules",
+                          "mode": "rules",
+                          "featureVersion": "torch-market-regime-features/v1",
+                          "sequenceLength": 20
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MlMarketRegimeDiagnosticsResponse response = client.diagnoseMarketRegime(new MlMarketRegimeRequest(
+                "BTC-USD",
+                "1h",
+                List.of(new MlMarketRegimeCandle(
+                        Instant.parse("2024-01-01T00:00:00Z"),
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        BigDecimal.ONE
+                ))
+        ));
+
+        assertThat(response.regimeLabel()).isEqualTo("TRENDING_UP");
+        assertThat(response.disagreesWithBaseline()).isTrue();
+        assertThat(response.topTimesteps()).hasSize(1);
+        assertThat(response.featureEvidence().getFirst().name()).isEqualTo("trendSlopePercent");
+        server.verify();
+    }
+
+    @Test
     void predictAnomalyPostsRecentCandles() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
