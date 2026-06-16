@@ -421,6 +421,24 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Regime run list did not include the saved run.",
     )
 
+    log_step("checking attention evidence diagnostics")
+    latest_window_end = regime_run["points"][-1]["windowEnd"]
+    diagnostics = request_json(
+        f"{config.backend_url}/api/market-regime/diagnostics?symbol=BTC-USD&timeframe=1h&limit=20&windowEnd={latest_window_end}",
+        config.timeout_seconds,
+    )
+    require_keys(
+        diagnostics,
+        ("regimeLabel", "baselineRegimeLabel", "evidenceSource", "topTimesteps", "featureEvidence"),
+        "Attention diagnostics",
+    )
+    check(diagnostics["topTimesteps"], "Attention diagnostics did not include timestep evidence.")
+    snapshots = request_json(
+        f"{config.backend_url}/api/market-regime/evidence-snapshots?symbol=BTC-USD&timeframe=1h&limit=5",
+        config.timeout_seconds,
+    )
+    check(isinstance(snapshots, list) and snapshots, "Evidence snapshot list did not include the diagnostic run.")
+
     log_step("checking regime grouped backtest analysis")
     regime_analysis = request_json(
         f"{config.backend_url}/api/backtests/{backtest_id}/regime-analysis?regimeRunId={regime_run_id}",
