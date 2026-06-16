@@ -497,6 +497,41 @@ textarea {
   margin-bottom: 6px;
 }
 
+.evidence-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 14px;
+}
+
+.evidence-panel h3,
+.evidence-panel h4 {
+  margin: 0;
+}
+
+.evidence-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.evidence-panel .compact-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.evidence-panel .compact-list li {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 0;
+  padding: 8px 0;
+}
+
 .quality-summary {
   border-top: 1px solid var(--border);
   margin-top: 16px;

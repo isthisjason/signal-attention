@@ -38,11 +38,15 @@ import {
 import { MarketDataImportSummary, MarketDataQuality, fetchMarketDataQuality, importMarketData } from "./api/marketData";
 import {
   MarketRegimeFeatures,
+  MarketRegimeDiagnostics,
   MarketRegimeResponse,
   MarketRegimeStatus,
+  RegimeEvidenceSnapshot,
   RegimeRunResponse,
   RegimeRunSummary,
+  fetchMarketRegimeDiagnostics,
   fetchMarketRegime,
+  fetchRegimeEvidenceSnapshots,
   fetchMarketRegimeStatus,
   fetchRegimeRuns,
   runRegimeReplay,
@@ -192,6 +196,8 @@ function App() {
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
   const [regimeAnalysis, setRegimeAnalysis] = useState<RegimeBacktestAnalysis | null>(null);
+  const [regimeDiagnostics, setRegimeDiagnostics] = useState<MarketRegimeDiagnostics | null>(null);
+  const [evidenceSnapshots, setEvidenceSnapshots] = useState<RegimeEvidenceSnapshot[]>([]);
   const [assistantSession, setAssistantSession] = useState<AssistantSession | null>(null);
   const [assistantPrompt, setAssistantPrompt] = useState("What should I inspect next?");
 
@@ -227,6 +233,9 @@ function App() {
       .catch((error: unknown) =>
         setRegimeRunsState({ status: "error", data: null, error: errorMessage(error) }),
       );
+    const evidenceSnapshotsLoad = fetchRegimeEvidenceSnapshots()
+      .then(setEvidenceSnapshots)
+      .catch(() => setEvidenceSnapshots([]));
     const auditLoad = fetchAuditEvents()
       .then((data) => setAuditState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
@@ -261,6 +270,7 @@ function App() {
       regimeLoad,
       regimeStatusLoad,
       regimeRunsLoad,
+      evidenceSnapshotsLoad,
       auditLoad,
       riskAlertsLoad,
       strategyPerformanceLoad,
@@ -564,6 +574,18 @@ function App() {
       const analysis =
         backtestRun && replay.id ? await fetchRegimeBacktestAnalysis(backtestRun.id, replay.id) : null;
       setRegimeAnalysis(analysis);
+      const latestWindow = replay.points.at(-1);
+      if (latestWindow) {
+        // Diagnostics are requested after replay so the evidence panel explains the same window the chart ends on.
+        const diagnostics = await fetchMarketRegimeDiagnostics(
+          selectedStrategy.symbol,
+          selectedStrategy.timeframe,
+          20,
+          latestWindow.windowEnd,
+        );
+        setRegimeDiagnostics(diagnostics);
+        setEvidenceSnapshots(await fetchRegimeEvidenceSnapshots(selectedStrategy.symbol, selectedStrategy.timeframe));
+      }
       await fetchRegimeRuns(selectedStrategy.symbol, selectedStrategy.timeframe).then((data) =>
         setRegimeRunsState({ status: "success", data, error: null }),
       );
@@ -716,6 +738,8 @@ function App() {
       <RegimeReplayPanel
         busy={busyAction === "regime-replay"}
         analysis={regimeAnalysis}
+        diagnostics={regimeDiagnostics}
+        evidenceSnapshots={evidenceSnapshots}
         replay={regimeReplay}
         runsState={regimeRunsState}
         selectedStrategy={selectedStrategy}
@@ -806,6 +830,8 @@ function AssistantPanel({
 function RegimeReplayPanel({
   analysis,
   busy,
+  diagnostics,
+  evidenceSnapshots,
   replay,
   runsState,
   selectedStrategy,
@@ -814,6 +840,8 @@ function RegimeReplayPanel({
 }: {
   analysis: RegimeBacktestAnalysis | null;
   busy: boolean;
+  diagnostics: MarketRegimeDiagnostics | null;
+  evidenceSnapshots: RegimeEvidenceSnapshot[];
   replay: RegimeRunResponse | null;
   runsState: LoadState<RegimeRunSummary[]>;
   selectedStrategy: Strategy | null;
@@ -843,6 +871,7 @@ function RegimeReplayPanel({
             ]}
           />
           <CandlestickReplayChart replay={replay} />
+          <AttentionEvidencePanel diagnostics={diagnostics} snapshots={evidenceSnapshots} />
           <RegimeAnalysisTable analysis={analysis} />
         </>
       ) : (
@@ -850,6 +879,75 @@ function RegimeReplayPanel({
       )}
       <SavedRegimeRuns state={runsState} />
     </section>
+  );
+}
+
+function AttentionEvidencePanel({
+  diagnostics,
+  snapshots,
+}: {
+  diagnostics: MarketRegimeDiagnostics | null;
+  snapshots: RegimeEvidenceSnapshot[];
+}) {
+  const latestSnapshot = snapshots[0];
+  return (
+    <div className="evidence-panel" aria-label="Attention evidence">
+      <div>
+        <h3>Attention evidence</h3>
+        <p className="muted">
+          {diagnostics
+            ? `${formatAction(diagnostics.regimeLabel)} vs ${formatAction(diagnostics.baselineRegimeLabel)}`
+            : latestSnapshot
+              ? `Latest saved snapshot: ${formatAction(latestSnapshot.regimeLabel)}`
+              : "Run replay to inspect the latest model evidence."}
+        </p>
+      </div>
+      {diagnostics ? (
+        <>
+          <ResultGrid
+            items={[
+              ["Evidence", diagnostics.evidenceSource],
+              ["Confidence", formatPercent(diagnostics.confidence)],
+              ["Baseline gap", diagnostics.disagreesWithBaseline ? "yes" : "no"],
+              ["Model", diagnostics.modelVersion || diagnostics.classifierSource || "rules"],
+            ]}
+          />
+          <div className="evidence-grid">
+            <div>
+              <h4>Top timesteps</h4>
+              <ul className="compact-list">
+                {diagnostics.topTimesteps.map((point) => (
+                  <li key={point.openTime}>
+                    <span>{formatDateTime(point.openTime)}</span>
+                    <strong>{formatNumber(point.attentionScore)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4>Feature evidence</h4>
+              <ul className="compact-list">
+                {diagnostics.featureEvidence.map((feature) => (
+                  <li key={feature.name}>
+                    <span>{formatAction(feature.name)}</span>
+                    <strong>{formatNumber(feature.importance)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </>
+      ) : latestSnapshot ? (
+        <ResultGrid
+          items={[
+            ["Evidence", latestSnapshot.evidenceSource],
+            ["Confidence", formatPercent(latestSnapshot.confidence)],
+            ["Baseline gap", latestSnapshot.disagreesWithBaseline ? "yes" : "no"],
+            ["Saved", formatDateTime(latestSnapshot.createdAt)],
+          ]}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -2261,6 +2359,13 @@ function formatPercent(value: number | null | undefined) {
     return "N/A";
   }
   return `${Number(value).toFixed(2)}%`;
+}
+
+function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  return Number(value).toFixed(2);
 }
 
 function formatCurrency(value: number | null | undefined) {

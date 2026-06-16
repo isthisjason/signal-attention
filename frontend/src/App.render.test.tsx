@@ -14,7 +14,9 @@ const mocks = vi.hoisted(() => ({
   fetchDashboardSummary: vi.fn(),
   fetchMarketDataQuality: vi.fn(),
   fetchMarketRegime: vi.fn(),
+  fetchMarketRegimeDiagnostics: vi.fn(),
   fetchMarketRegimeStatus: vi.fn(),
+  fetchRegimeEvidenceSnapshots: vi.fn(),
   fetchRegimeRuns: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
@@ -56,7 +58,9 @@ vi.mock("./api/dashboard", () => ({
 
 vi.mock("./api/marketRegime", () => ({
   fetchMarketRegime: mocks.fetchMarketRegime,
+  fetchMarketRegimeDiagnostics: mocks.fetchMarketRegimeDiagnostics,
   fetchMarketRegimeStatus: mocks.fetchMarketRegimeStatus,
+  fetchRegimeEvidenceSnapshots: mocks.fetchRegimeEvidenceSnapshots,
   fetchRegimeRuns: mocks.fetchRegimeRuns,
   runRegimeReplay: mocks.runRegimeReplay,
 }));
@@ -153,9 +157,37 @@ beforeEach(() => {
     modelVersion: null,
     featureVersion: "torch-market-regime-features/v1",
     sequenceLength: null,
+    runId: null,
+    artifactName: null,
+    artifactPath: null,
+    architecture: null,
+    labels: [],
+    modelConfig: null,
     warnings: [],
   });
   mocks.fetchRegimeRuns.mockResolvedValue([]);
+  mocks.fetchRegimeEvidenceSnapshots.mockResolvedValue([]);
+  mocks.fetchMarketRegimeDiagnostics.mockResolvedValue({
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    windowStart: "2024-01-01T00:00:00Z",
+    windowEnd: "2024-01-01T19:00:00Z",
+    regimeLabel: "TRENDING_UP",
+    confidence: 80,
+    baselineRegimeLabel: "TRENDING_UP",
+    baselineConfidence: 75,
+    disagreesWithBaseline: false,
+    evidenceSource: "attribution",
+    reasons: ["Price is rising."],
+    topTimesteps: [{ openTime: "2024-01-01T19:00:00Z", attentionScore: 1, close: 119, returnPercent: 0.85 }],
+    featureEvidence: [{ name: "trendSlopePercent", value: 1, importance: 1 }],
+    classifierSource: "rules",
+    mode: "rules",
+    modelVersion: null,
+    featureVersion: "torch-market-regime-features/v1",
+    sequenceLength: 20,
+    artifactIdentifier: null,
+  });
   mocks.fetchRegimeBacktestAnalysis.mockResolvedValue({
     backtestId: 12,
     regimeRunId: 33,

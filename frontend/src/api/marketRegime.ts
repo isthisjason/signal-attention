@@ -104,6 +104,49 @@ export type RegimeRunResponse = {
 
 export type RegimeRunSummary = Omit<RegimeRunResponse, "candles" | "points" | "tradeMarkers">;
 
+export type AttentionTimestepEvidence = {
+  openTime: string;
+  attentionScore: number;
+  close: number;
+  returnPercent: number;
+};
+
+export type FeatureEvidence = {
+  name: string;
+  value: number;
+  importance: number;
+};
+
+export type MarketRegimeDiagnostics = {
+  symbol: string;
+  timeframe: string;
+  windowStart: string;
+  windowEnd: string;
+  regimeLabel: string;
+  confidence: number;
+  baselineRegimeLabel: string;
+  baselineConfidence: number;
+  disagreesWithBaseline: boolean;
+  evidenceSource: string;
+  reasons: string[];
+  topTimesteps: AttentionTimestepEvidence[];
+  featureEvidence: FeatureEvidence[];
+  classifierSource?: string | null;
+  mode?: string | null;
+  modelVersion?: string | null;
+  featureVersion?: string | null;
+  sequenceLength?: number | null;
+  artifactIdentifier?: string | null;
+};
+
+export type RegimeEvidenceSnapshot = Omit<MarketRegimeDiagnostics, "topTimesteps" | "featureEvidence" | "reasons"> & {
+  id: number;
+  reasonsJson?: string | null;
+  topTimestepsJson?: string | null;
+  featureEvidenceJson?: string | null;
+  createdAt: string;
+};
+
 export function fetchMarketRegime(symbol = "BTC-USD", timeframe = "1h", limit = 128) {
   const params = new URLSearchParams({
     symbol,
@@ -130,4 +173,17 @@ export function runRegimeReplay(request: RegimeRunRequest) {
     },
     body: JSON.stringify(request),
   });
+}
+
+export function fetchMarketRegimeDiagnostics(symbol = "BTC-USD", timeframe = "1h", limit = 128, windowEnd?: string | null) {
+  const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
+  if (windowEnd) {
+    params.set("windowEnd", windowEnd);
+  }
+  return getJson<MarketRegimeDiagnostics>(`/api/market-regime/diagnostics?${params.toString()}`);
+}
+
+export function fetchRegimeEvidenceSnapshots(symbol = "BTC-USD", timeframe = "1h", limit = 5) {
+  const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
+  return getJson<RegimeEvidenceSnapshot[]>(`/api/market-regime/evidence-snapshots?${params.toString()}`);
 }
