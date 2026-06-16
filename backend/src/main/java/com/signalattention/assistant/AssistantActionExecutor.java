@@ -12,6 +12,7 @@ import com.signalattention.common.ResourceNotFoundException;
 import com.signalattention.marketregime.MarketRegimeService;
 import com.signalattention.marketregime.RegimeRunRequest;
 import com.signalattention.marketregime.RegimeRunResponse;
+import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
 import com.signalattention.papertrading.PaperSessionReplayRequest;
 import com.signalattention.papertrading.PaperSessionReplayResponse;
 import com.signalattention.papertrading.PaperSessionResponse;
@@ -54,6 +55,7 @@ public class AssistantActionExecutor {
         Object result = switch (action.getActionType()) {
             case RUN_BACKTEST -> runBacktest(action);
             case RUN_REGIME_REPLAY -> runRegimeReplay(action);
+            case INSPECT_ATTENTION_DIAGNOSTICS -> inspectAttentionDiagnostics(action);
             case START_PAPER_SESSION -> startPaperSession(action);
             case REPLAY_PAPER_SESSION -> replayPaperSession(action);
         };
@@ -89,6 +91,20 @@ public class AssistantActionExecutor {
                 optionalLong(payload, "backtestId")
         );
         return marketRegimeService.runRegimeReplay(request);
+    }
+
+    private MlMarketRegimeDiagnosticsResponse inspectAttentionDiagnostics(AssistantAction action) {
+        JsonNode payload = payload(action);
+        Long strategyId = requiredLong(payload, "strategyId");
+        Strategy strategy = strategyRepository.findById(strategyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Strategy not found: " + strategyId));
+        // Assistant diagnostics reuse the selected strategy market so confirmation cannot redirect analysis elsewhere.
+        return marketRegimeService.diagnoseMarketRegime(
+                strategy.getSymbol(),
+                strategy.getTimeframe(),
+                optionalInt(payload, "limit"),
+                optionalInstant(payload, "windowEnd")
+        );
     }
 
     private PaperSessionResponse startPaperSession(AssistantAction action) {
@@ -146,6 +162,11 @@ public class AssistantActionExecutor {
             throw new BadRequestException("Assistant action payload requires " + field);
         }
         return Instant.parse(value.textValue());
+    }
+
+    private Instant optionalInstant(JsonNode payload, String field) {
+        JsonNode value = payload.get(field);
+        return value == null || value.isNull() ? null : Instant.parse(value.textValue());
     }
 
     private BigDecimal optionalBigDecimal(JsonNode payload, String field) {

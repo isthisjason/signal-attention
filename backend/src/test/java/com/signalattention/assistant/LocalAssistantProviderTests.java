@@ -44,6 +44,19 @@ class LocalAssistantProviderTests {
                 .isEqualTo(AssistantActionType.REPLAY_PAPER_SESSION);
     }
 
+    @Test
+    void replyProposesAttentionDiagnosticsForSelectedStrategy() {
+        AssistantReply reply = provider.reply(
+                "inspect attention evidence",
+                context(1L, null, null)
+        );
+
+        assertThat(reply.proposedActions()).singleElement()
+                .extracting(AssistantProposedAction::actionType)
+                .isEqualTo(AssistantActionType.INSPECT_ATTENTION_DIAGNOSTICS);
+        assertThat(reply.proposedActions().getFirst().payload()).containsEntry("limit", 20);
+    }
+
     private AssistantContext context(Long strategyId, Long backtestId, Long paperSessionId) {
         return new AssistantContext(
                 1,

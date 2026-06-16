@@ -29,7 +29,9 @@ public class LocalAssistantProvider implements AssistantProvider {
         }
         response.append("I can explain simulation state and prepare reviewable research actions, but I cannot give buy or sell advice.");
 
-        if (normalized.contains("regime")) {
+        if (normalized.contains("attention") || normalized.contains("diagnostic") || normalized.contains("evidence")) {
+            maybeAddAttentionDiagnostics(context, actions);
+        } else if (normalized.contains("regime")) {
             maybeAddRegimeReplay(context, actions);
         } else if (normalized.contains("paper") && normalized.contains("replay")) {
             maybeAddPaperReplay(context, actions);
@@ -77,6 +79,23 @@ public class LocalAssistantProvider implements AssistantProvider {
         actions.add(new AssistantProposedAction(
                 AssistantActionType.RUN_REGIME_REPLAY,
                 "Run regime replay for the selected strategy and date range.",
+                payload
+        ));
+    }
+
+    private void maybeAddAttentionDiagnostics(AssistantContext context, List<AssistantProposedAction> actions) {
+        if (context.strategyId() == null) {
+            return;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("strategyId", context.strategyId());
+        payload.put("limit", 20);
+        if (context.endDate() != null) {
+            payload.put("windowEnd", context.endDate().toString());
+        }
+        actions.add(new AssistantProposedAction(
+                AssistantActionType.INSPECT_ATTENTION_DIAGNOSTICS,
+                "Inspect attention evidence for the selected strategy market.",
                 payload
         ));
     }
