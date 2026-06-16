@@ -108,6 +108,8 @@ def build_experiment_manifest(
     reproducibility: dict[str, Any] | None = None,
     device: str,
 ) -> dict[str, Any]:
+    # The manifest is the portable audit record for a local artifact; keep enough training context
+    # here that a promoted model can be explained without re-opening the training script.
     return {
         "schemaVersion": EXPERIMENT_SCHEMA_VERSION,
         "generatedAt": datetime.now(UTC).isoformat(),

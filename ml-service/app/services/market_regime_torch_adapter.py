@@ -32,7 +32,8 @@ class TorchMarketRegimeClassifier:
                 f"Market regime torch artifact requires at least {sequence_length} candles."
             )
 
-        # Torch artifacts define their own sequence length, so inference uses the latest matching tail.
+        # Torch artifacts define their own sequence length; callers may send extra context, but the
+        # learned model only sees the newest tail that matches its training contract.
         feature_matrix = build_torch_feature_matrix(request.candles[-sequence_length:])
         normalized_features = normalize_features(feature_matrix, metadata)
         input_tensor = torch.tensor([normalized_features], dtype=torch.float32, device=device)
@@ -119,7 +120,8 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(metadata, dict):
         raise RuntimeError("Market regime artifact metadata is required.")
 
-    # Validate the artifact contract before building the model to fail with useful setup errors.
+    # Validate the artifact contract before building the model so stale local artifacts fail with
+    # setup errors instead of opaque tensor shape exceptions.
     model_state = artifact.get("modelStateDict")
     if not isinstance(model_state, Mapping) or not model_state:
         raise RuntimeError("Market regime artifact modelStateDict is required.")
@@ -192,7 +194,8 @@ def normalize_features(feature_matrix: list[list[float]], metadata: dict[str, An
     if normalization is None:
         return feature_matrix
 
-    # Training writes mean/std values into metadata so inference can use the same scaling.
+    # Training writes mean/std values into metadata so inference applies the same scaling as the
+    # chronological train split, not statistics from the current inference window.
     means = [float(value) for value in normalization["mean"]]
     stds = [float(value) for value in normalization["std"]]
     return [
