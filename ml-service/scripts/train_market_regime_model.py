@@ -22,7 +22,7 @@ from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
 )
-from app.services.market_regime_torch_model import DEFAULT_TORCH_MODEL_CONFIG, build_transformer_model
+from app.services.market_regime_torch_model import DEFAULT_TORCH_MODEL_CONFIG, TORCH_MODEL_ARCHITECTURE_V1, build_transformer_model
 
 
 LABELS = ["SIDEWAYS", "TRENDING_UP", "TRENDING_DOWN", "HIGH_VOLATILITY"]
@@ -93,6 +93,7 @@ def main() -> None:
                 "sequenceLength": args.sequence_length,
                 "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
                 "labels": LABELS,
+                "architecture": TORCH_MODEL_ARCHITECTURE_V1,
                 "normalization": {"mean": means, "std": stds},
                 "model": model_config,
             },

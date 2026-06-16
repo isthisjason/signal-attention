@@ -12,7 +12,12 @@ from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
 )
-from app.services.market_regime_torch_model import build_transformer_model
+from app.services.market_regime_torch_model import (
+    TORCH_MODEL_ARCHITECTURE_V1,
+    TORCH_MODEL_ARCHITECTURE_V2,
+    build_attention_transformer_model,
+    build_transformer_model,
+)
 
 
 class TorchMarketRegimeClassifier:
@@ -38,11 +43,11 @@ class TorchMarketRegimeClassifier:
         normalized_features = normalize_features(feature_matrix, metadata)
         input_tensor = torch.tensor([normalized_features], dtype=torch.float32, device=device)
 
-        model = build_transformer_model(
+        model = build_model_for_metadata(
             torch,
             feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
             class_count=len(metadata["labels"]),
-            config=metadata.get("model"),
+            metadata=metadata,
         )
         model.load_state_dict(artifact["modelStateDict"])
         model.to(device)
@@ -156,11 +161,34 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(model_config, dict):
         raise RuntimeError("Market regime artifact metadata.model must be an object.")
 
+    architecture = metadata.get("architecture", TORCH_MODEL_ARCHITECTURE_V1)
+    if architecture not in (TORCH_MODEL_ARCHITECTURE_V1, TORCH_MODEL_ARCHITECTURE_V2):
+        raise RuntimeError("Market regime artifact metadata.architecture is not supported.")
+    metadata["architecture"] = architecture
+
     normalization = metadata.get("normalization")
     if normalization is not None:
         validate_normalization(normalization)
 
     return metadata
+
+
+def build_model_for_metadata(torch, *, feature_count: int, class_count: int, metadata: dict[str, Any]):
+    architecture = metadata.get("architecture", TORCH_MODEL_ARCHITECTURE_V1)
+    # v1 remains the default because older local artifacts were saved before architecture was explicit.
+    if architecture == TORCH_MODEL_ARCHITECTURE_V2:
+        return build_attention_transformer_model(
+            torch,
+            feature_count=feature_count,
+            class_count=class_count,
+            config=metadata.get("model"),
+        )
+    return build_transformer_model(
+        torch,
+        feature_count=feature_count,
+        class_count=class_count,
+        config=metadata.get("model"),
+    )
 
 
 def validate_normalization(normalization: Any) -> None:

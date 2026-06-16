@@ -6,6 +6,7 @@ import app.services.market_regime_torch_adapter as adapter
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_config import MarketRegimeSettings
 from app.services.market_regime_torch_adapter import (
+    build_model_for_metadata,
     load_artifact,
     load_torch,
     normalize_features,
@@ -13,6 +14,7 @@ from app.services.market_regime_torch_adapter import (
     validate_artifact_path,
 )
 from app.services.market_regime_torch_features import TORCH_MARKET_REGIME_FEATURE_ORDER
+from app.services.market_regime_torch_model import TORCH_MODEL_ARCHITECTURE_V2
 
 
 def test_missing_torch_dependency_error_is_clear(monkeypatch) -> None:
@@ -169,6 +171,26 @@ def test_invalid_model_version_error_is_clear() -> None:
         raise AssertionError("Expected invalid model version to fail")
 
 
+def test_unsupported_architecture_error_is_clear() -> None:
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20,
+            "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS"],
+            "architecture": "future-model",
+            "model": {},
+        },
+        "modelStateDict": {"weight": "value"},
+    }
+
+    try:
+        validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        assert str(exc) == "Market regime artifact metadata.architecture is not supported."
+    else:
+        raise AssertionError("Expected unsupported architecture to fail")
+
+
 def test_missing_model_config_error_is_clear() -> None:
     artifact = {
         "metadata": {
@@ -263,6 +285,27 @@ def test_torch_classifier_returns_model_label(tmp_path, monkeypatch) -> None:
     assert response.confidence == Decimal("80.00")
     assert response.classifierSource == "torch"
     assert fake_model.loaded_state_dict == {"weight": "value"}
+
+
+def test_builds_v2_attention_model_from_metadata(monkeypatch) -> None:
+    calls = []
+
+    def fake_builder(*args, **kwargs):
+        calls.append(kwargs)
+        return "v2-model"
+
+    monkeypatch.setattr(adapter, "build_attention_transformer_model", fake_builder)
+
+    model = build_model_for_metadata(
+        object(),
+        feature_count=6,
+        class_count=4,
+        metadata={"architecture": TORCH_MODEL_ARCHITECTURE_V2, "model": {"dModel": 32}},
+    )
+
+    assert model == "v2-model"
+    assert calls[0]["feature_count"] == 6
+    assert calls[0]["class_count"] == 4
 
 
 def request_for(closes: list[Decimal]) -> MarketRegimeRequest:
