@@ -269,3 +269,37 @@ Planned commit sized work:
 8. Verify the assistant orchestration wave and record results locally.
 
 This wave does not add external LLM configuration, auth, broker connections, live trading, or investment advice.
+
+## 16. Attention Diagnostics Wave
+
+The next wave makes the attention based regime model easier to inspect. The project already has model status, saved regime runs, baseline comparison, grouped backtest analysis, and reviewable assistant actions. This wave moves deeper into the model itself.
+
+Planned commit sized work:
+
+1. Document the attention diagnostics wave and track progress locally.
+
+2. Add comments to the existing ML attention flow where artifact compatibility, weak labels, chronological splits, normalization, and CPU fallback are easiest to misunderstand.
+
+3. Extend model status with promoted artifact metadata such as run id, labels, model config, architecture, and artifact identity.
+
+4. Add a second torch model architecture that can expose inspectable attention weights while keeping existing artifacts loadable.
+
+5. Comment the v1 and v2 compatibility boundary so future changes do not accidentally break older local artifacts.
+
+6. Add diagnostics for a selected regime window that explain prediction, confidence, baseline disagreement, top attended timesteps, feature evidence, and model provenance.
+
+7. Expose those diagnostics through the backend with candle lookup, validation, ML client mapping, and audit events.
+
+8. Persist selected evidence snapshots so the app can retrieve recent explanations without duplicating raw candle data.
+
+9. Comment diagnostic persistence and audit boundaries where the intent is not obvious from the schema.
+
+10. Extend experiment comparison with confidence calibration, rules disagreement, label drift, and attention concentration when available.
+
+11. Surface attention evidence in the workbench near regime replay and baseline comparison.
+
+12. Connect assistant proposed actions to attention diagnostics and baseline comparison.
+
+13. Verify the attention centered workflow with tests, frontend build, smoke helper tests, Docker config, and the stack smoke demo when Docker is available.
+
+This wave remains local and CPU safe. Existing v1 torch artifacts should continue to run. Direct attention weights require a v2 artifact, while v1 artifacts use deterministic attribution fallback for diagnostics.
