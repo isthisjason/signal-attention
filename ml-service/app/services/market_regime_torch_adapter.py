@@ -161,6 +161,7 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(model_config, dict):
         raise RuntimeError("Market regime artifact metadata.model must be an object.")
 
+    # Architecture is optional for old artifacts; absence means the original transformer-v1 layout.
     architecture = metadata.get("architecture", TORCH_MODEL_ARCHITECTURE_V1)
     if architecture not in (TORCH_MODEL_ARCHITECTURE_V1, TORCH_MODEL_ARCHITECTURE_V2):
         raise RuntimeError("Market regime artifact metadata.architecture is not supported.")
@@ -176,6 +177,7 @@ def validate_artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
 def build_model_for_metadata(torch, *, feature_count: int, class_count: int, metadata: dict[str, Any]):
     architecture = metadata.get("architecture", TORCH_MODEL_ARCHITECTURE_V1)
     # v1 remains the default because older local artifacts were saved before architecture was explicit.
+    # Only v2 can expose direct attention weights; diagnostics fall back to attribution for v1.
     if architecture == TORCH_MODEL_ARCHITECTURE_V2:
         return build_attention_transformer_model(
             torch,

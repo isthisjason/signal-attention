@@ -143,6 +143,8 @@ def build_attention_transformer_model(
             if use_positional_encoding:
                 hidden = hidden + self.positional_encoding(hidden.shape[1], hidden.device, hidden.dtype)
             attention_weights = []
+            # Diagnostics consume per-layer, per-head weights; normal inference skips them to avoid
+            # extra tensor materialization on the CPU-first path.
             for layer in self.layers:
                 hidden, weights = layer(hidden, return_attention=return_attention)
                 if return_attention and weights is not None:
