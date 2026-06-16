@@ -1,6 +1,7 @@
 package com.signalattention.ml;
 
 import java.util.List;
+import java.util.Map;
 
 public record MlMarketRegimeStatusResponse(
         String mode,
@@ -13,6 +14,12 @@ public record MlMarketRegimeStatusResponse(
         String modelVersion,
         String featureVersion,
         Integer sequenceLength,
+        String runId,
+        String artifactName,
+        String artifactPath,
+        String architecture,
+        List<String> labels,
+        Map<String, Object> modelConfig,
         List<String> warnings
 ) {
 }

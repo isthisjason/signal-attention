@@ -11,6 +11,7 @@ from app.services.market_regime_service import (
 )
 from app.schemas.market_regime_schema import RegimeRunRequest
 from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
+from app.services.market_regime_torch_features import TORCH_MARKET_REGIME_FEATURE_ORDER
 
 
 def candle(index: int, close: Decimal, volume: Decimal = Decimal("1000")) -> MarketRegimeCandle:
@@ -112,6 +113,34 @@ def test_auto_mode_reports_torch_artifact_when_present(tmp_path) -> None:
     assert status.artifactIdentifier is not None
 
 
+def test_status_reports_artifact_metadata_when_loadable(tmp_path, monkeypatch) -> None:
+    artifact = tmp_path / "market-regime.pt"
+    artifact.write_text("placeholder")
+    metadata = {
+        "runId": "20260616T000000-test",
+        "modelVersion": "demo-v2",
+        "featureVersion": "torch-market-regime-features/v1",
+        "sequenceLength": 32,
+        "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+        "labels": ["SIDEWAYS", "TRENDING_UP"],
+        "architecture": "transformer-v2",
+        "model": {"dModel": 32},
+    }
+    monkeypatch.setattr("app.services.market_regime_service.load_torch", lambda: FakeStatusTorch({"metadata": metadata, "modelStateDict": {"weight": "value"}}))
+    settings = MarketRegimeSettings(mode="auto", artifact_path=str(artifact))
+
+    status = market_regime_status(settings)
+
+    assert status.effectiveMode == "torch"
+    assert status.runId == "20260616T000000-test"
+    assert status.modelVersion == "demo-v2"
+    assert status.sequenceLength == 32
+    assert status.artifactName == "market-regime.pt"
+    assert status.architecture == "transformer-v2"
+    assert status.labels == ["SIDEWAYS", "TRENDING_UP"]
+    assert status.modelConfig == {"dModel": 32}
+
+
 def test_classifies_sideways() -> None:
     closes = [Decimal("100"), Decimal("101")] * 10
 
@@ -156,3 +185,14 @@ def test_run_market_regime_batches_windows_and_stride() -> None:
     assert response.points[0].anomalyLabel is None
     assert response.points[0].baselineRegimeLabel == "TRENDING_UP"
     assert response.points[0].disagreesWithBaseline is False
+
+
+class FakeStatusTorch:
+    def __init__(self, artifact) -> None:
+        self.artifact = artifact
+
+    def device(self, name: str) -> str:
+        return name
+
+    def load(self, artifact_path, map_location):
+        return self.artifact

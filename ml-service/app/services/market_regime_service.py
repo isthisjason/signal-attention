@@ -15,7 +15,7 @@ from app.services.market_regime_classifier import MarketRegimeClassifier
 from app.services.market_regime_config import AUTO_MARKET_REGIME_MODE, MarketRegimeSettings, get_market_regime_settings
 from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, describe_path
 from app.services.market_regime_features import build_market_regime_features
-from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier
+from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier, load_artifact, load_torch, validate_artifact_metadata
 
 
 def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse:
@@ -27,6 +27,7 @@ def market_regime_status(settings: MarketRegimeSettings | None = None) -> Market
     selected_settings = settings or get_market_regime_settings()
     effective_settings, warnings = resolve_effective_settings(selected_settings)
     artifact_summary = describe_artifact(effective_settings.artifact_path)
+    metadata = read_artifact_metadata(effective_settings.artifact_path, warnings)
     return MarketRegimeStatusResponse(
         mode=selected_settings.mode,
         effectiveMode=effective_settings.mode,
@@ -35,9 +36,15 @@ def market_regime_status(settings: MarketRegimeSettings | None = None) -> Market
         artifactConfigured=bool(selected_settings.artifact_path),
         artifactExists=artifact_summary["exists"],
         artifactIdentifier=artifact_summary["sha256"],
-        modelVersion=None,
-        featureVersion=MARKET_REGIME_FEATURE_VERSION,
-        sequenceLength=None,
+        modelVersion=metadata.get("modelVersion"),
+        featureVersion=metadata.get("featureVersion", MARKET_REGIME_FEATURE_VERSION),
+        sequenceLength=metadata.get("sequenceLength"),
+        runId=metadata.get("runId"),
+        artifactName=artifact_summary["name"],
+        artifactPath=artifact_summary["path"],
+        architecture=metadata.get("architecture", "transformer-v1") if metadata else None,
+        labels=metadata.get("labels", []),
+        modelConfig=metadata.get("model"),
         warnings=warnings,
     )
 
@@ -120,9 +127,27 @@ def resolve_effective_settings(settings: MarketRegimeSettings) -> tuple[MarketRe
 
 def describe_artifact(artifact_path: str | None) -> dict:
     if not artifact_path:
-        return {"exists": False, "sha256": None}
+        return {"exists": False, "sha256": None, "name": None, "path": None}
     summary = describe_path(Path(artifact_path))
-    return {"exists": summary["sizeBytes"] is not None, "sha256": summary["sha256"]}
+    return {
+        "exists": summary["sizeBytes"] is not None,
+        "sha256": summary["sha256"],
+        "name": summary["name"],
+        "path": summary["path"],
+    }
+
+
+def read_artifact_metadata(artifact_path: str | None, warnings: list[str]) -> dict:
+    if not artifact_path or not Path(artifact_path).is_file():
+        return {}
+    try:
+        torch = load_torch()
+        artifact = load_artifact(torch, Path(artifact_path), torch.device("cpu"))
+        # Reuse inference validation so status reports the same artifact contract as prediction.
+        return validate_artifact_metadata(artifact)
+    except RuntimeError as exc:
+        warnings.append(f"artifact metadata unavailable: {exc}")
+        return {}
 
 
 class RuleBasedMarketRegimeClassifier:

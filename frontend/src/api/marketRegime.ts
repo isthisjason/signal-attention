@@ -33,6 +33,12 @@ export type MarketRegimeStatus = {
   modelVersion?: string | null;
   featureVersion?: string | null;
   sequenceLength?: number | null;
+  runId?: string | null;
+  artifactName?: string | null;
+  artifactPath?: string | null;
+  architecture?: string | null;
+  labels: string[];
+  modelConfig?: Record<string, unknown> | null;
   warnings: string[];
 };
 

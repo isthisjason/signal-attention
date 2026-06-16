@@ -68,6 +68,12 @@ class MarketRegimeStatusResponse(BaseModel):
     modelVersion: str | None = None
     featureVersion: str | None = None
     sequenceLength: int | None = None
+    runId: str | None = None
+    artifactName: str | None = None
+    artifactPath: str | None = None
+    architecture: str | None = None
+    labels: list[str] = []
+    modelConfig: dict | None = None
     warnings: list[str] = []
 
 
