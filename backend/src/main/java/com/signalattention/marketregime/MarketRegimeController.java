@@ -45,6 +45,15 @@ public class MarketRegimeController {
         return marketRegimeService.diagnoseMarketRegime(symbol, timeframe, limit, windowEnd);
     }
 
+    @GetMapping("/api/market-regime/evidence-snapshots")
+    public List<RegimeEvidenceSnapshotResponse> listEvidenceSnapshots(
+            @RequestParam String symbol,
+            @RequestParam String timeframe,
+            @RequestParam(defaultValue = "10") Integer limit
+    ) {
+        return marketRegimeService.listEvidenceSnapshots(symbol, timeframe, limit);
+    }
+
     @PostMapping("/api/regime-runs")
     public RegimeRunResponse runRegimeReplay(@Valid @RequestBody RegimeRunRequest request) {
         return marketRegimeService.runRegimeReplay(request);

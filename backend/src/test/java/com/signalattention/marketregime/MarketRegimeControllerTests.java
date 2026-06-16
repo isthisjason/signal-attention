@@ -74,6 +74,18 @@ class MarketRegimeControllerTests {
     }
 
     @Test
+    void listEvidenceSnapshotsDelegatesToService() {
+        MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
+        MarketRegimeController controller = new MarketRegimeController(service);
+        when(service.listEvidenceSnapshots("BTC-USD", "1h", 5)).thenReturn(List.of());
+
+        List<RegimeEvidenceSnapshotResponse> actual = controller.listEvidenceSnapshots("BTC-USD", "1h", 5);
+
+        assertThat(actual).isEmpty();
+        verify(service).listEvidenceSnapshots("BTC-USD", "1h", 5);
+    }
+
+    @Test
     void runRegimeReplayDelegatesToService() {
         MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
         MarketRegimeController controller = new MarketRegimeController(service);

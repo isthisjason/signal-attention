@@ -45,6 +45,7 @@ public class MarketRegimeService {
     private final BacktestTradeRepository backtestTradeRepository;
     private final RegimeRunRepository regimeRunRepository;
     private final RegimePredictionRepository regimePredictionRepository;
+    private final RegimeEvidenceSnapshotRepository regimeEvidenceSnapshotRepository;
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
 
@@ -55,6 +56,7 @@ public class MarketRegimeService {
             BacktestTradeRepository backtestTradeRepository,
             RegimeRunRepository regimeRunRepository,
             RegimePredictionRepository regimePredictionRepository,
+            RegimeEvidenceSnapshotRepository regimeEvidenceSnapshotRepository,
             ObjectMapper objectMapper,
             AuditService auditService
     ) {
@@ -64,6 +66,7 @@ public class MarketRegimeService {
         this.backtestTradeRepository = backtestTradeRepository;
         this.regimeRunRepository = regimeRunRepository;
         this.regimePredictionRepository = regimePredictionRepository;
+        this.regimeEvidenceSnapshotRepository = regimeEvidenceSnapshotRepository;
         this.objectMapper = objectMapper;
         this.auditService = auditService;
     }
@@ -116,6 +119,19 @@ public class MarketRegimeService {
                 normalizedTimeframe,
                 candles.stream().map(this::toMlCandle).toList()
         ));
+        regimeEvidenceSnapshotRepository.save(new RegimeEvidenceSnapshot(
+                response,
+                toJson(response.reasons()),
+                toJson(response.topTimesteps().stream()
+                        .map(point -> java.util.Map.of(
+                                "openTime", point.openTime().toString(),
+                                "attentionScore", point.attentionScore(),
+                                "close", point.close(),
+                                "returnPercent", point.returnPercent()
+                        ))
+                        .toList()),
+                toJson(response.featureEvidence())
+        ));
         // Diagnostics are read-only analysis, but they are still audited because they influence research decisions.
         auditService.record(
                 "MARKET_REGIME",
@@ -130,6 +146,23 @@ public class MarketRegimeService {
                 ))
         );
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RegimeEvidenceSnapshotResponse> listEvidenceSnapshots(String symbol, String timeframe, Integer requestedLimit) {
+        String normalizedSymbol = requireText(symbol, "symbol");
+        String normalizedTimeframe = requireText(timeframe, "timeframe");
+        int limit = requestedLimit == null ? 10 : requestedLimit;
+        if (limit < 1 || limit > 50) {
+            throw new BadRequestException("limit must be between 1 and 50");
+        }
+        return regimeEvidenceSnapshotRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
+                        normalizedSymbol,
+                        normalizedTimeframe,
+                        PageRequest.of(0, limit)
+                ).stream()
+                .map(RegimeEvidenceSnapshotResponse::from)
+                .toList();
     }
 
     @Transactional

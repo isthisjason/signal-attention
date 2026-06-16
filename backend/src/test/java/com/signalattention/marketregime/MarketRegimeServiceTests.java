@@ -56,6 +56,8 @@ class MarketRegimeServiceTests {
     @Mock
     private RegimePredictionRepository regimePredictionRepository;
     @Mock
+    private RegimeEvidenceSnapshotRepository regimeEvidenceSnapshotRepository;
+    @Mock
     private AuditService auditService;
 
     private MarketRegimeService service;
@@ -69,6 +71,7 @@ class MarketRegimeServiceTests {
                 backtestTradeRepository,
                 regimeRunRepository,
                 regimePredictionRepository,
+                regimeEvidenceSnapshotRepository,
                 new ObjectMapper(),
                 auditService
         );
@@ -151,6 +154,7 @@ class MarketRegimeServiceTests {
         org.mockito.Mockito.verify(mlRiskClient).diagnoseMarketRegime(requestCaptor.capture());
         assertThat(requestCaptor.getValue().candles()).hasSize(20);
         assertThat(requestCaptor.getValue().candles().getFirst().openTime()).isBefore(requestCaptor.getValue().candles().getLast().openTime());
+        org.mockito.Mockito.verify(regimeEvidenceSnapshotRepository).save(any(RegimeEvidenceSnapshot.class));
         org.mockito.Mockito.verify(auditService).record(
                 org.mockito.Mockito.eq("MARKET_REGIME"),
                 org.mockito.Mockito.eq("BTC-USD:1h"),
