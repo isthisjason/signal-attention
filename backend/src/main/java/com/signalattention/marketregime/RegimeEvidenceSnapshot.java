@@ -74,6 +74,7 @@ public class RegimeEvidenceSnapshot {
             String topTimestepsJson,
             String featureEvidenceJson
     ) {
+        // Snapshots preserve explanation evidence and model provenance; raw candles stay in market data tables.
         this.symbol = response.symbol();
         this.timeframe = response.timeframe();
         this.windowStart = response.windowStart();

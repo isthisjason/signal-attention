@@ -132,7 +132,7 @@ public class MarketRegimeService {
                         .toList()),
                 toJson(response.featureEvidence())
         ));
-        // Diagnostics are read-only analysis, but they are still audited because they influence research decisions.
+        // Snapshot persistence keeps the evidence retrievable; the audit record captures that analysis was requested.
         auditService.record(
                 "MARKET_REGIME",
                 normalizedSymbol + ":" + normalizedTimeframe,
