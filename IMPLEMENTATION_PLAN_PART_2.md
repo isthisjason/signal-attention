@@ -303,3 +303,31 @@ Planned commit sized work:
 13. Verify the attention centered workflow with tests, frontend build, smoke helper tests, Docker config, and the stack smoke demo when Docker is available.
 
 This wave remains local and CPU safe. Existing v1 torch artifacts should continue to run. Direct attention weights require a v2 artifact, while v1 artifacts use deterministic attribution fallback for diagnostics.
+
+## 17. Promoted Attention Artifact Lifecycle Wave
+
+The next wave makes the promoted attention model lifecycle easier to run and explain. The project already has attention diagnostics, evidence snapshots, assistant actions, and model status. This wave closes the gap between local experiment scripts and the app runtime by making v2 artifact training, promotion, auto loading, status reporting, and demo verification explicit.
+
+Planned commit sized work:
+
+1. Document the promoted artifact lifecycle wave and track progress locally.
+
+2. Train inspectable attention artifacts through a selectable v2 architecture path.
+
+3. Evaluate v2 attention diagnostics while keeping v1 fallback attribution compatible.
+
+4. Promote artifacts with runnable manifests and clear gate results.
+
+5. Load promoted artifacts in auto mode when a valid local promotion exists.
+
+6. Report promotion status through the backend model status API.
+
+7. Surface promotion state in the workbench.
+
+8. Extend smoke checks for promoted artifacts without breaking the default rules path.
+
+9. Update demo documentation for promoted attention mode.
+
+10. Verify the promoted attention lifecycle.
+
+This wave keeps generated model artifacts, experiment registries, and model cards local. A fresh clone must still run in CPU safe rules mode.
