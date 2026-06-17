@@ -1,1216 +1,240 @@
-# SignalAttention Backend MVP Implementation Plan
+# SignalAttention Implementation Plan
 
-## 1. Project Goal
+## 1. Project Direction
 
-SignalAttention is a local-first trading strategy research and risk-scoring lab. The MVP should let a user import historical OHLCV candle data, define a simple SMA crossover strategy, run a deterministic backtest, review trades and metrics, and request a rule-based ML risk score from a Python FastAPI service.
+SignalAttention is a local research workbench for studying how trading strategies behave across attention inferred market regimes.
 
-The first milestone is intentionally practical and portfolio-focused. It should demonstrate backend engineering, data modeling, service integration, Docker-based local development, testing, and clear documentation.
+The core product question is no longer just whether a simple strategy made or lost money in a backtest. The stronger question is whether the strategy looks robust, fragile, overfit, or regime dependent when candle sequences are interpreted by an attention based market regime model.
 
-The MVP is **not** intended to provide live trading, broker integration, real-money execution, high-frequency trading, a frontend dashboard, or an advanced Transformer/attention model. Live trading, broker integration, real-money execution, account custody, and trade recommendations are permanent exclusions; the frontend and attention-model work are later research/dashboard enhancements after the baseline system is stable.
+Current pitch:
 
----
+SignalAttention evaluates strategy robustness across ML inferred market regimes using an attention based sequence model, with backtesting, paper replay, diagnostics, audit trails, and baseline comparison built around it.
 
-## 2. Original Pitch and Positioning
+The first implementation phase proved the practical foundation: import market data, store it cleanly, run repeatable backtests, simulate paper sessions, call a separate ML service, and leave an audit trail. The current phase makes the attention model the center of the product. Traditional indicators, SMA crossover rules, rule based risk scoring, and deterministic regime labels remain, but their role is secondary. They are baselines, references, and sanity checks used to explain whether the attention based path is adding useful signal.
 
-**One-sentence pitch:** SignalAttention lets users create, backtest, simulate, and risk-score trading strategies using attention-inspired market analysis without connecting to brokers or placing real orders.
+## 2. Product Boundaries
 
-SignalAttention should be presented as a research and risk-management simulator, not as a price-prediction, profit-guarantee, investment-advice, or trade-execution tool. The product story is strongest when it emphasizes non-custodial workflows: historical testing, simulation, risk scoring, regime awareness, explainability, and audit trails.
+SignalAttention is not a trading bot and should not be described as one.
 
-The MVP is intentionally backend-first. The baseline now includes risk-policy and paper-trading simulation APIs, while authentication, a frontend dashboard, and attention-based modeling remain later phases. Live trading and broker integration are intentionally not on the roadmap.
+Permanent exclusions:
 
----
+- No broker, exchange, custody, or live order routing integration.
+- No real money trading.
+- No investment advice or trade recommendations.
+- No promises of profitable outcomes.
+- No high frequency trading.
 
-## 3. Goals and Non-Goals
+Current non-goals:
 
-| Goals | Non-Goals |
-| --- | --- |
-| Backtest strategies on historical candle data. | Do not promise profitable trading or investment outcomes. |
-| Score strategies for risk, overfitting, and fragility. | Do not integrate with brokers, exchanges, custody, or real-money execution. |
-| Simulate paper trading in a later phase with audit logs. | Do not attempt high-frequency trading. |
-| Use ML to classify regimes and trade quality over time. | Do not rely on black-box price prediction as the product. |
-| Run locally with minimal cost and reproducible setup. | Do not begin with AWS, Kubernetes, or complex cloud infrastructure. |
+- Authentication, users, roles, and account isolation.
+- Cloud deployment, Kubernetes, or managed infrastructure.
+- External LLM credentials as a requirement for the assistant.
+- Treating weak rule derived labels as independent market truth.
 
----
+The app should stay local, reproducible, CPU safe by default, and honest about uncertainty. Optional torch artifacts may be used when locally available, but a fresh clone must still run with deterministic rule based fallbacks.
 
-## 4. MVP Success Criteria
+## 3. Architecture
 
-The MVP is complete when all of the following are true:
+The project is split into four main layers:
 
-- `docker compose up` starts PostgreSQL, the Spring Boot backend, and the Python ML service.
-- Backend Swagger/OpenAPI docs are available locally.
-- A sample OHLCV CSV file can be imported into PostgreSQL.
-- A user can create, list, update, fetch, and delete an SMA crossover strategy.
-- A user can run a backtest against imported candle data.
-- Backtest results include trades and core performance/risk metrics.
-- The backend can call the ML service for a rule-based strategy risk score.
-- The ML risk score and label are persisted on the backtest run.
-- Important actions create append-only audit events.
-- The README explains setup, architecture, and a reproducible demo flow.
+- `backend`: Java 21 Spring Boot 3 API. Owns persistence, strategy rules, candle import, backtests, paper trading, risk policies, audit events, dashboard aggregation, assistant action execution, and ML service integration.
+- `ml-service`: Python FastAPI service. Owns market regime inference, strategy risk scoring, anomaly checks, rule based baselines, optional torch attention inference, diagnostics, experiment registry tools, and artifact workflow scripts.
+- `frontend`: React, TypeScript, Vite, Recharts, Vitest, and Testing Library. Provides the local workbench for importing data, running backtests, replaying paper sessions, inspecting regimes, comparing baselines, and reviewing assistant actions.
+- `data` and `docs`: Local sample BTC-USD candle data, verification notes, architecture notes, screenshot evidence, and demo workflow documentation.
 
----
+Core infrastructure:
 
-## 5. Repository Setup
+- PostgreSQL 16 through Docker Compose.
+- Flyway migrations for backend tables.
+- Swagger/OpenAPI for backend API inspection.
+- Local model artifacts and experiment registries under ignored model directories.
+- Optional torch Compose profile for artifact backed inference.
 
-Create the following top-level structure:
+## 4. Attention Based Workflow
+
+The main research workflow should be:
+
+1. Import historical OHLCV candle data.
+2. Review market data quality warnings before relying on the sample.
+3. Train, evaluate, promote, or load an attention based market regime artifact.
+4. Run rolling regime inference across candle windows.
+5. Persist regime runs, prediction points, model provenance, feature version, artifact identity, baseline labels, and inference timing.
+6. Run strategy backtests over the same candle range.
+7. Analyze backtest performance grouped by inferred regime.
+8. Compare attention labels against the rule based baseline.
+9. Inspect attention evidence, confidence, feature evidence, top timesteps, and saved evidence snapshots.
+10. Replay paper sessions through selected windows to understand behavior under different inferred regimes.
+11. Use the assistant to explain state and propose reviewable actions, with explicit user confirmation before state changes.
+
+The default demo should remain usable without local torch artifacts. In `rules` mode the service uses deterministic baselines. In `auto` mode it may prefer a valid promoted attention artifact when one is configured and present, then fall back to rules with clear status warnings.
+
+## 5. Baselines And Traditional Evaluation
+
+Traditional evaluations remain important, but they are no longer the main product story.
+
+Secondary and comparison roles:
+
+- SMA crossover is the simple strategy baseline used for deterministic backtests and demo repeatability.
+- Rule based regime labels provide weak labels for training and a baseline for disagreement analysis.
+- Rule based ML risk scoring remains a sanity check for strategy fragility, drawdown, trade count, volatility, win rate, and profit factor.
+- Market data quality checks protect the demo from misleading imported data.
+- Anomaly checks flag unusual candle behavior as research warnings.
+- Backtest metrics, equity curves, drawdown, trades, and paper summaries provide the traditional evaluation surface that attention based regime analysis is compared against.
+
+The project should not hide these baselines. It should show them beside the attention model so the user can see where the learned model agrees, disagrees, improves explanation, or fails to add value.
+
+## 6. Backend Plan
+
+The backend should treat market regime inference and model provenance as first class application data.
+
+Implemented foundation:
+
+- Strategy CRUD and SMA crossover rule validation.
+- CSV market candle import and market data quality endpoint.
+- Deterministic backtest runs with trades, metrics, equity series, and drawdown series.
+- Risk policies and simulated order evaluation.
+- Paper trading sessions, orders, positions, summaries, and candle replay.
+- Audit event persistence and query APIs.
+- Dashboard aggregation APIs.
+- ML risk, anomaly, market regime, diagnostics, and model status clients.
+- Regime run history, regime prediction persistence, baseline comparison, regime grouped backtest analysis, and evidence snapshots.
+- Assistant sessions, messages, proposed actions, confirmation, rejection, execution results, and audit events.
+
+Continuing backend targets:
+
+- Expand model status mapping around promoted artifact lifecycle state.
+- Preserve backward compatible API response additions through optional fields.
+- Keep assistant execution whitelisted and reviewable.
+- Keep audit events clear for inference, diagnostics, assistant actions, paper replay, and analysis runs.
+
+## 7. ML Service And Artifact Lifecycle
+
+The ML service owns both the baseline and attention paths.
+
+Implemented foundation:
+
+- Rule based strategy risk scoring.
+- Rule based market regime classification.
+- Candle anomaly checks.
+- Torch market regime feature extraction.
+- Transformer v1 artifact loading and inference.
+- Attention transformer v2 architecture with inspectable attention weights.
+- Artifact metadata validation for model version, feature version, labels, sequence length, feature order, normalization, architecture, and config.
+- Training script with seeded mini batch training, chronological validation, early stopping, normalization from train windows only, dropout, positional encoding, and selectable architecture.
+- Evaluation script with accuracy, per label metrics, confusion matrix, confidence summary, majority class baseline, lift, holdout scoring, and registry integration.
+- Experiment comparison, diagnostics, promotion, sweep dry run, and model card scripts.
+
+Current artifact lifecycle wave:
+
+1. Document promoted artifact lifecycle. Done.
+2. Train inspectable attention artifacts through a selectable v2 architecture path. Done.
+3. Evaluate v2 attention diagnostics while keeping v1 fallback attribution compatible.
+4. Promote artifacts with runnable manifests and clear gate results.
+5. Load promoted artifacts in auto mode when a valid local promotion exists.
+6. Report promotion status through backend model status.
+7. Surface promotion state in the workbench.
+8. Extend smoke checks for promoted artifacts without breaking the default rules path.
+9. Update demo documentation for promoted attention mode.
+10. Verify the promoted attention lifecycle.
+
+Generated `.pt` files, experiment registries, diagnostics, promotion outputs, and model cards are local research artifacts and should stay uncommitted by default.
+
+## 8. Frontend Workbench
+
+The frontend should feel like an ML workbench, not a generic trading terminal or marketing site.
+
+Implemented surfaces:
+
+- Import sample data and show quality summary.
+- Create the default BTC-USD SMA crossover strategy.
+- Run the January 2024 sample backtest.
+- Review metrics, trades, equity, and drawdown.
+- Score ML risk and show persisted risk labels.
+- Manage paper sessions, simulated orders, positions, summary, and replay.
+- Show dashboard summary, risk alerts, strategy performance, and audit events.
+- Show model status, saved regime runs, baseline disagreement, anomaly context, regime grouped backtest analysis, attention evidence, and saved evidence snapshots.
+- Provide an assistant panel with message history, proposed actions, confirmation controls, and action refresh behavior.
+
+Continuing frontend targets:
+
+- Make promoted artifact state visible without implying deployment quality.
+- Keep rules fallback status clear.
+- Keep attention evidence close to regime replay and baseline comparison.
+- Preserve responsive behavior and chart readability.
+
+## 9. Assistant And Reviewable Actions
+
+The assistant is a workflow explainer and orchestrator, not an autonomous trader.
+
+Implemented behavior:
+
+- Provider neutral backend contract.
+- Deterministic local provider for reproducible demos.
+- Session, message, proposed action, status, payload, execution result, and confirmation persistence.
+- Reviewable actions for backtests, regime replay, attention diagnostics, paper session start, and paper replay.
+- Confirmation and rejection APIs.
+- Audit events for assistant proposals and executed actions.
+- Frontend assistant panel integrated with workbench state.
+
+Assistant boundaries:
+
+- It may explain model state, baseline disagreement, backtest behavior, paper replay results, risk, uncertainty, and useful next experiments.
+- It may propose actions for the user to review.
+- It must not silently mutate state.
+- It must not recommend buying, selling, or holding assets.
+
+## 10. Implementation Progress
+
+Completed major waves:
+
+- Backend MVP foundation: strategy management, market data import, indicators, backtesting, ML risk integration, audit logging, Docker setup, and Swagger documentation.
+- Paper trading and risk policy foundation: simulated sessions, orders, positions, replay, and policy evaluation.
+- Frontend workbench: dashboard workflow for import, strategy, backtest, ML risk, paper trading, charts, audit, anomaly, and regimes.
+- Verification and portfolio evidence: smoke demo, verification docs, screenshots, README polish, and demo evidence workflow.
+- Market data quality wave: read only quality endpoint, workbench rendering, smoke coverage, and documentation.
+- ML experiment governance and diagnostics: training history, evaluation, comparison, promotion gates, model cards, diagnostics, and local artifact hygiene.
+- ML first regime workflow: model status, backend model status, regime run persistence, saved replay results, baseline comparison, regime grouped backtest analysis, dashboard surfacing, and smoke verification.
+- Assistant orchestration wave: persistence, provider contract, confirmed actions, workbench panel, and verification docs.
+- Attention diagnostics wave: artifact metadata status, v2 attention architecture, compatibility comments, diagnostics generation, backend diagnostics endpoint, evidence snapshots, experiment comparison by attention behavior, workbench evidence surfacing, assistant diagnostics actions, and verification.
+- Promoted artifact lifecycle wave has started with documentation and selectable v2 training architecture.
+
+Current recent commits:
 
 ```text
-signalattention/
-├── backend/
-├── ml-service/
-├── data/
-├── docs/
-├── docker-compose.yml
-├── .env.example
-├── README.md
-└── IMPLEMENTATION_PLAN.md
+a48c05a documented promoted artifact lifecycle wave
+04e897b trained inspectable attention artifacts
 ```
 
-### Root-Level Responsibilities
+## 11. Verification Matrix
 
-- `backend/`: Java 21 Spring Boot 3 application.
-- `ml-service/`: Python FastAPI application for MVP risk scoring.
-- `data/`: sample market candle CSV files.
-- `docs/`: architecture notes, API examples, and future design notes.
-- `docker-compose.yml`: local orchestration for PostgreSQL, backend, and ML service.
-- `.env.example`: documented local environment variables.
-- `README.md`: portfolio-ready setup and demo documentation.
-
-### Default Technical Choices
-
-- Java: 21
-- Backend framework: Spring Boot 3
-- Backend build tool: Maven
-- Database: PostgreSQL 16
-- ML service: Python FastAPI
-- Local orchestration: Docker Compose
-- Frontend: excluded from MVP
-- Authentication/JWT: excluded from MVP
-
----
-
-
-## 6. Complete Technology Stack Reference
-
-This section preserves the broader technology plan from the original project document. Not every item is required in the first MVP, but these choices define the intended direction.
-
-### Java / Spring Boot Backend
-
-| Purpose | Technology | Notes |
-| --- | --- | --- |
-| Language | Java 21 | Modern LTS Java version suitable for Spring Boot 3. |
-| Backend framework | Spring Boot 3 | Main API, business logic, services, controllers, and scheduling. |
-| Web API | Spring Web | REST endpoints for strategies, backtests, ML calls, and later paper trading. |
-| Security | Spring Security + JWT | Future user login and protected endpoints; excluded from MVP. |
-| Database access | Spring Data JPA / Hibernate | Entities, repositories, and persistence. |
-| Validation | Jakarta Bean Validation | Request and payload validation. |
-| Scheduling | Spring Scheduler | Future paper-trading ticks, background checks, and scheduled tasks. |
-| API documentation | Swagger / OpenAPI | Primary MVP testing and documentation UI. |
-| Testing | JUnit 5, Mockito, Testcontainers | Unit, service, repository, and integration testing. |
-| Build tool | Maven | Chosen default for simpler Spring Boot setup. |
-
-### Python ML Service
-
-| Purpose | Technology | Notes |
-| --- | --- | --- |
-| ML API | Python FastAPI | Prediction endpoints called by Spring Boot. |
-| Data processing | pandas, NumPy | Feature engineering and model input preparation. |
-| Baseline ML | scikit-learn | Random Forest, Logistic Regression, Isolation Forest, and clustering later. |
-| Attention model | PyTorch optional | Future lightweight Transformer encoder for sequence modeling; NVIDIA GPU acceleration is optional and not part of the baseline MVP. |
-| Model storage | joblib, pickle, `.pt` files | Store scikit-learn and PyTorch model artifacts locally. |
-| Experiments | Jupyter Notebook | Train and evaluate models before productionizing; GPU can be used locally for later PyTorch experiments. |
-| Testing | pytest | Test prediction routes and feature engineering functions. |
-
-### Data, Infrastructure, and Tools
-
-| Purpose | Technology | Notes |
-| --- | --- | --- |
-| Database | PostgreSQL | Primary store for strategies, candles, backtests, trades, and audit events. |
-| Cache/queue | Redis optional | Skip initially; consider for paper-trading sessions or background coordination. |
-| Local orchestration | Docker Compose | Run PostgreSQL, ML service, backend, and optional frontend locally. |
-| Optional GPU runtime | NVIDIA Container Toolkit / Docker GPU support | Future-only path for CUDA-backed PyTorch training or inference; default Compose stack must remain CPU-compatible. |
-| Frontend | React + TypeScript optional | Add only after API is stable. |
-| Charts | Recharts or Plotly optional | Future equity curve, drawdown, and regime visualizations. |
-| API testing | Postman / Insomnia | Manual testing alongside Swagger. |
-| Database GUI | DBeaver optional | Inspect tables and imported market data. |
-| Version control | Git + GitHub | Portfolio hosting and documentation. |
-
----
-
-## 7. Backend Foundation
-
-Generate a Spring Boot application under `backend/` using Maven.
-
-### Required Dependencies
-
-Include these backend dependencies:
-
-- Spring Web
-- Spring Data JPA
-- PostgreSQL Driver
-- Jakarta Bean Validation
-- Springdoc OpenAPI / Swagger UI
-- JUnit 5
-- Mockito
-- Testcontainers PostgreSQL
-
-Optional but acceptable:
-
-- Lombok, if consistently used and documented.
-
-### Backend Package Structure
-
-Use base package:
-
-```text
-com.signalattention
-```
-
-Create these modules/packages:
-
-```text
-com.signalattention.strategies
-com.signalattention.marketdata
-com.signalattention.indicators
-com.signalattention.backtesting
-com.signalattention.ml
-com.signalattention.audit
-com.signalattention.common
-```
-
-### Backend Configuration
-
-Configure:
-
-- PostgreSQL datasource.
-- JPA/Hibernate settings.
-- OpenAPI/Swagger metadata.
-- ML service base URL.
-- Local development profile.
-- Consistent API error responses.
-
-### Suggested Local URLs
-
-- Backend API: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui.html` or Springdoc equivalent
-- ML service: `http://localhost:8000`
-- PostgreSQL: `localhost:5432`
-
----
-
-## 8. Database Model
-
-Use PostgreSQL as the source of truth.
-
-### `Strategy`
-
-Purpose: stores user-defined trading strategy configuration.
-
-Suggested fields:
-
-- `id`
-- `name`
-- `symbol`
-- `timeframe`
-- `strategyType`
-- `rulesJson`
-- `status`
-- `createdAt`
-- `updatedAt`
-
-MVP strategy type:
-
-- `SMA_CROSSOVER`
-
-Suggested statuses:
-
-- `ACTIVE`
-- `DISABLED`
-
-### `MarketCandle`
-
-Purpose: stores imported OHLCV market data.
-
-Suggested fields:
-
-- `id`
-- `symbol`
-- `timeframe`
-- `openTime`
-- `open`
-- `high`
-- `low`
-- `close`
-- `volume`
-
-Required database behavior:
-
-- Index by `symbol`, `timeframe`, and `openTime`.
-- Prevent duplicate candles for the same `symbol`, `timeframe`, and `openTime`.
-
-### `BacktestRun`
-
-Purpose: stores one completed or failed backtest execution.
-
-Suggested fields:
-
-- `id`
-- `strategyId`
-- `startDate`
-- `endDate`
-- `initialBalance`
-- `finalBalance`
-- `totalReturn`
-- `maxDrawdown`
-- `winRate`
-- `profitFactor`
-- `tradeCount`
-- `averageTradeReturn`
-- `feeDrag`
-- `volatility`
-- `mlRiskScore`
-- `mlRiskLabel`
-- `status`
-- `createdAt`
-- `completedAt`
-
-Suggested statuses:
-
-- `COMPLETED`
-- `FAILED`
-
-### `BacktestTrade`
-
-Purpose: stores trades generated by a backtest.
-
-Suggested fields:
-
-- `id`
-- `backtestRunId`
-- `side`
-- `entryTime`
-- `entryPrice`
-- `exitTime`
-- `exitPrice`
-- `quantity`
-- `grossPnl`
-- `fees`
-- `netPnl`
-- `returnPercent`
-
-MVP side:
-
-- `LONG`
-
-### `AuditEvent`
-
-Purpose: append-only event log for important system actions.
-
-Suggested fields:
-
-- `id`
-- `entityType`
-- `entityId`
-- `action`
-- `message`
-- `metadataJson`
-- `createdAt`
-
-Audit events should not be updated after creation.
-
----
-
-## 9. Strategy Management
-
-Implement CRUD support for strategies.
-
-### Endpoints
-
-```text
-POST   /api/strategies
-GET    /api/strategies
-GET    /api/strategies/{id}
-PUT    /api/strategies/{id}
-DELETE /api/strategies/{id}
-```
-
-### Strategy Request Requirements
-
-A strategy create/update request should include:
-
-- `name`
-- `symbol`
-- `timeframe`
-- `strategyType`
-- `rules`
-
-For `SMA_CROSSOVER`, `rules` should include:
-
-- `shortWindow`
-- `longWindow`
-- `initialBalance`
-- `feePercent`
-- `positionSizePercent`
-
-### Strategy Validation
-
-Validate:
-
-- Name is present.
-- Symbol is present.
-- Timeframe is present.
-- Strategy type is supported.
-- Short window is positive.
-- Long window is positive.
-- Short window is less than long window.
-- Initial balance is positive.
-- Fee percentage is zero or positive.
-- Position size percentage is greater than zero and less than or equal to 100.
-
-### Audit Events
-
-Create audit events for:
-
-- Strategy created.
-- Strategy updated.
-- Strategy deleted.
-
----
-
-## 10. Market Data Import
-
-Implement CSV-based OHLCV import.
-
-### Endpoints
-
-```text
-POST /api/market-data/import
-GET  /api/market-data/candles?symbol=BTC-USD&timeframe=1h
-```
-
-### CSV Columns
-
-The MVP CSV format should use these columns:
-
-```text
-symbol,timeframe,openTime,open,high,low,close,volume
-```
-
-### Import Behavior
-
-The import endpoint should:
-
-- Accept a CSV file upload.
-- Parse all rows.
-- Validate required fields.
-- Validate numeric OHLCV values.
-- Validate timestamps.
-- Reject or report duplicate candle rows.
-- Store valid candles in PostgreSQL.
-- Return an import summary.
-
-### Import Summary Response
-
-Return at least:
-
-- Total rows read.
-- Rows imported.
-- Rows skipped or rejected.
-- Error messages for invalid rows.
-
-### Candle Query Behavior
-
-The candle query endpoint should:
-
-- Require `symbol` and `timeframe`.
-- Optionally support start/end time filters.
-- Return candles sorted by `openTime` ascending.
-
-### Audit Events
-
-Create audit events for:
-
-- CSV import completed.
-- CSV import failed.
-
----
-
-## 11. Indicators
-
-Implement indicator logic separately from controllers and persistence code.
-
-### MVP Indicator
-
-Implement:
-
-- Simple Moving Average, `SMA`.
-
-### SMA Behavior
-
-The SMA calculator should:
-
-- Accept ordered close prices or candles.
-- Accept a positive integer window.
-- Return no SMA value until enough data exists.
-- Produce deterministic decimal output.
-
-### Indicator Tests
-
-Add unit tests for:
-
-- Normal SMA calculation.
-- Insufficient history.
-- Invalid zero or negative windows.
-- Deterministic sample data.
-
----
-
-## 12. Backtesting
-
-Implement the SMA crossover backtesting flow.
-
-### Endpoints
-
-```text
-POST /api/strategies/{id}/backtests
-GET  /api/backtests/{id}
-GET  /api/backtests/{id}/trades
-GET  /api/backtests/{id}/metrics
-```
-
-### Backtest Request
-
-A backtest request should include:
-
-- `startDate`
-- `endDate`
-
-Optional overrides may include:
-
-- `initialBalance`
-- `feePercent`
-- `positionSizePercent`
-
-If optional overrides are absent, use the strategy rules.
-
-### Backtest Execution Behavior
-
-The backtest engine should:
-
-1. Load the strategy.
-2. Load candles for the strategy symbol and timeframe within the requested date range.
-3. Sort candles by `openTime` ascending.
-4. Calculate short and long SMA values.
-5. Detect crossover events.
-6. Enter a long position when short SMA crosses above long SMA.
-7. Exit the long position when short SMA crosses below long SMA.
-8. Apply fees on entry and exit.
-9. Track cash balance, open position, closed trades, and equity.
-10. Persist the backtest run and trades.
-11. Calculate and store metrics.
-12. Create audit events.
-
-### MVP Trading Assumptions
-
-Use these assumptions for the first implementation:
-
-- Long-only strategy.
-- One open position at a time.
-- No leverage.
-- No short selling.
-- No slippage in MVP.
-- No stop-loss or take-profit in MVP.
-- Fees are percentage-based.
-- Trades execute at candle close price.
-
-### Metrics
-
-Calculate:
-
-- `totalReturn`
-- `maxDrawdown`
-- `winRate`
-- `profitFactor`
-- `tradeCount`
-- `averageTradeReturn`
-- `feeDrag`
-- `volatility`
-
-### Backtest Failure Cases
-
-Handle gracefully:
-
-- Strategy not found.
-- Unsupported strategy type.
-- No candles found.
-- Not enough candles for the long SMA window.
-- Invalid date range.
-- Invalid strategy rules.
-
-### Audit Events
-
-Create audit events for:
-
-- Backtest completed.
-- Backtest failed.
-
----
-
-## 13. Python ML Service
-
-Create a Python FastAPI app under `ml-service/`.
-
-### Required Endpoints
-
-```text
-GET  /health
-POST /predict/strategy-risk
-```
-
-### MVP Risk Scoring
-
-The MVP risk score should be rule-based. Do not train a real model yet.
-
-The MVP ML service should remain CPU-first. NVIDIA GPU support is useful for later PyTorch training or heavier inference, but the first risk-scoring endpoint must not require CUDA, GPU drivers, or GPU-enabled Docker to run.
-
-### Risk Prediction Input
-
-Accept backtest metrics such as:
-
-- `totalReturn`
-- `maxDrawdown`
-- `winRate`
-- `profitFactor`
-- `tradeCount`
-- `averageTradeReturn`
-- `feeDrag`
-- `volatility`
-
-### Risk Prediction Output
-
-Return:
-
-- `riskScore`
-- `riskLabel`
-- `reasons`
-
-Supported labels:
-
-- `LOW_RISK`
-- `MEDIUM_RISK`
-- `HIGH_RISK`
-- `LIKELY_OVERFIT`
-
-### Example Rule Intent
-
-The exact thresholds can be refined during implementation, but the MVP should roughly follow this intent:
-
-- High drawdown increases risk.
-- Very low trade count increases overfitting risk.
-- Very high return with very low trade count may be likely overfit.
-- Low profit factor increases risk.
-- High volatility increases risk.
-- Strong metrics across enough trades reduce risk.
-
-### ML Service Tests
-
-Add tests for:
-
-- Health endpoint.
-- Optional GPU health endpoint in future phases, only when CUDA-backed models are introduced.
-- Valid prediction request.
-- Invalid prediction request.
-- Each risk label branch.
-
-### Optional Future GPU Path
-
-When the project moves beyond rule-based scoring into PyTorch sequence models:
-
-- Add a separate GPU-enabled Docker profile or service, rather than changing the default `ml-service`.
-- Pin compatible CUDA, PyTorch, and Python versions.
-- Add a `GET /health/gpu` endpoint that reports CUDA availability and device name.
-- Keep CPU fallback behavior for rule-based and scikit-learn scoring.
-- Document local verification with `nvidia-smi` from inside a container.
-
----
-
-
-## 14. Long-Term Architecture Notes
-
-These notes preserve the broader architecture from the PDF while keeping the MVP focused.
-
-### Future Backend Modules
-
-| Module | Responsibility | MVP Status |
-| --- | --- | --- |
-| `auth` | Registration, login, JWT creation, security configuration. | Future |
-| `users` | User entity, roles, user repository, current-user lookup. | Future |
-| `strategies` | Strategy CRUD, rules, JSON strategy configuration. | MVP |
-| `marketdata` | CSV imports, candle storage, market data lookup. | MVP |
-| `indicators` | SMA, EMA, RSI, MACD, volatility, volume z-score calculators. | SMA only in MVP |
-| `backtesting` | Trade simulation and metrics calculation. | MVP |
-| `risk` | Risk policies, order approval/rejection, position sizing. | Implemented baseline |
-| `ml` | HTTP client and DTOs for Python predictions. | MVP baseline |
-| `papertrading` | Sessions, simulated orders, positions, P&L tracking, manual candle replay. | Implemented baseline |
-| `audit` | Append-only events for important decisions. | MVP |
-| `dashboard` | Aggregated endpoints for portfolio/demo summary views. | Implemented baseline API |
-| `common` | Exceptions, error responses, utilities, validation. | MVP |
-
-### Future Python ML Service Structure
-
-```text
-ml-service/app
-├── main.py
-├── routes/
-│   ├── strategy_risk.py
-│   ├── market_regime.py
-│   ├── anomaly.py
-│   └── transformer.py
-├── services/
-│   ├── feature_engineering.py
-│   ├── prediction_service.py
-│   ├── training_service.py
-│   ├── sequence_builder.py
-│   └── transformer_predictor.py
-├── schemas/
-│   ├── strategy_risk_schema.py
-│   ├── regime_schema.py
-│   └── anomaly_schema.py
-└── models/
-    ├── strategy_risk_model.joblib
-    ├── regime_model.joblib
-    └── market_transformer.pt
-```
-
-### Long-Term Data Model Additions
-
-Future entities from the original plan:
-
-- `User`: `id`, `email`, `passwordHash`, `role`, `createdAt`.
-- `RiskPolicy`: `strategyId`, max daily loss, max position size, stop loss, take profit, cooldown.
-- `PaperTradingSession`: strategy, balances, status, start/stop timestamps.
-- `PaperOrder`: session, symbol, side, quantity, simulated price, status, reason.
-
----
-
-## 15. Backend ML Client
-
-Add a typed backend client for the FastAPI service.
-
-### Backend Endpoint
-
-```text
-POST /api/backtests/{id}/ml-risk-score
-```
-
-### Behavior
-
-The endpoint should:
-
-1. Load the backtest run.
-2. Build an ML request from stored metrics.
-3. Call `POST /predict/strategy-risk` on the ML service.
-4. Store `riskScore` and `riskLabel` on the backtest run.
-5. Return the ML prediction response to the caller.
-6. Create audit events for success or failure.
-
-### Failure Handling
-
-If the ML service is unavailable:
-
-- Return a clear API error.
-- Do not corrupt the existing backtest run.
-- Create an audit event for the failure.
-
----
-
-## 16. Audit Logging
-
-Audit logging should be lightweight but consistent.
-
-### Required Audit Actions
-
-Record audit events for:
-
-- Strategy creation.
-- Strategy update.
-- Strategy deletion.
-- CSV import completion.
-- CSV import failure.
-- Backtest completion.
-- Backtest failure.
-- ML risk score request completion.
-- ML risk score request failure.
-
-### Audit Metadata
-
-Use JSON metadata for details such as:
-
-- Strategy ID.
-- Backtest ID.
-- Symbol.
-- Timeframe.
-- Imported row counts.
-- Error summaries.
-- Risk label.
-
----
-
-## 17. Docker Compose
-
-Create local Docker Compose orchestration.
-
-### Services
-
-Required services:
-
-- `postgres`
-- `backend`
-- `ml-service`
-
-### PostgreSQL Defaults
-
-Use these local defaults:
-
-```text
-POSTGRES_DB=signalattention
-POSTGRES_USER=signalattention
-POSTGRES_PASSWORD=signalattention
-```
-
-### Ports
-
-Expose:
-
-- PostgreSQL: `5432:5432`
-- Backend: `8080:8080`
-- ML service: `8000:8000`
-
-### Startup Order
-
-The backend should depend on:
-
-- `postgres`
-- `ml-service`
-
-The backend should be resilient if the ML service is temporarily unavailable.
-
-### Optional GPU Compose Profile
-
-Do not make the default local stack require GPU support. CUDA-backed PyTorch work must remain behind an optional Compose profile such as:
+Use this matrix after implementation waves:
 
 ```bash
-docker compose --profile gpu up --build
+cd backend && ./mvnw test
+cd ml-service && ../.venv/bin/python -m pytest
+cd frontend && npm run test
+cd frontend && npm run build
+python3 -m unittest scripts/smoke_demo_test.py
+docker compose config
+python3 scripts/smoke_demo.py --timeout-seconds 30
 ```
 
-The GPU profile should:
+For focused promoted artifact lifecycle work:
 
-- Use a CUDA/PyTorch-compatible ML service image.
-- Request NVIDIA GPU devices through Docker Compose.
-- Keep `postgres` and `backend` unchanged where possible.
-- Fall back to the CPU `ml-service` for MVP rule-based scoring.
-
----
-
-## 18. Documentation
-
-Create a portfolio-ready README.
-
-### README Sections
-
-Include:
-
-- Project description.
-- Why the project is risk-focused rather than profit-prediction-focused.
-- Architecture overview.
-- Tech stack.
-- Local setup.
-- Docker Compose commands.
-- Swagger URL.
-- ML service URL.
-- Sample API workflow.
-- Known limitations.
-- Future enhancements.
-
-### Demo Flow
-
-Document this manual flow:
-
-1. Start Docker Compose.
-2. Import sample candles.
-3. Create an SMA crossover strategy.
-4. Run a backtest.
-5. View trades.
-6. View metrics.
-7. Request ML risk score.
-8. Review audit events.
-
----
-
-## 19. Testing Plan
-
-### Backend Unit Tests
-
-Add unit tests for:
-
-- SMA calculation.
-- Crossover signal generation.
-- Backtest trade creation.
-- Metrics calculation.
-- CSV validation.
-- ML client request/response mapping.
-
-### Backend Integration Tests
-
-Add integration tests for:
-
-- Strategy CRUD.
-- Market data import.
-- Candle querying.
-- Backtest execution.
-- Repository behavior with Testcontainers PostgreSQL.
-
-### ML Service Tests
-
-Add Python tests for:
-
-- `GET /health`.
-- `POST /predict/strategy-risk`.
-- Validation errors.
-- Low-risk scenario.
-- Medium-risk scenario.
-- High-risk scenario.
-- Likely-overfit scenario.
-
-### Manual Acceptance Test
-
-From a clean clone:
-
-1. Run `docker compose up --build`.
-2. Open Swagger UI.
-3. Import sample BTC-USD 1h candles.
-4. Create an SMA crossover strategy.
-5. Run a backtest.
-6. Confirm trades were generated.
-7. Confirm metrics were calculated.
-8. Request an ML risk score.
-9. Confirm the backtest stores the risk score and label.
-10. Confirm audit events exist for the flow.
-
----
-
-## 20. Implementation Order
-
-Build the MVP in this order:
-
-1. Create repository structure and root documentation placeholders.
-2. Generate Spring Boot Maven app.
-3. Add Docker Compose with PostgreSQL.
-4. Configure backend database connection and Swagger.
-5. Implement entities and repositories.
-6. Implement strategy CRUD.
-7. Implement CSV import and sample data.
-8. Implement SMA indicator.
-9. Implement SMA crossover backtester.
-10. Implement metrics calculation.
-11. Create FastAPI ML service.
-12. Connect backend to ML service.
-13. Add audit logging.
-14. Add tests.
-15. Polish README and demo flow.
-
----
-
-## 21. Explicit MVP Exclusions
-
-Do not include these in the first milestone:
-
-- Real-money trading, permanently.
-- Broker, exchange, custody, or payment API integration, permanently.
-- Live, automated, recommended, or broker-backed order execution, permanently.
-- Investment advice, trade recommendations, or copy-trading behavior, permanently.
-- Full JWT authentication.
-- Multi-user account management.
-- React frontend.
-- Redis queueing.
-- Kubernetes.
-- AWS/cloud deployment.
-- Transformer or attention model implementation.
-- Custom user-submitted strategy code.
-
----
-
-## 22. Future Enhancements
-
-After the MVP is stable, consider:
-
-- JWT authentication and users.
-- Risk policies and order approval/rejection.
-- Paper trading simulator features that remain simulated-only.
-- RSI, MACD, Bollinger Bands, breakout, and mean-reversion strategies.
-- Walk-forward testing.
-- Monte Carlo simulation.
-- Strategy comparison views.
-- React dashboard.
-- Market regime classifier.
-- Anomaly detector.
-- PyTorch Transformer encoder for sequence-based regime or trade-quality classification.
-- Optional local NVIDIA GPU acceleration for PyTorch training and heavier model inference.
-- Cloud deployment after local reproducibility is strong.
-
----
-
-
-## 23. Extended API Roadmap
-
-These endpoints are part of the broader project vision. Risk controls, baseline paper trading, and dashboard summary are implemented as backend APIs; authentication, market regime/anomaly analysis, richer dashboard views, and frontend work remain future scope.
-
-The extended roadmap must preserve the research/simulation boundary. It may add richer analysis and simulated workflows, but it must not add broker connectivity, live order routing, custody, or investment-advice features.
-
-### Authentication
-
-```text
-POST /api/auth/register
-POST /api/auth/login
+```bash
+cd ml-service
+../.venv/bin/python -m pytest tests/test_train_market_regime_model.py tests/test_market_regime_torch_model.py
 ```
 
-### Market Regime and Anomaly Analysis
+The running stack smoke demo requires Docker and local service access. Docker backed persistence tests may be skipped when the Docker socket is unavailable.
 
-```text
-GET  /api/market-regime?symbol=BTC-USD
-POST /api/anomaly-check
-```
+## 12. Assumptions
 
-### Risk Controls Implemented Baseline
-
-```text
-POST /api/strategies/{id}/risk-policy
-GET  /api/strategies/{id}/risk-policy
-POST /api/risk/evaluate-order
-```
-
-### Paper Trading Implemented Baseline
-
-```text
-POST  /api/strategies/{id}/paper-sessions
-GET   /api/strategies/{id}/paper-sessions
-GET   /api/paper-sessions/{id}
-PATCH /api/paper-sessions/{id}/start
-PATCH /api/paper-sessions/{id}/stop
-POST  /api/paper-sessions/{id}/replay
-GET   /api/paper-sessions/{id}/orders
-GET   /api/paper-sessions/{id}/positions
-GET   /api/paper-sessions/{id}/summary
-```
-
-### Dashboard
-
-```text
-GET /api/dashboard/summary
-GET /api/dashboard/strategy-performance
-GET /api/dashboard/risk-alerts
-```
-
----
-
-## 24. Attention Model Concept
-
-The attention-based component is an advanced feature and should not be built before the baseline backtesting and ML risk-scoring flow works.
-
-| Transformer Concept | Trading Interpretation |
-| --- | --- |
-| Token | One candle or timestep. |
-| Sequence | Last 64, 128, or 256 candles. |
-| Embedding | Numeric representation of candle features. |
-| Positional encoding | Preserves candle order. |
-| Attention head | Learns relationships between important past candles. |
-| Classification head | Outputs regime, trade quality, or drawdown risk. |
-
-Example input shape:
-
-```text
-batch_size x sequence_length x feature_count
-32 x 128 x 11
-```
-
-Example features per candle:
-
-- open, high, low, close, volume
-- return
-- rolling volatility
-- RSI
-- SMA distance
-- MACD value
-- volume z-score
-
-Potential future outputs:
-
-- Market regime classification.
-- Trade quality score.
-- Drawdown risk warning.
-- Anomaly detection support.
-
-### Local NVIDIA GPU Use
-
-GPU acceleration belongs with this future attention-model phase, not the Backend MVP. When implemented locally:
-
-- Training scripts and notebooks may use CUDA if available.
-- Inference should report whether it is using CPU or GPU.
-- The API should avoid returning different business results solely because GPU is enabled.
-- Tests should cover CPU execution, with GPU checks treated as optional environment-specific tests.
-
----
-
-## 25. Seven-Phase Development Roadmap
-
-| Phase | Scope | Definition of Done |
-| --- | --- | --- |
-| Phase 1 - Backend Foundation | Spring Boot app, PostgreSQL, strategy entity, candle entity, Swagger, Docker Compose. | App runs locally and can create strategies and store/import candle data. |
-| Phase 2 - Basic Backtesting | SMA crossover, indicators, trade simulation, metrics. | User can run a backtest and receive metrics and simulated trades. |
-| Phase 3 - Baseline ML Service | FastAPI risk endpoint and Spring Boot ML client. | Backtest result includes ML risk score and classification. |
-| Phase 4 - Risk Engine | Risk policy, max position size, stop-loss, max daily loss, audit events. | Implemented baseline simulated-order approval/rejection with logged reasons. |
-| Phase 5 - Paper Trading | Paper sessions, simulated orders, positions, replayed candles or scheduled checks. | Implemented baseline sessions, manual orders, positions, summaries, and manual candle replay. |
-| Phase 6 - Attention Model | Sequence builder, PyTorch Transformer encoder, market regime endpoint, optional NVIDIA GPU acceleration. | CPU-safe regime foundation, artifact-backed torch inference, local training/export script, and optional torch Compose profile are implemented. Model quality and experiment tracking are now implemented too: seeded mini batch training with early stopping, a regularized model with positional encoding, baseline aware evaluation, and a versioned experiment registry with a comparison view, all reproducible on CPU. |
-| Phase 7 - Polish | README, tests, seed data, optional dashboard, screenshots. | Portfolio-ready project with clear docs and reproducible local setup. |
-
----
-
-## 26. Risks and Design Warnings
-
-| Risk | Mitigation |
-| --- | --- |
-| Scope creep | Build local MVP first: one strategy, one dataset, one ML endpoint. |
-| Overpromising trading performance | Position the app as research/risk analysis, not a profit generator. |
-| Bad market data quality | Validate CSV rows, detect missing candles, and log data gaps. |
-| ML model gives false confidence | Show reasons/limitations and keep deterministic risk rules separate from ML. |
-| GPU-specific setup makes the project hard to run | Keep the MVP CPU-compatible and add GPU support only as an optional profile for later PyTorch work. |
-| Transformer complexity | Add it only after baseline backtesting and simple ML are complete. |
-| Real-money trading danger | Keep live trading, broker integration, custody, order routing, and trade recommendations permanently out of scope. |
-| Uncontrolled user strategy code | Use structured JSON strategies before allowing custom scripting. |
-
----
-
-## 27. Portfolio Deliverables Checklist
-
-The project should eventually include:
-
-- Polished README with setup, architecture overview, screenshots, and example API calls.
-- Swagger/OpenAPI docs showing backend endpoints.
-- Sample CSV market dataset included in the repository.
-- Demo scenario: import candles, create strategy, run backtest, receive ML risk score, review audit log.
-- Short explanation of why the app uses ML for risk analysis instead of guaranteed price prediction.
-- Architecture diagram showing backend, ML service, PostgreSQL, and optional dashboard.
-- Optional React dashboard with equity curve, drawdown chart, risk score, and regime classification.
-
-## 29. Current Project Progress
-
-- Phases 1-5 are implemented as backend-first local MVP capabilities.
-- Phase 6 now has a CPU-safe foundation plus a hardened optional torch path: recent candle sequence schemas, deterministic feature extraction, rule-based market regime classification, artifact-backed PyTorch Transformer inference, a local training/export script, optional torch Compose profile, ML `POST /predict/market-regime`, and backend `GET /api/market-regime`.
-- Model quality and experiment tracking for the optional torch path are now implemented while keeping CPU reproducibility: a seeded mini batch training loop with per epoch validation and `--patience` early stopping that keeps the best epoch, a regularized model with light dropout and sinusoidal positional encoding, baseline aware evaluation that reports a majority class baseline and lift with an optional `--holdout-ratio`, and a versioned experiment registry (one entry per run id, seed, git commit, torch version, and per epoch history) with a `compare_market_regime_experiments.py` view.
-- The React dashboard/workbench is implemented for the local demo path: import sample candles, create SMA strategies, run backtests, score ML risk, manage paper sessions, replay candles, and review summary, risk alert, audit, anomaly, strategy comparison, chart, and market regime panels.
-- The running-stack smoke script covers service reachability, sample import, market data quality analysis, strategy creation, backtesting, persisted ML risk score, paper trading, dashboard, market regime, anomaly, and audit checks.
-- Further model quality work (richer features, independent ground truth, hyperparameter search) remains optional research and is not required for the local research baseline.
-
-## 30. Next Implementation Wave
-
-The next wave is Phase 7 portfolio polish. It should improve how easy the project is to verify, demo, and explain, without adding auth, users, broker connections, live trading, cloud deployment, or new model research.
-
-Planned commit-sized work:
-
-1. Document the Phase 7 targets and current progress. Done.
-2. Add a demo evidence workflow for recording local smoke, Swagger, frontend, and ML health checks. Done.
-3. Polish dashboard empty states and service error states. Done.
-4. Tighten dashboard refresh behavior around the main demo workflow. Done.
-5. Add screenshot capture guidance for portfolio evidence. Done.
-6. Finalize the verification matrix. Done.
-7. Give the README a final portfolio pass with plain, human wording. Done.
-8. Commit portfolio screenshots from the verified running stack. Done.
-
-After each implementation wave, update `PROJECT_PROGRESS.local.md` with completed commits, verification results, blockers, and next steps. That file is intentionally local-only and should not be committed.
-
-## 31. Market Data Quality Wave
-
-Add deterministic market data quality checks before larger feature work. This wave makes imported candle data easier to trust and explain in the portfolio demo without expanding into live trading or model research.
-
-Planned commit-sized work:
-
-1. Document the market data quality wave in this implementation plan.
-2. Add backend quality analysis for candle count, first/last candle time, expected interval, duplicate timestamps, missing intervals, invalid OHLC relationships, and zero or negative volume.
-3. Expose `GET /api/market-data/quality?symbol=BTC-USD&timeframe=1h`.
-4. Surface the quality summary in the React workbench after import and dashboard refresh.
-5. Cover backend quality rules and frontend quality rendering/client behavior.
-6. Include the quality endpoint in the running-stack smoke workflow and demo documentation.
-7. Update verification results and `PROJECT_PROGRESS.local.md` after implementation.
-
-Quality checks are read-only warnings. They should not mutate imported candles or block backtests.
-
-## 32. Code Commenting Wave
-
-Add short comments for future readers before doing more feature work. The comments should help a junior to intermediate developer understand why the main workflows exist and where important state changes happen.
-
-Planned commit-sized work:
-
-1. Document the code commenting wave in this implementation plan.
-2. Comment backend simulation flow: backtests, SMA signals, CSV import, risk evaluation, paper order execution, and paper replay.
-3. Comment backend analysis integrations: ML client calls, market regime/anomaly proxying, dashboard aggregation, and audit filtering.
-4. Comment ML service reasoning paths: rule scoring, feature extraction, classifier selection, torch artifact validation, and training/evaluation helpers.
-5. Comment frontend workflow state: dashboard refresh, selected strategy/session state, busy actions, paper refreshes, and chart coordinate helpers.
-6. Comment the smoke workflow phases in `scripts/smoke_demo.py`.
-7. Update verification results and `PROJECT_PROGRESS.local.md` after implementation.
-
-Comment style:
-
-- Keep comments short and plain.
-- Explain workflow intent, domain rules, or non-obvious calculations.
-- Do not comment every getter, setter, record, repository, enum, or simple controller method.
-- Do not add comments that just repeat the code.
-
-## 33. ML Experiment Governance Wave
-
-Add optional governance for torch market-regime experiments without changing the default CPU-safe rules path.
-
-Planned commit-sized work:
-
-1. Document the ML experiment governance wave.
-2. Add experiment gate helpers for holdout scope, minimum accuracy, minimum lift over baseline, and artifact hash presence.
-3. Cover experiment gate helpers.
-4. Add promotion ranking helpers.
-5. Cover promotion ranking helpers.
-6. Add a market regime promotion script.
-7. Cover the promotion script.
-8. Add model card rendering helpers.
-9. Add a model card generator script.
-10. Cover model card generation.
-11. Add a market regime sweep dry-run script.
-12. Cover sweep dry-run behavior.
-13. Document the governance workflow and verification results.
-
-## 34. ML Experiment Diagnostics Wave
-
-Add optional diagnostics for torch market-regime experiments before adding more model complexity. This wave should make local experiment results easier to interpret without changing the default CPU-safe rules path, backend APIs, frontend workflow, Docker runtime defaults, live data boundaries, or trading safety boundaries.
-
-Planned commit-sized work:
-
-1. Document the ML diagnostics wave and keep generated model artifacts local-only.
-2. Add market regime experiment diagnostics for registry summaries, incomplete runs, ranking, promotion gates, label weaknesses, and confusion pairs.
-3. Cover diagnostics helpers and script output behavior.
-4. Document the diagnostics workflow and verification results.
-
-Diagnostics should read local experiment registry data and optional evaluation reports. Generated JSON or Markdown diagnostics belong under `ml-service/models/experiments/` by default and should not be committed.
-
-The generated promotion summaries, model cards, and model artifacts are local research outputs and should not be committed by default.
-
----
-
-## 28. Assumptions and Defaults
-
-- The project starts from an empty repository.
-- The first deliverable is the local Backend MVP.
-- Maven is the Java build tool.
-- Java 21 and Spring Boot 3 are used.
-- PostgreSQL 16 is used locally through Docker Compose.
-- The ML service starts as rule-based FastAPI, not a trained model.
-- NVIDIA GPU support is optional and reserved for later PyTorch model work; the default MVP stack must run without a GPU.
-- Strategy execution is long-only with one position at a time.
-- Trades execute at candle close price.
-- Swagger is sufficient as the initial UI.
-- README quality matters because this is intended as a portfolio project.
+- The canonical implementation plan is this file: `IMPLEMENTATION_PLAN.md`.
+- The earlier follow-up planning content has been merged here and should not be kept as a second source of truth.
+- Ignored local progress trackers are working notes only; public progress belongs in this plan and project docs.
+- Traditional indicators and rule based methods remain useful baselines.
+- The attention based market regime path is the main product direction.
+- Default local setup remains CPU safe.
+- Optional torch artifacts and model outputs stay local unless explicitly curated for documentation.
+- Generated model artifacts are research outputs, not deployment approvals.
