@@ -22,7 +22,13 @@ from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
 )
-from app.services.market_regime_torch_model import DEFAULT_TORCH_MODEL_CONFIG, TORCH_MODEL_ARCHITECTURE_V1, build_transformer_model
+from app.services.market_regime_torch_model import (
+    DEFAULT_TORCH_MODEL_CONFIG,
+    TORCH_MODEL_ARCHITECTURE_V1,
+    TORCH_MODEL_ARCHITECTURE_V2,
+    build_attention_transformer_model,
+    build_transformer_model,
+)
 
 
 LABELS = ["SIDEWAYS", "TRENDING_UP", "TRENDING_DOWN", "HIGH_VOLATILITY"]
@@ -58,12 +64,7 @@ def main() -> None:
 
     inputs = torch.tensor(normalized_train_windows, dtype=torch.float32, device=device)
     targets = torch.tensor(train_labels, dtype=torch.long, device=device)
-    model = build_transformer_model(
-        torch,
-        feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
-        class_count=len(LABELS),
-        config=model_config,
-    ).to(device)
+    model = build_training_model(torch, args.architecture, model_config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     loss_function = torch.nn.CrossEntropyLoss()
 
@@ -93,7 +94,7 @@ def main() -> None:
                 "sequenceLength": args.sequence_length,
                 "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
                 "labels": LABELS,
-                "architecture": TORCH_MODEL_ARCHITECTURE_V1,
+                "architecture": args.architecture,
                 "normalization": {"mean": means, "std": stds},
                 "model": model_config,
             },
@@ -135,6 +136,21 @@ def build_model_config(args: argparse.Namespace) -> dict:
     if args.no_positional_encoding:
         config["usePositionalEncoding"] = False
     return config
+
+
+def build_training_model(torch, architecture: str, model_config: dict):
+    """Select the artifact architecture while keeping v1 as the stable default."""
+    builder = (
+        build_attention_transformer_model
+        if architecture == TORCH_MODEL_ARCHITECTURE_V2
+        else build_transformer_model
+    )
+    return builder(
+        torch,
+        feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
+        class_count=len(LABELS),
+        config=model_config,
+    )
 
 
 def build_minibatches(item_count: int, batch_size: int, seed: int) -> list[list[int]]:
@@ -264,6 +280,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--dropout", type=float, default=None, help="Override the model dropout (defaults to the model config value).")
     parser.add_argument("--no-positional-encoding", action="store_true", help="Disable sinusoidal positional encoding.")
+    parser.add_argument(
+        "--architecture",
+        choices=[TORCH_MODEL_ARCHITECTURE_V1, TORCH_MODEL_ARCHITECTURE_V2],
+        default=TORCH_MODEL_ARCHITECTURE_V1,
+        help="Select the saved artifact architecture. v2 can expose attention weights for diagnostics.",
+    )
     parser.add_argument("--model-version", default="local-transformer-v1")
     parser.add_argument("--experiment-name")
     parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
@@ -451,6 +473,7 @@ def write_experiment_manifest(
             "batchSize": args.batch_size,
             "patience": args.patience,
             "modelVersion": args.model_version,
+            "architecture": args.architecture,
             "model": model_config,
             "epochHistory": training_outcome["epochHistory"],
             "bestEpoch": training_outcome["bestEpoch"],
@@ -489,6 +512,7 @@ def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path,
         "artifact": manifest["artifact"],
         "manifestPath": str(manifest_path),
         "modelVersion": args.model_version,
+        "architecture": training.get("architecture"),
         "featureVersion": manifest["featureVersion"],
         "sequenceLength": args.sequence_length,
         "labels": manifest["labels"],

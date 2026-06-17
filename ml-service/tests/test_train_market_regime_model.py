@@ -11,9 +11,11 @@ from app.services.market_regime_experiment import (
     upsert_experiment_entry,
     write_experiment_registry,
 )
+from app.services.market_regime_torch_model import TORCH_MODEL_ARCHITECTURE_V1, TORCH_MODEL_ARCHITECTURE_V2
 from scripts.train_market_regime_model import (
     build_minibatches,
     build_model_config,
+    build_training_model,
     build_training_registry_entry,
     chronological_split_index,
     label_distribution,
@@ -63,6 +65,29 @@ def test_parse_args_accepts_experiment_registry_options(monkeypatch, tmp_path) -
 
     assert args.experiment_name == "baseline"
     assert args.experiments_dir == experiments_dir
+    assert args.architecture == TORCH_MODEL_ARCHITECTURE_V1
+
+
+def test_parse_args_accepts_attention_architecture(monkeypatch, tmp_path) -> None:
+    output_path = tmp_path / "model.pt"
+    csv_path = tmp_path / "candles.csv"
+    monkeypatch.setattr(
+        training_script.sys,
+        "argv",
+        [
+            "train_market_regime_model.py",
+            "--csv-path",
+            str(csv_path),
+            "--output",
+            str(output_path),
+            "--architecture",
+            TORCH_MODEL_ARCHITECTURE_V2,
+        ],
+    )
+
+    args = training_script.parse_args()
+
+    assert args.architecture == TORCH_MODEL_ARCHITECTURE_V2
 
 
 def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
@@ -90,6 +115,7 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
         "validationRatio": 0.2,
         "finalTrainLoss": 0.12,
         "validationAccuracy": 0.75,
+        "training": {"architecture": TORCH_MODEL_ARCHITECTURE_V2},
     }
 
     entry = build_training_registry_entry(args, tmp_path / "market-regime.pt.manifest.json", manifest, "run-123")
@@ -98,6 +124,7 @@ def test_build_training_registry_entry_uses_manifest_metrics(tmp_path) -> None:
     assert entry["runId"] == "run-123"
     assert entry["dataset"]["sha256"] == "dataset"
     assert entry["artifact"]["sha256"] == "artifact"
+    assert entry["architecture"] == TORCH_MODEL_ARCHITECTURE_V2
     assert entry["labels"] == ["SIDEWAYS"]
     assert entry["windowRanges"]["validation"]["firstWindowEnd"] == "2024-01-01T08:00:00+00:00"
     assert entry["training"]["validationAccuracy"] == 0.75
@@ -345,6 +372,36 @@ def test_build_model_config_keeps_defaults_when_no_overrides() -> None:
 
     assert config["usePositionalEncoding"] is True
     assert config["dropout"] == 0.1
+
+
+def test_build_training_model_selects_v1_builder(monkeypatch) -> None:
+    calls = []
+
+    def fake_builder(torch, *, feature_count: int, class_count: int, config: dict) -> str:
+        calls.append((feature_count, class_count, config))
+        return "v1-model"
+
+    monkeypatch.setattr(training_script, "build_transformer_model", fake_builder)
+
+    model = build_training_model("torch", TORCH_MODEL_ARCHITECTURE_V1, {"dropout": 0.1})
+
+    assert model == "v1-model"
+    assert calls == [(10, 4, {"dropout": 0.1})]
+
+
+def test_build_training_model_selects_v2_attention_builder(monkeypatch) -> None:
+    calls = []
+
+    def fake_builder(torch, *, feature_count: int, class_count: int, config: dict) -> str:
+        calls.append((feature_count, class_count, config))
+        return "v2-model"
+
+    monkeypatch.setattr(training_script, "build_attention_transformer_model", fake_builder)
+
+    model = build_training_model("torch", TORCH_MODEL_ARCHITECTURE_V2, {"dropout": 0.1})
+
+    assert model == "v2-model"
+    assert calls == [(10, 4, {"dropout": 0.1})]
 
 
 def test_train_with_early_stopping_stops_on_plateau_and_restores_best_state() -> None:
