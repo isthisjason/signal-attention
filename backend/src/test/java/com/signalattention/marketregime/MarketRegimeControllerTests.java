@@ -123,6 +123,7 @@ class MarketRegimeControllerTests {
                 Instant.parse("2024-01-01T00:00:00Z"),
                 Instant.parse("2024-01-01T00:00:01Z"),
                 0,
+                null,
                 List.of(),
                 List.of(),
                 List.of()
@@ -133,6 +134,19 @@ class MarketRegimeControllerTests {
 
         assertThat(actual).isSameAs(expected);
         verify(service).runRegimeReplay(request);
+    }
+
+    @Test
+    void compareRegimeRunsDelegatesToService() {
+        MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
+        MarketRegimeController controller = new MarketRegimeController(service);
+        RegimeRunComparisonResponse expected = new RegimeRunComparisonResponse("BTC-USD", "1h", List.of());
+        when(service.compareRegimeRuns("BTC-USD", "1h", 10)).thenReturn(expected);
+
+        RegimeRunComparisonResponse actual = controller.compareRegimeRuns("BTC-USD", "1h", 10);
+
+        assertThat(actual).isSameAs(expected);
+        verify(service).compareRegimeRuns("BTC-USD", "1h", 10);
     }
 
     private MlMarketRegimeResponse response() {

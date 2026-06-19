@@ -11,8 +11,11 @@ import com.signalattention.marketregime.RegimeRunRepository;
 import com.signalattention.papertrading.PaperSessionStatus;
 import com.signalattention.papertrading.PaperSessionRepository;
 import com.signalattention.strategies.StrategyRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,14 +119,32 @@ public class AssistantService {
         RegimeRun latestRun = regimeRunRepository.findAll().stream()
                 .max(Comparator.comparing(RegimeRun::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .orElse(null);
+        RegimeRun previousRun = null;
         String latestLabel = null;
         Integer pointCount = null;
+        BigDecimal averageConfidence = null;
+        BigDecimal disagreementRate = null;
+        Boolean modeChanged = null;
+        Boolean artifactChanged = null;
         if (latestRun != null) {
             pointCount = latestRun.getPointCount();
-            latestLabel = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(latestRun.getId()).stream()
+            var latestPredictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(latestRun.getId());
+            latestLabel = latestPredictions.stream()
                     .reduce((first, second) -> second)
                     .map(prediction -> prediction.getRegimeLabel())
                     .orElse(null);
+            averageConfidence = averageConfidence(latestPredictions);
+            disagreementRate = baselineDisagreementRate(latestPredictions);
+            previousRun = regimeRunRepository.findAll().stream()
+                    .filter(run -> !Objects.equals(run.getId(), latestRun.getId()))
+                    .filter(run -> Objects.equals(run.getSymbol(), latestRun.getSymbol()))
+                    .filter(run -> Objects.equals(run.getTimeframe(), latestRun.getTimeframe()))
+                    .max(Comparator.comparing(RegimeRun::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .orElse(null);
+        }
+        if (latestRun != null && previousRun != null) {
+            modeChanged = !Objects.equals(latestRun.getEffectiveMode(), previousRun.getEffectiveMode());
+            artifactChanged = !Objects.equals(latestRun.getArtifactIdentifier(), previousRun.getArtifactIdentifier());
         }
         return new AssistantContext(
                 strategyRepository.count(),
@@ -135,8 +156,37 @@ public class AssistantService {
                 request == null ? null : request.startDate(),
                 request == null ? null : request.endDate(),
                 latestLabel,
-                pointCount
+                pointCount,
+                averageConfidence,
+                disagreementRate,
+                modeChanged,
+                artifactChanged
         );
+    }
+
+    private BigDecimal averageConfidence(List<com.signalattention.marketregime.RegimePrediction> predictions) {
+        long count = predictions.stream().map(com.signalattention.marketregime.RegimePrediction::getConfidence).filter(Objects::nonNull).count();
+        if (count == 0) {
+            return null;
+        }
+        return predictions.stream()
+                .map(com.signalattention.marketregime.RegimePrediction::getConfidence)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(count), 6, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal baselineDisagreementRate(List<com.signalattention.marketregime.RegimePrediction> predictions) {
+        if (predictions.isEmpty()) {
+            return BigDecimal.ZERO.setScale(6);
+        }
+        long disagreements = predictions.stream()
+                .filter(prediction -> Boolean.TRUE.equals(prediction.getDisagreesWithBaseline()))
+                .count();
+        // The assistant receives evidence summaries, not authority to rank or act on runs.
+        return BigDecimal.valueOf(disagreements)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(predictions.size()), 6, RoundingMode.HALF_UP);
     }
 
     void saveAssistantTurn(AssistantSession session, AssistantMessage assistantMessage, AssistantReply reply) {

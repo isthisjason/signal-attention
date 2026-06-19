@@ -2,6 +2,7 @@ package com.signalattention.assistant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +18,7 @@ class LocalAssistantProviderTests {
         );
 
         assertThat(reply.content()).contains("cannot give buy or sell advice");
+        assertThat(reply.content()).contains("average confidence is 72.5%");
         assertThat(reply.proposedActions()).hasSize(1);
         AssistantProposedAction action = reply.proposedActions().getFirst();
         assertThat(action.actionType()).isEqualTo(AssistantActionType.RUN_REGIME_REPLAY);
@@ -68,7 +70,11 @@ class LocalAssistantProviderTests {
                 Instant.parse("2024-01-01T00:00:00Z"),
                 Instant.parse("2024-01-10T00:00:00Z"),
                 "TRENDING_UP",
-                3
+                3,
+                new BigDecimal("72.500000"),
+                new BigDecimal("33.333333"),
+                false,
+                false
         );
     }
 }

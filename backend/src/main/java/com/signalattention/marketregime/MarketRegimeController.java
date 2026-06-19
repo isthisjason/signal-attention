@@ -73,6 +73,15 @@ public class MarketRegimeController {
         return marketRegimeService.listRegimeRuns(symbol, timeframe, limit);
     }
 
+    @GetMapping("/api/regime-runs/comparison")
+    public RegimeRunComparisonResponse compareRegimeRuns(
+            @RequestParam String symbol,
+            @RequestParam String timeframe,
+            @RequestParam(defaultValue = "10") Integer limit
+    ) {
+        return marketRegimeService.compareRegimeRuns(symbol, timeframe, limit);
+    }
+
     @GetMapping("/api/backtests/{id}/regime-analysis")
     public RegimeBacktestAnalysisResponse analyzeBacktestByRegime(
             @PathVariable Long id,

@@ -18,11 +18,16 @@ public record RegimeRunSummaryResponse(
         String featureVersion,
         String artifactIdentifier,
         Integer pointCount,
+        RegimeRunQualitySummary qualitySummary,
         RegimeRunStatus status,
         Instant createdAt,
         Instant completedAt
 ) {
     public static RegimeRunSummaryResponse from(RegimeRun run) {
+        return from(run, null);
+    }
+
+    public static RegimeRunSummaryResponse from(RegimeRun run, RegimeRunQualitySummary qualitySummary) {
         return new RegimeRunSummaryResponse(
                 run.getId(),
                 run.getSymbol(),
@@ -39,6 +44,7 @@ public record RegimeRunSummaryResponse(
                 run.getFeatureVersion(),
                 run.getArtifactIdentifier(),
                 run.getPointCount(),
+                qualitySummary,
                 run.getStatus(),
                 run.getCreatedAt(),
                 run.getCompletedAt()

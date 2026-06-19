@@ -12,6 +12,10 @@ public record AssistantContext(
         Instant startDate,
         Instant endDate,
         String latestRegimeLabel,
-        Integer latestRegimePointCount
+        Integer latestRegimePointCount,
+        java.math.BigDecimal latestRegimeAverageConfidence,
+        java.math.BigDecimal latestRegimeBaselineDisagreementRate,
+        Boolean latestRegimeModeChanged,
+        Boolean latestRegimeArtifactChanged
 ) {
 }

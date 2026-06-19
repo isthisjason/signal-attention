@@ -25,7 +25,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.data.domain.PageRequest;
@@ -260,8 +263,36 @@ public class MarketRegimeService {
                         normalizedTimeframe,
                         PageRequest.of(0, limit)
                 ).stream()
-                .map(RegimeRunSummaryResponse::from)
+                .map(run -> RegimeRunSummaryResponse.from(run, summarizePredictions(
+                        regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(run.getId())
+                )))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public RegimeRunComparisonResponse compareRegimeRuns(String symbol, String timeframe, Integer requestedLimit) {
+        String normalizedSymbol = requireText(symbol, "symbol");
+        String normalizedTimeframe = requireText(timeframe, "timeframe");
+        int limit = requestedLimit == null ? 10 : requestedLimit;
+        if (limit < 1 || limit > 50) {
+            throw new BadRequestException("limit must be between 1 and 50");
+        }
+        List<RegimeRunSummaryResponse> summaries = regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
+                        normalizedSymbol,
+                        normalizedTimeframe,
+                        PageRequest.of(0, limit)
+                ).stream()
+                .map(run -> RegimeRunSummaryResponse.from(run, summarizePredictions(
+                        regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(run.getId())
+                )))
+                .toList();
+        List<RegimeRunComparisonResponse.RegimeRunComparisonItem> items = new ArrayList<>();
+        for (int index = 0; index < summaries.size(); index++) {
+            RegimeRunSummaryResponse current = summaries.get(index);
+            RegimeRunSummaryResponse previous = index + 1 < summaries.size() ? summaries.get(index + 1) : null;
+            items.add(new RegimeRunComparisonResponse.RegimeRunComparisonItem(current, deltaFromPrevious(current, previous)));
+        }
+        return new RegimeRunComparisonResponse(normalizedSymbol, normalizedTimeframe, items);
     }
 
     @Transactional(readOnly = true)
@@ -401,10 +432,80 @@ public class MarketRegimeService {
                 run.getCreatedAt(),
                 run.getCompletedAt(),
                 run.getPointCount(),
+                summarizePredictions(predictions),
                 candles.stream().map(CandleResponse::from).toList(),
                 predictions.stream().map(this::toPointResponse).toList(),
                 loadTradeMarkers(backtestId, run.getSymbol(), run.getTimeframe(), run.getStartDate(), run.getEndDate())
         );
+    }
+
+    private RegimeRunQualitySummary summarizePredictions(List<RegimePrediction> predictions) {
+        if (predictions.isEmpty()) {
+            return new RegimeRunQualitySummary(null, 0, 0, BigDecimal.ZERO.setScale(6), 0, null, Map.of());
+        }
+        BigDecimal totalConfidence = predictions.stream()
+                .map(RegimePrediction::getConfidence)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long confidenceCount = predictions.stream().map(RegimePrediction::getConfidence).filter(Objects::nonNull).count();
+        BigDecimal averageConfidence = confidenceCount == 0
+                ? null
+                : totalConfidence.divide(BigDecimal.valueOf(confidenceCount), 6, RoundingMode.HALF_UP);
+        int lowConfidenceCount = (int) predictions.stream()
+                .filter(prediction -> prediction.getConfidence() != null && prediction.getConfidence().compareTo(new BigDecimal("60.00")) < 0)
+                .count();
+        int disagreementCount = (int) predictions.stream()
+                .filter(prediction -> Boolean.TRUE.equals(prediction.getDisagreesWithBaseline()))
+                .count();
+        BigDecimal disagreementRate = BigDecimal.valueOf(disagreementCount)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(predictions.size()), 6, RoundingMode.HALF_UP);
+        int anomalyCount = (int) predictions.stream()
+                .filter(prediction -> prediction.getAnomalyLabel() != null && !"NORMAL".equalsIgnoreCase(prediction.getAnomalyLabel()))
+                .count();
+        Map<String, Integer> regimeCounts = predictions.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        RegimePrediction::getRegimeLabel,
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.collectingAndThen(java.util.stream.Collectors.counting(), Long::intValue)
+                ));
+        String dominantRegime = regimeCounts.entrySet().stream()
+                .max(Map.Entry.<String, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        // Quality summaries are descriptive evidence only; the UI must avoid treating them as trading signals.
+        return new RegimeRunQualitySummary(
+                averageConfidence,
+                lowConfidenceCount,
+                disagreementCount,
+                disagreementRate,
+                anomalyCount,
+                dominantRegime,
+                regimeCounts
+        );
+    }
+
+    private RegimeRunComparisonResponse.RegimeRunComparisonDelta deltaFromPrevious(
+            RegimeRunSummaryResponse current,
+            RegimeRunSummaryResponse previous
+    ) {
+        if (previous == null) {
+            return null;
+        }
+        RegimeRunQualitySummary currentSummary = current.qualitySummary();
+        RegimeRunQualitySummary previousSummary = previous.qualitySummary();
+        return new RegimeRunComparisonResponse.RegimeRunComparisonDelta(
+                subtractNullable(currentSummary.averageConfidence(), previousSummary.averageConfidence()),
+                subtractNullable(currentSummary.baselineDisagreementRate(), previousSummary.baselineDisagreementRate()),
+                current.pointCount() == null || previous.pointCount() == null ? null : current.pointCount() - previous.pointCount(),
+                !Objects.equals(current.effectiveMode(), previous.effectiveMode()),
+                !Objects.equals(current.modelVersion(), previous.modelVersion()),
+                !Objects.equals(current.artifactIdentifier(), previous.artifactIdentifier())
+        );
+    }
+
+    private BigDecimal subtractNullable(BigDecimal current, BigDecimal previous) {
+        return current == null || previous == null ? null : current.subtract(previous);
     }
 
     private String labelForTrade(BacktestTrade trade, List<RegimePrediction> predictions) {

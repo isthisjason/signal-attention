@@ -38,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class MarketRegimeServiceTests {
@@ -215,6 +216,59 @@ class MarketRegimeServiceTests {
         assertThat(response.pointCount()).isEqualTo(1);
         assertThat(response.points()).hasSize(1);
         assertThat(response.points().getFirst().regimeLabel()).isEqualTo("TRENDING_UP");
+        assertThat(response.qualitySummary().averageConfidence()).isEqualByComparingTo("80.000000");
+        assertThat(response.qualitySummary().baselineDisagreementRate()).isEqualByComparingTo("0.000000");
+    }
+
+    @Test
+    void listRegimeRunsIncludesDerivedQualitySummary() {
+        RegimeRun run = savedRun(1L, "rules", null, "2024-01-02T00:00:00Z", 3);
+        when(regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
+                "BTC-USD", "1h", PageRequest.of(0, 10)
+        )).thenReturn(List.of(run));
+        when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(1L)).thenReturn(List.of(
+                prediction(run, "TRENDING_UP", "80.00", true, "NORMAL"),
+                prediction(run, "SIDEWAYS", "50.00", false, "ANOMALY"),
+                prediction(run, "TRENDING_UP", "70.00", true, null)
+        ));
+
+        List<RegimeRunSummaryResponse> response = service.listRegimeRuns("BTC-USD", "1h", 10);
+
+        RegimeRunQualitySummary summary = response.getFirst().qualitySummary();
+        assertThat(summary.averageConfidence()).isEqualByComparingTo("66.666667");
+        assertThat(summary.lowConfidenceWindowCount()).isEqualTo(1);
+        assertThat(summary.baselineDisagreementCount()).isEqualTo(2);
+        assertThat(summary.baselineDisagreementRate()).isEqualByComparingTo("66.666667");
+        assertThat(summary.anomalyCount()).isEqualTo(1);
+        assertThat(summary.dominantRegimeLabel()).isEqualTo("TRENDING_UP");
+        assertThat(summary.regimeCounts()).containsEntry("TRENDING_UP", 2);
+    }
+
+    @Test
+    void compareRegimeRunsReturnsRecentRunsWithDeltas() {
+        RegimeRun current = savedRun(2L, "torch", "artifact-b", "2024-01-03T00:00:00Z", 2);
+        RegimeRun previous = savedRun(1L, "rules", "artifact-a", "2024-01-02T00:00:00Z", 1);
+        when(regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
+                "BTC-USD", "1h", PageRequest.of(0, 10)
+        )).thenReturn(List.of(current, previous));
+        when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(2L)).thenReturn(List.of(
+                prediction(current, "TRENDING_UP", "80.00", true, null),
+                prediction(current, "TRENDING_UP", "60.00", false, null)
+        ));
+        when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(1L)).thenReturn(List.of(
+                prediction(previous, "SIDEWAYS", "50.00", false, null)
+        ));
+
+        RegimeRunComparisonResponse response = service.compareRegimeRuns("BTC-USD", "1h", 10);
+
+        assertThat(response.runs()).hasSize(2);
+        RegimeRunComparisonResponse.RegimeRunComparisonDelta delta = response.runs().getFirst().deltaFromPrevious();
+        assertThat(delta.averageConfidenceDelta()).isEqualByComparingTo("20.000000");
+        assertThat(delta.baselineDisagreementRateDelta()).isEqualByComparingTo("50.000000");
+        assertThat(delta.pointCountDelta()).isEqualTo(1);
+        assertThat(delta.modeChanged()).isTrue();
+        assertThat(delta.artifactChanged()).isTrue();
+        assertThat(response.runs().get(1).deltaFromPrevious()).isNull();
     }
 
     @Test
@@ -300,6 +354,51 @@ class MarketRegimeServiceTests {
         trade.setNetPnl(new BigDecimal(netPnl));
         trade.setReturnPercent(new BigDecimal(returnPercent));
         return trade;
+    }
+
+    private RegimeRun savedRun(Long id, String effectiveMode, String artifactIdentifier, String createdAt, int pointCount) {
+        RegimeRun run = new RegimeRun(
+                "BTC-USD",
+                "1h",
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-02T00:00:00Z"),
+                20,
+                5,
+                true
+        );
+        ReflectionTestUtils.setField(run, "id", id);
+        ReflectionTestUtils.setField(run, "requestedMode", "auto");
+        ReflectionTestUtils.setField(run, "effectiveMode", effectiveMode);
+        ReflectionTestUtils.setField(run, "classifierSource", effectiveMode);
+        ReflectionTestUtils.setField(run, "featureVersion", "torch-market-regime-features/v1");
+        ReflectionTestUtils.setField(run, "artifactIdentifier", artifactIdentifier);
+        ReflectionTestUtils.setField(run, "pointCount", pointCount);
+        ReflectionTestUtils.setField(run, "createdAt", Instant.parse(createdAt));
+        return run;
+    }
+
+    private RegimePrediction prediction(
+            RegimeRun run,
+            String regimeLabel,
+            String confidence,
+            boolean disagreesWithBaseline,
+            String anomalyLabel
+    ) {
+        return new RegimePrediction(
+                run,
+                Instant.parse("2024-01-01T00:00:00Z"),
+                Instant.parse("2024-01-01T20:00:00Z"),
+                regimeLabel,
+                new BigDecimal(confidence),
+                "[]",
+                "{}",
+                anomalyLabel == null ? null : BigDecimal.ONE,
+                anomalyLabel,
+                null,
+                "SIDEWAYS",
+                new BigDecimal("50.00"),
+                disagreesWithBaseline
+        );
     }
 
     private MlMarketRegimeResponse response() {

@@ -26,6 +26,18 @@ public class LocalAssistantProvider implements AssistantProvider {
                     .append(" across ")
                     .append(context.latestRegimePointCount())
                     .append(" windows. ");
+            if (context.latestRegimeAverageConfidence() != null && context.latestRegimeBaselineDisagreementRate() != null) {
+                response.append("Its average confidence is ")
+                        .append(context.latestRegimeAverageConfidence().stripTrailingZeros().toPlainString())
+                        .append("% with a ")
+                        .append(context.latestRegimeBaselineDisagreementRate().stripTrailingZeros().toPlainString())
+                        .append("% baseline disagreement rate. ");
+            }
+            if (Boolean.TRUE.equals(context.latestRegimeModeChanged()) || Boolean.TRUE.equals(context.latestRegimeArtifactChanged())) {
+                response.append("The latest run also changed ")
+                        .append(Boolean.TRUE.equals(context.latestRegimeModeChanged()) ? "mode" : "artifact")
+                        .append(" compared with the prior saved run. ");
+            }
         }
         response.append("I can explain simulation state and prepare reviewable research actions, but I cannot give buy or sell advice.");
 

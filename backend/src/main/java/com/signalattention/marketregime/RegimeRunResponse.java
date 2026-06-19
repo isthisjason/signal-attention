@@ -26,6 +26,7 @@ public record RegimeRunResponse(
         Instant createdAt,
         Instant completedAt,
         Integer pointCount,
+        RegimeRunQualitySummary qualitySummary,
         List<CandleResponse> candles,
         List<RegimeRunPoint> points,
         List<RegimeTradeMarker> tradeMarkers
