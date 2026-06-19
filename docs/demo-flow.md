@@ -24,6 +24,29 @@ Use `--timeout-seconds` when the local stack is cold or running on slower hardwa
 python3 scripts/smoke_demo.py --timeout-seconds 30
 ```
 
+## Optional Promoted Attention Mode
+
+The default demo uses deterministic rules. To review a local promoted attention candidate, train and evaluate a v2 artifact, then write a promotion summary:
+
+```bash
+cd ml-service
+python scripts/train_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --output models/market-regime.pt \
+  --architecture attention-transformer-v2 \
+  --experiment-name btc-v2-local \
+  --cpu
+python scripts/evaluate_market_regime_model.py \
+  --csv-path ../data/btc-usd-1h-sample.csv \
+  --artifact models/market-regime.pt \
+  --output models/market-regime-evaluation.json \
+  --holdout-ratio 0.2 \
+  --experiment-name btc-v2-local
+python scripts/promote_market_regime_experiment.py
+```
+
+Run the ML service with `MARKET_REGIME_MODE=auto` and either `MARKET_REGIME_ARTIFACT_PATH=models/market-regime.pt` or the default `MARKET_REGIME_PROMOTION_PATH=models/experiments/promoted-market-regime.json`. Auto mode uses a verified promoted artifact when one exists, otherwise it falls back to rules with a status warning. Promotion means a local research candidate passed the configured gates; it is not a production deployment signal or trading approval.
+
 ## 1. Import Sample Candles
 
 ```bash

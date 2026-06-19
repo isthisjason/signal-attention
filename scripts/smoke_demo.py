@@ -136,6 +136,38 @@ def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
     return bool(errors) and all("Duplicate candle already exists" in error["message"] for error in errors)
 
 
+def validate_model_status(model_status: dict[str, Any]) -> None:
+    require_keys(
+        model_status,
+        (
+            "mode",
+            "effectiveMode",
+            "classifierSource",
+            "ready",
+            "artifactExists",
+            "featureVersion",
+            "promotionStatus",
+            "promotionArtifactMatches",
+            "promotionWarnings",
+            "warnings",
+        ),
+        "Market regime status",
+    )
+    check(model_status["ready"] is True, "Market regime model status was not ready.")
+    check(isinstance(model_status["warnings"], list), "Market regime status warnings field was not a list.")
+    check(
+        isinstance(model_status["promotionWarnings"], list),
+        "Market regime status promotionWarnings field was not a list.",
+    )
+    if model_status["promotionStatus"] == "promoted":
+        # Promoted mode is optional; when present, the smoke check confirms the promotion is verified.
+        check(model_status.get("promotedRunId"), "Promoted market regime status did not include a run id.")
+        check(
+            model_status["promotionArtifactMatches"] is True,
+            "Promoted market regime artifact did not match the recorded hash.",
+        )
+
+
 def check_stack(config: Config) -> None:
     # First prove the three user-facing services are reachable.
     log_step("checking ML service health")
@@ -372,12 +404,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
 
     log_step("checking market regime model status")
     model_status = request_json(f"{config.backend_url}/api/market-regime/status", config.timeout_seconds)
-    require_keys(
-        model_status,
-        ("mode", "effectiveMode", "classifierSource", "ready", "artifactExists", "featureVersion", "warnings"),
-        "Market regime status",
-    )
-    check(model_status["ready"] is True, "Market regime model status was not ready.")
+    validate_model_status(model_status)
 
     log_step("creating persisted regime run")
     regime_run = post_json(

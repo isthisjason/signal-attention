@@ -124,18 +124,18 @@ Implemented foundation:
 - Evaluation script with accuracy, per label metrics, confusion matrix, confidence summary, majority class baseline, lift, holdout scoring, and registry integration.
 - Experiment comparison, diagnostics, promotion, sweep dry run, and model card scripts.
 
-Current artifact lifecycle wave:
+Completed artifact lifecycle wave:
 
 1. Document promoted artifact lifecycle. Done.
 2. Train inspectable attention artifacts through a selectable v2 architecture path. Done.
-3. Evaluate v2 attention diagnostics while keeping v1 fallback attribution compatible.
-4. Promote artifacts with runnable manifests and clear gate results.
-5. Load promoted artifacts in auto mode when a valid local promotion exists.
-6. Report promotion status through backend model status.
-7. Surface promotion state in the workbench.
-8. Extend smoke checks for promoted artifacts without breaking the default rules path.
-9. Update demo documentation for promoted attention mode.
-10. Verify the promoted attention lifecycle.
+3. Evaluate v2 attention diagnostics while keeping v1 fallback attribution compatible. Done.
+4. Promote artifacts with runnable manifests and clear gate results. Done.
+5. Load promoted artifacts in auto mode when a valid local promotion exists. Done.
+6. Report promotion status through backend model status. Done.
+7. Surface promotion state in the workbench. Done.
+8. Extend smoke checks for promoted artifacts without breaking the default rules path. Done.
+9. Update demo documentation for promoted attention mode. Done.
+10. Verify the promoted attention lifecycle. Done.
 
 Generated `.pt` files, experiment registries, diagnostics, promotion outputs, and model cards are local research artifacts and should stay uncommitted by default.
 
@@ -196,13 +196,17 @@ Completed major waves:
 - ML first regime workflow: model status, backend model status, regime run persistence, saved replay results, baseline comparison, regime grouped backtest analysis, dashboard surfacing, and smoke verification.
 - Assistant orchestration wave: persistence, provider contract, confirmed actions, workbench panel, and verification docs.
 - Attention diagnostics wave: artifact metadata status, v2 attention architecture, compatibility comments, diagnostics generation, backend diagnostics endpoint, evidence snapshots, experiment comparison by attention behavior, workbench evidence surfacing, assistant diagnostics actions, and verification.
-- Promoted artifact lifecycle wave has started with documentation and selectable v2 training architecture.
+- Promoted artifact lifecycle wave: v2-aware evaluation, verified promotion summaries, auto loading from promoted artifacts, backend status fields, workbench visibility, smoke coverage, and documentation.
 
 Current recent commits:
 
 ```text
 a48c05a documented promoted artifact lifecycle wave
 04e897b trained inspectable attention artifacts
+6f6c00a evaluated v2 attention diagnostics
+02cf7d8 promoted artifacts with runnable manifests
+29bab76 loaded promoted artifacts in auto mode
+667ea83 reported and surfaced promoted artifact state
 ```
 
 ## 11. Verification Matrix

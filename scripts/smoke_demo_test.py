@@ -53,6 +53,40 @@ class SmokeDemoHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Backtest response missing keys: status"):
             smoke_demo.require_keys({"id": 1}, ("id", "status"), "Backtest")
 
+    def test_validate_model_status_accepts_default_rules_mode(self) -> None:
+        smoke_demo.validate_model_status(
+            {
+                "mode": "rules",
+                "effectiveMode": "rules",
+                "classifierSource": "rules",
+                "ready": True,
+                "artifactExists": False,
+                "featureVersion": "torch-market-regime-features/v1",
+                "promotionStatus": None,
+                "promotionArtifactMatches": None,
+                "promotionWarnings": [],
+                "warnings": [],
+            }
+        )
+
+    def test_validate_model_status_requires_verified_promoted_artifact(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "recorded hash"):
+            smoke_demo.validate_model_status(
+                {
+                    "mode": "auto",
+                    "effectiveMode": "torch",
+                    "classifierSource": "torch",
+                    "ready": True,
+                    "artifactExists": True,
+                    "featureVersion": "torch-market-regime-features/v1",
+                    "promotionStatus": "promoted",
+                    "promotedRunId": "run-1",
+                    "promotionArtifactMatches": False,
+                    "promotionWarnings": [],
+                    "warnings": [],
+                }
+            )
+
     def test_format_http_error_includes_method_url_status_and_body(self) -> None:
         request = Request("http://api.test/api/fails", method="POST")
         error = HTTPError(
