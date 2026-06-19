@@ -139,6 +139,11 @@ class MlRiskClientTests {
                           "modelVersion": null,
                           "featureVersion": "torch-market-regime-features/v1",
                           "sequenceLength": null,
+                          "promotionStatus": "no_eligible_run",
+                          "promotedRunId": null,
+                          "promotionGeneratedAt": "2026-06-18T00:00:00+00:00",
+                          "promotionArtifactMatches": false,
+                          "promotionWarnings": ["no eligible run selected"],
                           "warnings": ["auto mode fell back to rules"]
                         }
                         """, MediaType.APPLICATION_JSON));
@@ -148,6 +153,9 @@ class MlRiskClientTests {
         assertThat(response.mode()).isEqualTo("auto");
         assertThat(response.effectiveMode()).isEqualTo("rules");
         assertThat(response.ready()).isTrue();
+        assertThat(response.promotionStatus()).isEqualTo("no_eligible_run");
+        assertThat(response.promotionArtifactMatches()).isFalse();
+        assertThat(response.promotionWarnings()).containsExactly("no eligible run selected");
         assertThat(response.warnings()).hasSize(1);
         server.verify();
     }

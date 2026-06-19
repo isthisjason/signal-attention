@@ -20,6 +20,11 @@ public record MlMarketRegimeStatusResponse(
         String architecture,
         List<String> labels,
         Map<String, Object> modelConfig,
+        String promotionStatus,
+        String promotedRunId,
+        String promotionGeneratedAt,
+        Boolean promotionArtifactMatches,
+        List<String> promotionWarnings,
         List<String> warnings
 ) {
 }

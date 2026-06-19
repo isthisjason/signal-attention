@@ -109,6 +109,11 @@ class MarketRegimeStatusResponse(BaseModel):
     architecture: str | None = None
     labels: list[str] = []
     modelConfig: dict | None = None
+    promotionStatus: str | None = None
+    promotedRunId: str | None = None
+    promotionGeneratedAt: str | None = None
+    promotionArtifactMatches: bool | None = None
+    promotionWarnings: list[str] = []
     warnings: list[str] = []
 
 

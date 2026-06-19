@@ -977,15 +977,34 @@ function ModelStatusStrip({ state }: { state: LoadState<MarketRegimeStatus> }) {
   if (state.status === "error") {
     return <p className="error-text">{state.error}</p>;
   }
+  const status = state.data;
+  const statusItems: Array<[string, string | number]> = [
+    ["Requested", status.mode],
+    ["Effective", `${status.effectiveMode} mode`],
+    ["Ready", status.ready ? "yes" : "no"],
+    ["Artifact", status.artifactName || (status.artifactExists ? "loaded" : "not loaded")],
+  ];
+  if (status.architecture) {
+    statusItems.push(["Architecture", status.architecture]);
+  }
+  if (status.promotedRunId) {
+    statusItems.push(["Promoted run", status.promotedRunId]);
+  }
+  if (status.promotionStatus) {
+    statusItems.push(["Promotion", `${status.promotionStatus}${status.promotionArtifactMatches === false ? " (unverified)" : ""}`]);
+  }
+  const warnings = [...(status.warnings ?? []), ...(status.promotionWarnings ?? [])];
   return (
-    <ResultGrid
-      items={[
-        ["Requested", state.data.mode],
-        ["Effective", `${state.data.effectiveMode} mode`],
-        ["Ready", state.data.ready ? "yes" : "no"],
-        ["Artifact status", state.data.artifactExists ? "loaded" : "not loaded"],
-      ]}
-    />
+    <>
+      <ResultGrid items={statusItems} />
+      {warnings.length ? (
+        <ul className="compact-list">
+          {warnings.slice(0, 4).map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      ) : null}
+    </>
   );
 }
 

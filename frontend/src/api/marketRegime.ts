@@ -39,6 +39,11 @@ export type MarketRegimeStatus = {
   architecture?: string | null;
   labels: string[];
   modelConfig?: Record<string, unknown> | null;
+  promotionStatus?: string | null;
+  promotedRunId?: string | null;
+  promotionGeneratedAt?: string | null;
+  promotionArtifactMatches?: boolean | null;
+  promotionWarnings: string[];
   warnings: string[];
 };
 

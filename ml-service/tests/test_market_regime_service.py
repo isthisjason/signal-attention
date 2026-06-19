@@ -123,7 +123,9 @@ def test_auto_mode_loads_verified_promoted_artifact_when_explicit_path_is_absent
     promotion.write_text(
         json.dumps(
             {
+                "generatedAt": "2026-06-18T00:00:00+00:00",
                 "status": "promoted",
+                "selectedRun": {"runId": "run-promoted"},
                 "artifactCheck": {"path": str(artifact), "matchesRecordedHash": True},
                 "runnableManifest": {"artifactPath": str(artifact)},
             }
@@ -138,6 +140,10 @@ def test_auto_mode_loads_verified_promoted_artifact_when_explicit_path_is_absent
     assert isinstance(classifier, TorchMarketRegimeClassifier)
     assert status.effectiveMode == "torch"
     assert status.artifactName == "promoted.pt"
+    assert status.promotionStatus == "promoted"
+    assert status.promotedRunId == "run-promoted"
+    assert status.promotionGeneratedAt == "2026-06-18T00:00:00+00:00"
+    assert status.promotionArtifactMatches is True
 
 
 def test_auto_mode_prefers_explicit_artifact_over_promoted_artifact(tmp_path) -> None:
@@ -177,6 +183,7 @@ def test_auto_mode_warns_when_promotion_summary_is_invalid(tmp_path) -> None:
 
     assert status.effectiveMode == "rules"
     assert "promotion summary is not valid JSON" in status.warnings
+    assert status.promotionWarnings == ["promotion summary is not valid JSON"]
     assert status.ready is True
 
 

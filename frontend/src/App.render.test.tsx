@@ -163,6 +163,11 @@ beforeEach(() => {
     architecture: null,
     labels: [],
     modelConfig: null,
+    promotionStatus: null,
+    promotedRunId: null,
+    promotionGeneratedAt: null,
+    promotionArtifactMatches: null,
+    promotionWarnings: [],
     warnings: [],
   });
   mocks.fetchRegimeRuns.mockResolvedValue([]);
@@ -487,7 +492,7 @@ describe("dashboard render states", () => {
     expect(await screen.findByText("sideways")).toBeInTheDocument();
     expect(screen.getByText("rules")).toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
-    expect(screen.queryByText("Artifact")).not.toBeInTheDocument();
+    expect(screen.getByText("not loaded")).toBeInTheDocument();
   });
 
   it("renders candlestick replay context and selectable candle details", async () => {

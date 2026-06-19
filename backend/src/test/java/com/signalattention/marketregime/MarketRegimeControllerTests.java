@@ -49,6 +49,11 @@ class MarketRegimeControllerTests {
                 null,
                 List.of(),
                 null,
+                "promoted",
+                "run-123",
+                "2026-06-18T00:00:00+00:00",
+                true,
+                List.of(),
                 List.of()
         );
         when(service.getModelStatus()).thenReturn(expected);

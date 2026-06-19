@@ -66,6 +66,7 @@ def market_regime_status(settings: MarketRegimeSettings | None = None) -> Market
     effective_settings, warnings = resolve_effective_settings(selected_settings)
     artifact_summary = describe_artifact(effective_settings.artifact_path)
     metadata = read_artifact_metadata(effective_settings.artifact_path, warnings)
+    promotion_summary = inspect_promotion_summary(selected_settings.promotion_path, warnings)
     return MarketRegimeStatusResponse(
         mode=selected_settings.mode,
         effectiveMode=effective_settings.mode,
@@ -83,6 +84,11 @@ def market_regime_status(settings: MarketRegimeSettings | None = None) -> Market
         architecture=metadata.get("architecture", "transformer-v1") if metadata else None,
         labels=metadata.get("labels", []),
         modelConfig=metadata.get("model"),
+        promotionStatus=promotion_summary["status"],
+        promotedRunId=promotion_summary["runId"],
+        promotionGeneratedAt=promotion_summary["generatedAt"],
+        promotionArtifactMatches=promotion_summary["artifactMatches"],
+        promotionWarnings=promotion_summary["warnings"],
         warnings=warnings,
     )
 
@@ -245,6 +251,38 @@ def promoted_artifact_path(summary: dict[str, Any], artifact_check: dict[str, An
         return runnable["artifactPath"]
     artifact_path = artifact_check.get("path")
     return artifact_path if isinstance(artifact_path, str) else None
+
+
+def inspect_promotion_summary(promotion_path: str | None, warnings: list[str]) -> dict[str, Any]:
+    empty = {
+        "status": None,
+        "runId": None,
+        "generatedAt": None,
+        "artifactMatches": None,
+        "warnings": [],
+    }
+    if not promotion_path or not Path(promotion_path).is_file():
+        return empty
+    try:
+        summary = json.loads(Path(promotion_path).read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        if "promotion summary is not valid JSON" not in warnings:
+            warnings.append("promotion summary is not valid JSON")
+        return {**empty, "warnings": ["promotion summary is not valid JSON"]}
+
+    selected = summary.get("selectedRun") if isinstance(summary, dict) else None
+    artifact_check = summary.get("artifactCheck") if isinstance(summary, dict) else None
+    promotion_warnings: list[str] = []
+    if isinstance(artifact_check, dict) and artifact_check.get("failure"):
+        promotion_warnings.append(str(artifact_check["failure"]))
+
+    return {
+        "status": summary.get("status") if isinstance(summary.get("status"), str) else None,
+        "runId": selected.get("runId") if isinstance(selected, dict) and isinstance(selected.get("runId"), str) else None,
+        "generatedAt": summary.get("generatedAt") if isinstance(summary.get("generatedAt"), str) else None,
+        "artifactMatches": artifact_check.get("matchesRecordedHash") if isinstance(artifact_check, dict) else None,
+        "warnings": promotion_warnings,
+    }
 
 
 def describe_artifact(artifact_path: str | None) -> dict:
