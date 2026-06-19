@@ -12,6 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
 from app.services.market_regime_torch_adapter import (
+    build_model_for_metadata,
     load_artifact,
     load_torch,
     normalize_features,
@@ -28,7 +29,6 @@ from app.services.market_regime_torch_features import (
     TORCH_MARKET_REGIME_FEATURE_ORDER,
     build_torch_feature_matrix,
 )
-from app.services.market_regime_torch_model import build_transformer_model
 
 
 def main() -> None:
@@ -42,11 +42,11 @@ def main() -> None:
     # Optional holdout scores only the later windows to mimic future data.
     examples, evaluation_scope = apply_holdout(examples, args.holdout_ratio)
 
-    model = build_transformer_model(
+    model = build_model_for_metadata(
         torch,
         feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
         class_count=len(metadata["labels"]),
-        config=metadata.get("model"),
+        metadata=metadata,
     )
     model.load_state_dict(artifact["modelStateDict"])
     model.to(device)
@@ -59,6 +59,7 @@ def main() -> None:
         "artifact": describe_path(args.artifact),
         "dataset": describe_path(args.csv_path),
         "sequenceLength": metadata["sequenceLength"],
+        "architecture": metadata.get("architecture"),
         "featureOrder": metadata["featureOrder"],
         "labels": metadata["labels"],
         "windowCount": len(examples),
@@ -286,6 +287,7 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
             "dataset": report["dataset"],
             "artifact": report["artifact"],
             "reportPath": str(args.output) if args.output is not None else None,
+            "architecture": report.get("architecture"),
             "accuracy": metrics["accuracy"],
             "correctCount": metrics["correctCount"],
             "totalCount": metrics["totalCount"],

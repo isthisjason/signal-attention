@@ -42,6 +42,7 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
     report = {
         "dataset": {"path": str(tmp_path / "candles.csv"), "name": "candles.csv"},
         "artifact": {"path": str(tmp_path / "market-regime.pt"), "name": "market-regime.pt"},
+        "architecture": "attention-transformer-v2",
         "labelDistribution": {"expected": {"SIDEWAYS": 2}, "predicted": {"SIDEWAYS": 1}},
         "windowRanges": {
             "firstWindowEnd": "2024-01-01T00:00:00+00:00",
@@ -69,6 +70,7 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
             "dataset": {"path": str(tmp_path / "candles.csv"), "name": "candles.csv"},
             "artifact": {"path": str(tmp_path / "market-regime.pt"), "name": "market-regime.pt"},
             "reportPath": str(tmp_path / "evaluation.json"),
+            "architecture": "attention-transformer-v2",
             "accuracy": 0.75,
             "correctCount": 3,
             "totalCount": 4,
@@ -85,6 +87,33 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
             "liftOverBaseline": 0.25,
         },
     }
+
+
+def test_evaluation_uses_metadata_architecture_builder(monkeypatch) -> None:
+    captured = {}
+
+    def fake_builder(torch, *, feature_count, class_count, metadata):
+        # Evaluation must use the same metadata-aware builder as service inference so v2
+        # artifacts do not accidentally get loaded into the v1 architecture.
+        captured["metadata"] = metadata
+        return object()
+
+    monkeypatch.setattr(evaluation_script, "build_model_for_metadata", fake_builder)
+    metadata = {
+        "labels": ["SIDEWAYS"],
+        "architecture": "attention-transformer-v2",
+        "model": {"dModel": 32},
+    }
+
+    model = evaluation_script.build_model_for_metadata(
+        object(),
+        feature_count=6,
+        class_count=1,
+        metadata=metadata,
+    )
+
+    assert model is not None
+    assert captured["metadata"] == metadata
 
 
 def test_majority_class_baseline_predicts_dominant_label() -> None:
