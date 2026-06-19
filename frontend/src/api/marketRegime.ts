@@ -47,6 +47,16 @@ export type MarketRegimeStatus = {
   warnings: string[];
 };
 
+export type RegimeRunQualitySummary = {
+  averageConfidence?: number | null;
+  lowConfidenceWindowCount: number;
+  baselineDisagreementCount: number;
+  baselineDisagreementRate: number;
+  anomalyCount: number;
+  dominantRegimeLabel?: string | null;
+  regimeCounts: Record<string, number>;
+};
+
 export type RegimeRunRequest = {
   symbol: string;
   timeframe: string;
@@ -77,6 +87,7 @@ export type RegimeRunResponse = {
   createdAt: string;
   completedAt?: string | null;
   pointCount: number;
+  qualitySummary?: RegimeRunQualitySummary | null;
   candles: Array<{
     openTime: string;
     openPrice: number;
@@ -108,6 +119,24 @@ export type RegimeRunResponse = {
 };
 
 export type RegimeRunSummary = Omit<RegimeRunResponse, "candles" | "points" | "tradeMarkers">;
+
+export type RegimeRunComparisonDelta = {
+  averageConfidenceDelta?: number | null;
+  baselineDisagreementRateDelta?: number | null;
+  pointCountDelta?: number | null;
+  modeChanged: boolean;
+  modelChanged: boolean;
+  artifactChanged: boolean;
+};
+
+export type RegimeRunComparison = {
+  symbol: string;
+  timeframe: string;
+  runs: Array<{
+    run: RegimeRunSummary;
+    deltaFromPrevious?: RegimeRunComparisonDelta | null;
+  }>;
+};
 
 export type AttentionTimestepEvidence = {
   openTime: string;
@@ -168,6 +197,11 @@ export function fetchMarketRegimeStatus() {
 export function fetchRegimeRuns(symbol = "BTC-USD", timeframe = "1h", limit = 10) {
   const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
   return getJson<RegimeRunSummary[]>(`/api/regime-runs?${params.toString()}`);
+}
+
+export function fetchRegimeRunComparison(symbol = "BTC-USD", timeframe = "1h", limit = 10) {
+  const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
+  return getJson<RegimeRunComparison>(`/api/regime-runs/comparison?${params.toString()}`);
 }
 
 export function runRegimeReplay(request: RegimeRunRequest) {

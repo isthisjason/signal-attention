@@ -152,7 +152,7 @@ Implemented surfaces:
 - Score ML risk and show persisted risk labels.
 - Manage paper sessions, simulated orders, positions, summary, and replay.
 - Show dashboard summary, risk alerts, strategy performance, and audit events.
-- Show model status, saved regime runs, baseline disagreement, anomaly context, regime grouped backtest analysis, attention evidence, and saved evidence snapshots.
+- Show model status, saved regime runs, run quality summaries, recent run comparison, baseline disagreement, anomaly context, regime grouped backtest analysis, attention evidence, and saved evidence snapshots.
 - Provide an assistant panel with message history, proposed actions, confirmation controls, and action refresh behavior.
 
 Continuing frontend targets:
@@ -197,6 +197,7 @@ Completed major waves:
 - Assistant orchestration wave: persistence, provider contract, confirmed actions, workbench panel, and verification docs.
 - Attention diagnostics wave: artifact metadata status, v2 attention architecture, compatibility comments, diagnostics generation, backend diagnostics endpoint, evidence snapshots, experiment comparison by attention behavior, workbench evidence surfacing, assistant diagnostics actions, and verification.
 - Promoted artifact lifecycle wave: v2-aware evaluation, verified promotion summaries, auto loading from promoted artifacts, backend status fields, workbench visibility, smoke coverage, and documentation.
+- Regime run comparison wave: derived run quality summaries, read only comparison API, assistant comparison context, workbench comparison table, smoke coverage, and documentation.
 
 Current recent commits:
 
@@ -207,6 +208,7 @@ a48c05a documented promoted artifact lifecycle wave
 02cf7d8 promoted artifacts with runnable manifests
 29bab76 loaded promoted artifacts in auto mode
 667ea83 reported and surfaced promoted artifact state
+d6f2355 added regime run comparison evidence
 ```
 
 ## 11. Verification Matrix

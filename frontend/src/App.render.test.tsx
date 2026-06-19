@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   fetchMarketRegimeDiagnostics: vi.fn(),
   fetchMarketRegimeStatus: vi.fn(),
   fetchRegimeEvidenceSnapshots: vi.fn(),
+  fetchRegimeRunComparison: vi.fn(),
   fetchRegimeRuns: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
@@ -61,6 +62,7 @@ vi.mock("./api/marketRegime", () => ({
   fetchMarketRegimeDiagnostics: mocks.fetchMarketRegimeDiagnostics,
   fetchMarketRegimeStatus: mocks.fetchMarketRegimeStatus,
   fetchRegimeEvidenceSnapshots: mocks.fetchRegimeEvidenceSnapshots,
+  fetchRegimeRunComparison: mocks.fetchRegimeRunComparison,
   fetchRegimeRuns: mocks.fetchRegimeRuns,
   runRegimeReplay: mocks.runRegimeReplay,
 }));
@@ -171,6 +173,7 @@ beforeEach(() => {
     warnings: [],
   });
   mocks.fetchRegimeRuns.mockResolvedValue([]);
+  mocks.fetchRegimeRunComparison.mockResolvedValue({ symbol: "BTC-USD", timeframe: "1h", runs: [] });
   mocks.fetchRegimeEvidenceSnapshots.mockResolvedValue([]);
   mocks.fetchMarketRegimeDiagnostics.mockResolvedValue({
     symbol: "BTC-USD",
@@ -219,6 +222,15 @@ beforeEach(() => {
     createdAt: "2024-01-01T00:00:00Z",
     completedAt: "2024-01-01T00:00:01Z",
     pointCount: 1,
+    qualitySummary: {
+      averageConfidence: 75,
+      lowConfidenceWindowCount: 0,
+      baselineDisagreementCount: 0,
+      baselineDisagreementRate: 0,
+      anomalyCount: 0,
+      dominantRegimeLabel: "TRENDING_UP",
+      regimeCounts: { TRENDING_UP: 1 },
+    },
     candles: [
       {
         openTime: "2024-01-01T00:00:00Z",
@@ -536,6 +548,64 @@ describe("dashboard render states", () => {
     expect(screen.getByText("O $40,500.00")).toBeInTheDocument();
     expect(screen.getByText("C $39,800.00")).toBeInTheDocument();
     expect(screen.getByText("no regime window")).toBeInTheDocument();
+  });
+
+  it("renders saved regime run comparison evidence", async () => {
+    mocks.fetchRegimeRunComparison.mockResolvedValue({
+      symbol: "BTC-USD",
+      timeframe: "1h",
+      runs: [
+        {
+          run: {
+            id: 33,
+            symbol: "BTC-USD",
+            timeframe: "1h",
+            startDate: "2024-01-01T00:00:00Z",
+            endDate: "2024-01-02T00:00:00Z",
+            windowSize: 20,
+            stride: 8,
+            includeAnomalies: true,
+            requestedMode: "auto",
+            effectiveMode: "torch",
+            classifierSource: "torch",
+            modelVersion: "local-transformer-v2",
+            featureVersion: "torch-market-regime-features/v1",
+            artifactIdentifier: "abcdef123456",
+            status: "COMPLETED",
+            createdAt: "2024-01-02T00:00:00Z",
+            completedAt: "2024-01-02T00:00:01Z",
+            pointCount: 4,
+            qualitySummary: {
+              averageConfidence: 72.5,
+              lowConfidenceWindowCount: 1,
+              baselineDisagreementCount: 2,
+              baselineDisagreementRate: 50,
+              anomalyCount: 1,
+              dominantRegimeLabel: "TRENDING_UP",
+              regimeCounts: { TRENDING_UP: 3, SIDEWAYS: 1 },
+            },
+          },
+          deltaFromPrevious: {
+            averageConfidenceDelta: 10,
+            baselineDisagreementRateDelta: -5,
+            pointCountDelta: 1,
+            modeChanged: true,
+            modelChanged: true,
+            artifactChanged: true,
+          },
+        },
+      ],
+    });
+
+    render(<App />);
+
+    const table = await screen.findByRole("table", { name: "Regime run comparison" });
+    expect(within(table).getByText("#33")).toBeInTheDocument();
+    expect(within(table).getByText("abcdef12")).toBeInTheDocument();
+    expect(within(table).getByText("72.50%")).toBeInTheDocument();
+    expect(within(table).getByText("50.00%")).toBeInTheDocument();
+    expect(within(table).getByText(/conf \+10.00%/)).toBeInTheDocument();
+    expect(within(table).getByText(/artifact changed/)).toBeInTheDocument();
   });
 
   it("renders backtest chart summaries after a run", async () => {

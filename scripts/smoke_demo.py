@@ -423,7 +423,7 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
     )
     require_keys(
         regime_run,
-        ("id", "symbol", "timeframe", "effectiveMode", "pointCount", "points", "tradeMarkers"),
+        ("id", "symbol", "timeframe", "effectiveMode", "pointCount", "qualitySummary", "points", "tradeMarkers"),
         "Persisted regime run",
     )
     regime_run_id = int(regime_run["id"])
@@ -447,6 +447,19 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         isinstance(recent_runs, list) and any(int(run["id"]) == regime_run_id for run in recent_runs),
         "Regime run list did not include the saved run.",
     )
+    check("qualitySummary" in recent_runs[0], "Regime run list did not include quality summary evidence.")
+
+    log_step("checking regime run comparison")
+    comparison = request_json(
+        f"{config.backend_url}/api/regime-runs/comparison?symbol=BTC-USD&timeframe=1h&limit=5",
+        config.timeout_seconds,
+    )
+    require_keys(comparison, ("symbol", "timeframe", "runs"), "Regime run comparison")
+    check(
+        any(int(item["run"]["id"]) == regime_run_id for item in comparison["runs"]),
+        "Regime run comparison did not include the saved run.",
+    )
+    require_keys(comparison["runs"][0]["run"], ("qualitySummary", "pointCount"), "Regime comparison run")
 
     log_step("checking attention evidence diagnostics")
     latest_window_end = regime_run["points"][-1]["windowEnd"]

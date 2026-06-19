@@ -42,12 +42,15 @@ import {
   MarketRegimeResponse,
   MarketRegimeStatus,
   RegimeEvidenceSnapshot,
+  RegimeRunComparison,
+  RegimeRunComparisonDelta,
   RegimeRunResponse,
   RegimeRunSummary,
   fetchMarketRegimeDiagnostics,
   fetchMarketRegime,
   fetchRegimeEvidenceSnapshots,
   fetchMarketRegimeStatus,
+  fetchRegimeRunComparison,
   fetchRegimeRuns,
   runRegimeReplay,
 } from "./api/marketRegime";
@@ -97,6 +100,11 @@ const loadingMarketRegimeStatus: LoadState<MarketRegimeStatus> = {
   error: null,
 };
 const loadingRegimeRuns: LoadState<RegimeRunSummary[]> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+const loadingRegimeComparison: LoadState<RegimeRunComparison> = {
   status: "loading",
   data: null,
   error: null,
@@ -151,6 +159,8 @@ function App() {
     useState<LoadState<MarketRegimeStatus>>(loadingMarketRegimeStatus);
   const [regimeRunsState, setRegimeRunsState] =
     useState<LoadState<RegimeRunSummary[]>>(loadingRegimeRuns);
+  const [regimeComparisonState, setRegimeComparisonState] =
+    useState<LoadState<RegimeRunComparison>>(loadingRegimeComparison);
   const [strategyListState, setStrategyListState] =
     useState<LoadState<Strategy[]>>(loadingStrategyList);
   const [marketDataQualityState, setMarketDataQualityState] =
@@ -210,6 +220,7 @@ function App() {
     setRegimeState(loadingMarketRegime);
     setRegimeStatusState(loadingMarketRegimeStatus);
     setRegimeRunsState(loadingRegimeRuns);
+    setRegimeComparisonState(loadingRegimeComparison);
     setStrategyListState(loadingStrategyList);
     setMarketDataQualityState(loadingMarketDataQuality);
 
@@ -232,6 +243,11 @@ function App() {
       .then((data) => setRegimeRunsState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRegimeRunsState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    const regimeComparisonLoad = fetchRegimeRunComparison()
+      .then((data) => setRegimeComparisonState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setRegimeComparisonState({ status: "error", data: null, error: errorMessage(error) }),
       );
     const evidenceSnapshotsLoad = fetchRegimeEvidenceSnapshots()
       .then(setEvidenceSnapshots)
@@ -270,6 +286,7 @@ function App() {
       regimeLoad,
       regimeStatusLoad,
       regimeRunsLoad,
+      regimeComparisonLoad,
       evidenceSnapshotsLoad,
       auditLoad,
       riskAlertsLoad,
@@ -589,6 +606,9 @@ function App() {
       await fetchRegimeRuns(selectedStrategy.symbol, selectedStrategy.timeframe).then((data) =>
         setRegimeRunsState({ status: "success", data, error: null }),
       );
+      await fetchRegimeRunComparison(selectedStrategy.symbol, selectedStrategy.timeframe).then((data) =>
+        setRegimeComparisonState({ status: "success", data, error: null }),
+      );
       setNotice({ tone: "success", message: `Regime replay loaded ${replay.pointCount} windows.` });
     });
   }
@@ -740,6 +760,7 @@ function App() {
         analysis={regimeAnalysis}
         diagnostics={regimeDiagnostics}
         evidenceSnapshots={evidenceSnapshots}
+        comparisonState={regimeComparisonState}
         replay={regimeReplay}
         runsState={regimeRunsState}
         selectedStrategy={selectedStrategy}
@@ -832,6 +853,7 @@ function RegimeReplayPanel({
   busy,
   diagnostics,
   evidenceSnapshots,
+  comparisonState,
   replay,
   runsState,
   selectedStrategy,
@@ -842,6 +864,7 @@ function RegimeReplayPanel({
   busy: boolean;
   diagnostics: MarketRegimeDiagnostics | null;
   evidenceSnapshots: RegimeEvidenceSnapshot[];
+  comparisonState: LoadState<RegimeRunComparison>;
   replay: RegimeRunResponse | null;
   runsState: LoadState<RegimeRunSummary[]>;
   selectedStrategy: Strategy | null;
@@ -877,8 +900,61 @@ function RegimeReplayPanel({
       ) : (
         <ChartState title="No assessment chart yet" message="Run replay after selecting a strategy and date range." />
       )}
-      <SavedRegimeRuns state={runsState} />
+      <RegimeRunComparisonTable comparisonState={comparisonState} runsState={runsState} />
     </section>
+  );
+}
+
+function RegimeRunComparisonTable({
+  comparisonState,
+  runsState,
+}: {
+  comparisonState: LoadState<RegimeRunComparison>;
+  runsState: LoadState<RegimeRunSummary[]>;
+}) {
+  if (comparisonState.status === "loading" || runsState.status === "loading") {
+    return <p className="muted">Loading saved regime runs.</p>;
+  }
+  if (comparisonState.status === "error") {
+    return <p className="error-text">{comparisonState.error}</p>;
+  }
+  if (comparisonState.data.runs.length === 0) {
+    return <p className="muted">No saved regime runs yet.</p>;
+  }
+  return (
+    <table className="data-table regime-comparison-table" aria-label="Regime run comparison">
+      <thead>
+        <tr>
+          <th>Run</th>
+          <th>Mode</th>
+          <th>Model</th>
+          <th>Windows</th>
+          <th>Avg conf</th>
+          <th>Baseline gap</th>
+          <th>Dominant</th>
+          <th>Anomalies</th>
+          <th>Delta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {comparisonState.data.runs.slice(0, 5).map(({ run, deltaFromPrevious }) => {
+          const summary = run.qualitySummary;
+          return (
+            <tr key={run.id}>
+              <td>#{run.id}</td>
+              <td>{run.effectiveMode || run.classifierSource || "unknown"}</td>
+              <td>{shortModelLabel(run)}</td>
+              <td>{run.pointCount}</td>
+              <td>{formatPercent(summary?.averageConfidence)}</td>
+              <td>{formatPercent(summary?.baselineDisagreementRate)}</td>
+              <td>{summary?.dominantRegimeLabel ? formatAction(summary.dominantRegimeLabel) : "n/a"}</td>
+              <td>{summary?.anomalyCount ?? 0}</td>
+              <td>{formatComparisonDelta(deltaFromPrevious)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
@@ -2378,6 +2454,39 @@ function formatPercent(value: number | null | undefined) {
     return "N/A";
   }
   return `${Number(value).toFixed(2)}%`;
+}
+
+function shortModelLabel(run: RegimeRunSummary) {
+  if (run.artifactIdentifier) {
+    return run.artifactIdentifier.slice(0, 8);
+  }
+  return run.modelVersion || run.classifierSource || "rules";
+}
+
+function formatComparisonDelta(delta: RegimeRunComparisonDelta | null | undefined) {
+  if (!delta) {
+    return "baseline";
+  }
+  const markers = [
+    delta.averageConfidenceDelta === null || delta.averageConfidenceDelta === undefined
+      ? null
+      : `conf ${formatSignedPercent(delta.averageConfidenceDelta)}`,
+    delta.baselineDisagreementRateDelta === null || delta.baselineDisagreementRateDelta === undefined
+      ? null
+      : `gap ${formatSignedPercent(delta.baselineDisagreementRateDelta)}`,
+    delta.pointCountDelta === null || delta.pointCountDelta === undefined ? null : `windows ${formatSignedNumber(delta.pointCountDelta)}`,
+    delta.modeChanged ? "mode changed" : null,
+    delta.artifactChanged ? "artifact changed" : null,
+  ].filter(Boolean);
+  return markers.length ? markers.join(" | ") : "no material change";
+}
+
+function formatSignedPercent(value: number) {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function formatSignedNumber(value: number) {
+  return `${value >= 0 ? "+" : ""}${value}`;
 }
 
 function formatNumber(value: number | null | undefined) {

@@ -13,7 +13,13 @@ import {
 import { errorMessage, getJson } from "./client";
 import { fetchDashboardRiskAlerts, fetchDashboardSummary, fetchStrategyPerformance } from "./dashboard";
 import { fetchMarketDataQuality, importMarketData } from "./marketData";
-import { fetchMarketRegime, fetchMarketRegimeStatus, fetchRegimeRuns, runRegimeReplay } from "./marketRegime";
+import {
+  fetchMarketRegime,
+  fetchMarketRegimeStatus,
+  fetchRegimeRunComparison,
+  fetchRegimeRuns,
+  runRegimeReplay,
+} from "./marketRegime";
 import {
   createPaperSession,
   fetchPaperOrders,
@@ -231,6 +237,11 @@ describe("dashboard and analysis clients", () => {
 
     await fetchRegimeRuns("ETH-USD", "4h", 3);
     expect(latestFetchCall().url).toBe("http://api.test/api/regime-runs?symbol=ETH-USD&timeframe=4h&limit=3");
+
+    await fetchRegimeRunComparison("ETH-USD", "4h", 3);
+    expect(latestFetchCall().url).toBe(
+      "http://api.test/api/regime-runs/comparison?symbol=ETH-USD&timeframe=4h&limit=3",
+    );
 
     await checkAnomaly("ETH-USD", "4h", 64);
     expect(latestFetchCall().url).toBe("http://api.test/api/anomaly-check");
