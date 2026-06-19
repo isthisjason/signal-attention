@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+import json
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_config import MarketRegimeSettings
@@ -113,6 +114,70 @@ def test_auto_mode_reports_torch_artifact_when_present(tmp_path) -> None:
     assert status.effectiveMode == "torch"
     assert status.artifactExists is True
     assert status.artifactIdentifier is not None
+
+
+def test_auto_mode_loads_verified_promoted_artifact_when_explicit_path_is_absent(tmp_path) -> None:
+    artifact = tmp_path / "promoted.pt"
+    artifact.write_text("placeholder")
+    promotion = tmp_path / "promoted-market-regime.json"
+    promotion.write_text(
+        json.dumps(
+            {
+                "status": "promoted",
+                "artifactCheck": {"path": str(artifact), "matchesRecordedHash": True},
+                "runnableManifest": {"artifactPath": str(artifact)},
+            }
+        ),
+        encoding="utf-8",
+    )
+    settings = MarketRegimeSettings(mode="auto", promotion_path=str(promotion))
+
+    classifier = get_market_regime_classifier(settings)
+    status = market_regime_status(settings)
+
+    assert isinstance(classifier, TorchMarketRegimeClassifier)
+    assert status.effectiveMode == "torch"
+    assert status.artifactName == "promoted.pt"
+
+
+def test_auto_mode_prefers_explicit_artifact_over_promoted_artifact(tmp_path) -> None:
+    explicit = tmp_path / "explicit.pt"
+    promoted = tmp_path / "promoted.pt"
+    explicit.write_text("explicit")
+    promoted.write_text("promoted")
+    promotion = tmp_path / "promoted-market-regime.json"
+    promotion.write_text(
+        json.dumps(
+            {
+                "status": "promoted",
+                "artifactCheck": {"path": str(promoted), "matchesRecordedHash": True},
+                "runnableManifest": {"artifactPath": str(promoted)},
+            }
+        ),
+        encoding="utf-8",
+    )
+    settings = MarketRegimeSettings(
+        mode="auto",
+        artifact_path=str(explicit),
+        promotion_path=str(promotion),
+    )
+
+    status = market_regime_status(settings)
+
+    assert status.effectiveMode == "torch"
+    assert status.artifactName == "explicit.pt"
+
+
+def test_auto_mode_warns_when_promotion_summary_is_invalid(tmp_path) -> None:
+    promotion = tmp_path / "promoted-market-regime.json"
+    promotion.write_text("{bad json", encoding="utf-8")
+    settings = MarketRegimeSettings(mode="auto", promotion_path=str(promotion))
+
+    status = market_regime_status(settings)
+
+    assert status.effectiveMode == "rules"
+    assert "promotion summary is not valid JSON" in status.warnings
+    assert status.ready is True
 
 
 def test_status_reports_artifact_metadata_when_loadable(tmp_path, monkeypatch) -> None:

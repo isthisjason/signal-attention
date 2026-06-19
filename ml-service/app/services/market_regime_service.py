@@ -1,5 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
+import json
 from pathlib import Path
+from typing import Any
 
 from app.schemas.market_regime_schema import (
     AttentionTimestepEvidence,
@@ -195,12 +197,54 @@ def resolve_effective_settings(settings: MarketRegimeSettings) -> tuple[MarketRe
         return settings, warnings
 
     artifact_path = settings.artifact_path
-    # Auto mode keeps demos reproducible by preferring torch only when a local artifact is actually available.
+    # Explicit artifact configuration wins because it is the most local, reviewable operator choice.
     if artifact_path and Path(artifact_path).is_file():
         return MarketRegimeSettings(mode="torch", artifact_path=artifact_path), warnings
 
+    promoted_artifact_path = promoted_artifact_path_from_summary(settings.promotion_path, warnings)
+    if promoted_artifact_path and Path(promoted_artifact_path).is_file():
+        return MarketRegimeSettings(
+            mode="torch",
+            artifact_path=promoted_artifact_path,
+            promotion_path=settings.promotion_path,
+        ), warnings
+
     warnings.append("auto mode fell back to rules because no loadable torch artifact was configured")
     return MarketRegimeSettings(mode="rules", artifact_path=artifact_path), warnings
+
+
+def promoted_artifact_path_from_summary(promotion_path: str | None, warnings: list[str]) -> str | None:
+    if not promotion_path:
+        return None
+    path = Path(promotion_path)
+    if not path.is_file():
+        return None
+    try:
+        summary = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        warnings.append("promotion summary is not valid JSON")
+        return None
+
+    if summary.get("status") != "promoted":
+        warnings.append("promotion summary does not contain a promoted artifact")
+        return None
+    artifact_check = summary.get("artifactCheck")
+    if not isinstance(artifact_check, dict) or artifact_check.get("matchesRecordedHash") is not True:
+        warnings.append("promotion summary artifact check is not verified")
+        return None
+
+    artifact_path = promoted_artifact_path(summary, artifact_check)
+    if artifact_path is None:
+        warnings.append("promotion summary artifact path is missing")
+    return artifact_path
+
+
+def promoted_artifact_path(summary: dict[str, Any], artifact_check: dict[str, Any]) -> str | None:
+    runnable = summary.get("runnableManifest")
+    if isinstance(runnable, dict) and isinstance(runnable.get("artifactPath"), str):
+        return runnable["artifactPath"]
+    artifact_path = artifact_check.get("path")
+    return artifact_path if isinstance(artifact_path, str) else None
 
 
 def describe_artifact(artifact_path: str | None) -> dict:
