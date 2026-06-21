@@ -168,6 +168,45 @@ def validate_model_status(model_status: dict[str, Any]) -> None:
         )
 
 
+def validate_model_lab(model_lab: dict[str, Any]) -> None:
+    require_keys(model_lab, ("summary", "runs", "incompleteRuns", "promotion", "warnings"), "Model lab diagnostics")
+    require_keys(
+        model_lab["summary"],
+        ("totalRuns", "trainedRuns", "evaluatedRuns", "promotionEligibleRuns"),
+        "Model lab summary",
+    )
+    check(isinstance(model_lab["runs"], list), "Model lab runs field was not a list.")
+    check(isinstance(model_lab["incompleteRuns"], list), "Model lab incompleteRuns field was not a list.")
+    check(isinstance(model_lab["warnings"], list), "Model lab warnings field was not a list.")
+
+    for field_name in ("totalRuns", "trainedRuns", "evaluatedRuns", "promotionEligibleRuns"):
+        check(
+            isinstance(model_lab["summary"][field_name], int),
+            f"Model lab summary {field_name} was not an integer.",
+        )
+
+
+def validate_regime_robustness(robustness: dict[str, Any], regime_run_id: int, backtest_id: int) -> None:
+    require_keys(
+        robustness,
+        ("regimeRunId", "backtestId", "symbol", "timeframe", "reviewLabel", "qualitySummary", "reviewReasons", "regimes"),
+        "Regime robustness",
+    )
+    check(int(robustness["regimeRunId"]) == regime_run_id, "Regime robustness returned the wrong regime run id.")
+    check(int(robustness["backtestId"]) == backtest_id, "Regime robustness returned the wrong backtest id.")
+    check(
+        robustness["reviewLabel"] in {"stable", "mixed", "needs_review"},
+        "Regime robustness returned an unknown review label.",
+    )
+    check(isinstance(robustness["reviewReasons"], list), "Regime robustness reviewReasons field was not a list.")
+    check(isinstance(robustness["regimes"], list), "Regime robustness regimes field was not a list.")
+    require_keys(
+        robustness["qualitySummary"],
+        ("averageConfidence", "baselineDisagreementRate", "anomalyCount"),
+        "Regime robustness quality summary",
+    )
+
+
 def check_stack(config: Config) -> None:
     # First prove the three user-facing services are reachable.
     log_step("checking ML service health")
@@ -406,6 +445,10 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
     model_status = request_json(f"{config.backend_url}/api/market-regime/status", config.timeout_seconds)
     validate_model_status(model_status)
 
+    log_step("checking model lab diagnostics")
+    model_lab = request_json(f"{config.backend_url}/api/market-regime/experiments", config.timeout_seconds)
+    validate_model_lab(model_lab)
+
     log_step("creating persisted regime run")
     regime_run = post_json(
         f"{config.backend_url}/api/regime-runs",
@@ -460,6 +503,13 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         "Regime run comparison did not include the saved run.",
     )
     require_keys(comparison["runs"][0]["run"], ("qualitySummary", "pointCount"), "Regime comparison run")
+
+    log_step("checking regime robustness review")
+    robustness = request_json(
+        f"{config.backend_url}/api/regime-runs/{regime_run_id}/robustness?backtestId={backtest_id}",
+        config.timeout_seconds,
+    )
+    validate_regime_robustness(robustness, regime_run_id, backtest_id)
 
     log_step("checking attention evidence diagnostics")
     latest_window_end = regime_run["points"][-1]["windowEnd"]
@@ -552,6 +602,45 @@ def check_assistant_workflow(config: Config, strategy_id: int, backtest_id: int)
     )
     require_keys(rejected, ("id", "status", "rejectedAt"), "Assistant action reject")
     check(rejected["status"] == "REJECTED", "Assistant action was not rejected.")
+
+    log_step("asking assistant for model lab review")
+    model_lab_review = post_json(
+        f"{config.backend_url}/api/assistant/sessions/{session_id}/messages",
+        config.timeout_seconds,
+        {
+            "prompt": "Review model lab promotion",
+            "strategyId": strategy_id,
+            "backtestId": backtest_id,
+            "startDate": "2024-01-01T00:00:00Z",
+            "endDate": "2024-01-10T00:00:00Z",
+        },
+    )
+    require_keys(model_lab_review, ("id", "messages", "actions"), "Assistant model lab message")
+    check(
+        any(action["status"] == "PROPOSED" and action["actionType"] == "REVIEW_MODEL_LAB" for action in model_lab_review["actions"]),
+        "Assistant did not propose a model lab review action.",
+    )
+
+    log_step("asking assistant for robustness review")
+    robustness_review = post_json(
+        f"{config.backend_url}/api/assistant/sessions/{session_id}/messages",
+        config.timeout_seconds,
+        {
+            "prompt": "Review robustness stability",
+            "strategyId": strategy_id,
+            "backtestId": backtest_id,
+            "startDate": "2024-01-01T00:00:00Z",
+            "endDate": "2024-01-10T00:00:00Z",
+        },
+    )
+    require_keys(robustness_review, ("id", "messages", "actions"), "Assistant robustness message")
+    check(
+        any(
+            action["status"] == "PROPOSED" and action["actionType"] == "REVIEW_REGIME_ROBUSTNESS"
+            for action in robustness_review["actions"]
+        ),
+        "Assistant did not propose a regime robustness review action.",
+    )
 
 
 def main() -> int:

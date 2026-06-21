@@ -87,6 +87,80 @@ class SmokeDemoHelperTests(unittest.TestCase):
                 }
             )
 
+    def test_validate_model_lab_accepts_structural_diagnostics(self) -> None:
+        smoke_demo.validate_model_lab(
+            {
+                "summary": {
+                    "totalRuns": 2,
+                    "trainedRuns": 2,
+                    "evaluatedRuns": 1,
+                    "promotionEligibleRuns": 1,
+                },
+                "runs": [{"runId": "run-1"}],
+                "incompleteRuns": [],
+                "promotion": {},
+                "warnings": [],
+            }
+        )
+
+    def test_validate_model_lab_requires_integer_summary_counts(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "totalRuns"):
+            smoke_demo.validate_model_lab(
+                {
+                    "summary": {
+                        "totalRuns": "2",
+                        "trainedRuns": 2,
+                        "evaluatedRuns": 1,
+                        "promotionEligibleRuns": 1,
+                    },
+                    "runs": [],
+                    "incompleteRuns": [],
+                    "promotion": {},
+                    "warnings": [],
+                }
+            )
+
+    def test_validate_regime_robustness_accepts_review_payload(self) -> None:
+        smoke_demo.validate_regime_robustness(
+            {
+                "regimeRunId": 7,
+                "backtestId": 3,
+                "symbol": "BTC-USD",
+                "timeframe": "1h",
+                "reviewLabel": "mixed",
+                "qualitySummary": {
+                    "averageConfidence": 82.5,
+                    "baselineDisagreementRate": 12.0,
+                    "anomalyCount": 0,
+                },
+                "reviewReasons": ["Baseline disagreements were moderate."],
+                "regimes": [],
+            },
+            regime_run_id=7,
+            backtest_id=3,
+        )
+
+    def test_validate_regime_robustness_rejects_unknown_label(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "unknown review label"):
+            smoke_demo.validate_regime_robustness(
+                {
+                    "regimeRunId": 7,
+                    "backtestId": 3,
+                    "symbol": "BTC-USD",
+                    "timeframe": "1h",
+                    "reviewLabel": "unclear",
+                    "qualitySummary": {
+                        "averageConfidence": 82.5,
+                        "baselineDisagreementRate": 12.0,
+                        "anomalyCount": 0,
+                    },
+                    "reviewReasons": [],
+                    "regimes": [],
+                },
+                regime_run_id=7,
+                backtest_id=3,
+            )
+
     def test_format_http_error_includes_method_url_status_and_body(self) -> None:
         request = Request("http://api.test/api/fails", method="POST")
         error = HTTPError(
