@@ -38,10 +38,31 @@ public class LocalAssistantProvider implements AssistantProvider {
                         .append(Boolean.TRUE.equals(context.latestRegimeModeChanged()) ? "mode" : "artifact")
                         .append(" compared with the prior saved run. ");
             }
+            if (context.latestRegimeRobustnessLabel() != null) {
+                response.append("Its robustness review is ")
+                        .append(context.latestRegimeRobustnessLabel())
+                        .append(". ");
+            }
+        }
+        if (context.modelLabTotalRuns() != null) {
+            response.append("Model lab has ")
+                    .append(context.modelLabTotalRuns())
+                    .append(" runs, ")
+                    .append(context.modelLabEligibleRuns() == null ? 0 : context.modelLabEligibleRuns())
+                    .append(" promotion eligible, and best run ")
+                    .append(context.modelLabBestRunId() == null ? "not recorded" : context.modelLabBestRunId())
+                    .append(". ");
+            if (context.modelLabWarningCount() != null && context.modelLabWarningCount() > 0) {
+                response.append(context.modelLabWarningCount()).append(" model lab warnings need review. ");
+            }
         }
         response.append("I can explain simulation state and prepare reviewable research actions, but I cannot give buy or sell advice.");
 
-        if (normalized.contains("attention") || normalized.contains("diagnostic") || normalized.contains("evidence")) {
+        if (normalized.contains("model lab") || normalized.contains("experiment") || normalized.contains("promotion")) {
+            maybeAddModelLabReview(actions);
+        } else if (normalized.contains("robust") || normalized.contains("stability")) {
+            maybeAddRobustnessReview(context, actions);
+        } else if (normalized.contains("attention") || normalized.contains("diagnostic") || normalized.contains("evidence")) {
             maybeAddAttentionDiagnostics(context, actions);
         } else if (normalized.contains("regime")) {
             maybeAddRegimeReplay(context, actions);
@@ -108,6 +129,30 @@ public class LocalAssistantProvider implements AssistantProvider {
         actions.add(new AssistantProposedAction(
                 AssistantActionType.INSPECT_ATTENTION_DIAGNOSTICS,
                 "Inspect attention evidence for the selected strategy market.",
+                payload
+        ));
+    }
+
+    private void maybeAddModelLabReview(List<AssistantProposedAction> actions) {
+        actions.add(new AssistantProposedAction(
+                AssistantActionType.REVIEW_MODEL_LAB,
+                "Review local model lab experiment diagnostics.",
+                Map.of()
+        ));
+    }
+
+    private void maybeAddRobustnessReview(AssistantContext context, List<AssistantProposedAction> actions) {
+        if (context.latestRegimeRunId() == null) {
+            return;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("regimeRunId", context.latestRegimeRunId());
+        if (context.backtestId() != null) {
+            payload.put("backtestId", context.backtestId());
+        }
+        actions.add(new AssistantProposedAction(
+                AssistantActionType.REVIEW_REGIME_ROBUSTNESS,
+                "Review attention robustness for the latest saved regime run.",
                 payload
         ));
     }

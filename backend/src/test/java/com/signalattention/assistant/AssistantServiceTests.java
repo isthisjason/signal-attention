@@ -9,12 +9,15 @@ import com.signalattention.marketregime.RegimePrediction;
 import com.signalattention.marketregime.RegimePredictionRepository;
 import com.signalattention.marketregime.RegimeRun;
 import com.signalattention.marketregime.RegimeRunRepository;
+import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
+import com.signalattention.ml.MlRiskClient;
 import com.signalattention.papertrading.PaperSessionRepository;
 import com.signalattention.papertrading.PaperSessionStatus;
 import com.signalattention.strategies.StrategyRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +48,8 @@ class AssistantServiceTests {
     private RegimeRunRepository regimeRunRepository;
     @Mock
     private RegimePredictionRepository regimePredictionRepository;
+    @Mock
+    private MlRiskClient mlRiskClient;
 
     private AssistantService service;
 
@@ -61,7 +66,8 @@ class AssistantServiceTests {
                 backtestRunRepository,
                 paperSessionRepository,
                 regimeRunRepository,
-                regimePredictionRepository
+                regimePredictionRepository,
+                mlRiskClient
         );
     }
 
@@ -77,14 +83,31 @@ class AssistantServiceTests {
                 prediction(latest, "SIDEWAYS", "80.00", false),
                 prediction(latest, "TRENDING_UP", "60.00", true)
         ));
+        when(mlRiskClient.getMarketRegimeExperiments()).thenReturn(new MlMarketRegimeExperimentDiagnosticsResponse(
+                Map.of(
+                        "totalRuns", 2,
+                        "promotionEligibleRuns", 1,
+                        "bestRun", Map.of("runId", "run-123")
+                ),
+                List.of(),
+                List.of(),
+                Map.of("status", "promoted"),
+                List.of("local registry only")
+        ));
 
         AssistantContext context = service.buildContextSnapshot(null);
 
+        assertThat(context.latestRegimeRunId()).isEqualTo(2L);
         assertThat(context.latestRegimeLabel()).isEqualTo("TRENDING_UP");
         assertThat(context.latestRegimeAverageConfidence()).isEqualByComparingTo("70.000000");
         assertThat(context.latestRegimeBaselineDisagreementRate()).isEqualByComparingTo("50.000000");
         assertThat(context.latestRegimeModeChanged()).isTrue();
         assertThat(context.latestRegimeArtifactChanged()).isTrue();
+        assertThat(context.latestRegimeRobustnessLabel()).isEqualTo("needs_review");
+        assertThat(context.modelLabTotalRuns()).isEqualTo(2);
+        assertThat(context.modelLabEligibleRuns()).isEqualTo(1);
+        assertThat(context.modelLabBestRunId()).isEqualTo("run-123");
+        assertThat(context.modelLabWarningCount()).isEqualTo(1);
     }
 
     private RegimeRun run(Long id, String symbol, String timeframe, String mode, String artifact, String createdAt, int pointCount) {

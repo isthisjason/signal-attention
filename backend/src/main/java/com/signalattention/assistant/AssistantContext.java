@@ -11,11 +11,17 @@ public record AssistantContext(
         Long paperSessionId,
         Instant startDate,
         Instant endDate,
+        Long latestRegimeRunId,
         String latestRegimeLabel,
         Integer latestRegimePointCount,
         java.math.BigDecimal latestRegimeAverageConfidence,
         java.math.BigDecimal latestRegimeBaselineDisagreementRate,
         Boolean latestRegimeModeChanged,
-        Boolean latestRegimeArtifactChanged
+        Boolean latestRegimeArtifactChanged,
+        String latestRegimeRobustnessLabel,
+        Integer modelLabTotalRuns,
+        Integer modelLabEligibleRuns,
+        String modelLabBestRunId,
+        Integer modelLabWarningCount
 ) {
 }

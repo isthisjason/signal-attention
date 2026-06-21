@@ -59,6 +59,33 @@ class LocalAssistantProviderTests {
         assertThat(reply.proposedActions().getFirst().payload()).containsEntry("limit", 20);
     }
 
+    @Test
+    void replyProposesModelLabReview() {
+        AssistantReply reply = provider.reply(
+                "review model lab promotion",
+                context(1L, null, null)
+        );
+
+        assertThat(reply.content()).contains("Model lab has 2 runs");
+        assertThat(reply.proposedActions()).singleElement()
+                .extracting(AssistantProposedAction::actionType)
+                .isEqualTo(AssistantActionType.REVIEW_MODEL_LAB);
+    }
+
+    @Test
+    void replyProposesRobustnessReviewForLatestRegimeRun() {
+        AssistantReply reply = provider.reply(
+                "review robustness",
+                context(1L, 2L, null)
+        );
+
+        assertThat(reply.proposedActions()).singleElement()
+                .extracting(AssistantProposedAction::actionType)
+                .isEqualTo(AssistantActionType.REVIEW_REGIME_ROBUSTNESS);
+        assertThat(reply.proposedActions().getFirst().payload()).containsEntry("regimeRunId", 33L);
+        assertThat(reply.proposedActions().getFirst().payload()).containsEntry("backtestId", 2L);
+    }
+
     private AssistantContext context(Long strategyId, Long backtestId, Long paperSessionId) {
         return new AssistantContext(
                 1,
@@ -69,12 +96,18 @@ class LocalAssistantProviderTests {
                 paperSessionId,
                 Instant.parse("2024-01-01T00:00:00Z"),
                 Instant.parse("2024-01-10T00:00:00Z"),
+                33L,
                 "TRENDING_UP",
                 3,
                 new BigDecimal("72.500000"),
                 new BigDecimal("33.333333"),
                 false,
-                false
+                false,
+                "mixed",
+                2,
+                1,
+                "run-123",
+                0
         );
     }
 }

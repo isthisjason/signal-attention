@@ -8,6 +8,8 @@ import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.marketregime.RegimePredictionRepository;
 import com.signalattention.marketregime.RegimeRun;
 import com.signalattention.marketregime.RegimeRunRepository;
+import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
+import com.signalattention.ml.MlRiskClient;
 import com.signalattention.papertrading.PaperSessionStatus;
 import com.signalattention.papertrading.PaperSessionRepository;
 import com.signalattention.strategies.StrategyRepository;
@@ -33,6 +35,7 @@ public class AssistantService {
     private final PaperSessionRepository paperSessionRepository;
     private final RegimeRunRepository regimeRunRepository;
     private final RegimePredictionRepository regimePredictionRepository;
+    private final MlRiskClient mlRiskClient;
 
     public AssistantService(
             AssistantSessionRepository sessionRepository,
@@ -45,7 +48,8 @@ public class AssistantService {
             BacktestRunRepository backtestRunRepository,
             PaperSessionRepository paperSessionRepository,
             RegimeRunRepository regimeRunRepository,
-            RegimePredictionRepository regimePredictionRepository
+            RegimePredictionRepository regimePredictionRepository,
+            MlRiskClient mlRiskClient
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -58,6 +62,7 @@ public class AssistantService {
         this.paperSessionRepository = paperSessionRepository;
         this.regimeRunRepository = regimeRunRepository;
         this.regimePredictionRepository = regimePredictionRepository;
+        this.mlRiskClient = mlRiskClient;
     }
 
     @Transactional
@@ -126,6 +131,7 @@ public class AssistantService {
         BigDecimal disagreementRate = null;
         Boolean modeChanged = null;
         Boolean artifactChanged = null;
+        String robustnessLabel = null;
         if (latestRun != null) {
             pointCount = latestRun.getPointCount();
             var latestPredictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(latestRun.getId());
@@ -141,11 +147,13 @@ public class AssistantService {
                     .filter(run -> Objects.equals(run.getTimeframe(), latestRun.getTimeframe()))
                     .max(Comparator.comparing(RegimeRun::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                     .orElse(null);
+            robustnessLabel = assistantRobustnessLabel(latestPredictions, disagreementRate);
         }
         if (latestRun != null && previousRun != null) {
             modeChanged = !Objects.equals(latestRun.getEffectiveMode(), previousRun.getEffectiveMode());
             artifactChanged = !Objects.equals(latestRun.getArtifactIdentifier(), previousRun.getArtifactIdentifier());
         }
+        MlMarketRegimeExperimentDiagnosticsResponse modelLab = loadModelLabContext();
         return new AssistantContext(
                 strategyRepository.count(),
                 backtestRunRepository.count(),
@@ -155,13 +163,60 @@ public class AssistantService {
                 request == null ? null : request.paperSessionId(),
                 request == null ? null : request.startDate(),
                 request == null ? null : request.endDate(),
+                latestRun == null ? null : latestRun.getId(),
                 latestLabel,
                 pointCount,
                 averageConfidence,
                 disagreementRate,
                 modeChanged,
-                artifactChanged
+                artifactChanged,
+                robustnessLabel,
+                modelLab == null ? null : numberValue(modelLab.summary().get("totalRuns")),
+                modelLab == null ? null : numberValue(modelLab.summary().get("promotionEligibleRuns")),
+                modelLab == null ? null : bestRunId(modelLab),
+                modelLab == null || modelLab.warnings() == null ? null : modelLab.warnings().size()
         );
+    }
+
+    private MlMarketRegimeExperimentDiagnosticsResponse loadModelLabContext() {
+        try {
+            return mlRiskClient.getMarketRegimeExperiments();
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private String assistantRobustnessLabel(
+            List<com.signalattention.marketregime.RegimePrediction> predictions,
+            BigDecimal disagreementRate
+    ) {
+        if (predictions.isEmpty()) {
+            return "needs_review";
+        }
+        boolean lowConfidence = predictions.stream()
+                .anyMatch(prediction -> prediction.getConfidence() != null && prediction.getConfidence().compareTo(new BigDecimal("60.00")) < 0);
+        boolean anomaly = predictions.stream()
+                .anyMatch(prediction -> prediction.getAnomalyLabel() != null && !"NORMAL".equalsIgnoreCase(prediction.getAnomalyLabel()));
+        if (lowConfidence || anomaly || disagreementRate.compareTo(new BigDecimal("35.000000")) > 0) {
+            return "needs_review";
+        }
+        if (disagreementRate.compareTo(new BigDecimal("10.000000")) > 0) {
+            return "mixed";
+        }
+        return "stable";
+    }
+
+    private Integer numberValue(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private String bestRunId(MlMarketRegimeExperimentDiagnosticsResponse modelLab) {
+        Object bestRun = modelLab.summary().get("bestRun");
+        if (bestRun instanceof java.util.Map<?, ?> map) {
+            Object runId = map.get("runId");
+            return runId instanceof String value ? value : null;
+        }
+        return null;
     }
 
     private BigDecimal averageConfidence(List<com.signalattention.marketregime.RegimePrediction> predictions) {

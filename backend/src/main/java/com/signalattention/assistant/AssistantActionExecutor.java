@@ -56,6 +56,8 @@ public class AssistantActionExecutor {
             case RUN_BACKTEST -> runBacktest(action);
             case RUN_REGIME_REPLAY -> runRegimeReplay(action);
             case INSPECT_ATTENTION_DIAGNOSTICS -> inspectAttentionDiagnostics(action);
+            case REVIEW_MODEL_LAB -> marketRegimeService.getExperimentDiagnostics();
+            case REVIEW_REGIME_ROBUSTNESS -> reviewRegimeRobustness(action);
             case START_PAPER_SESSION -> startPaperSession(action);
             case REPLAY_PAPER_SESSION -> replayPaperSession(action);
         };
@@ -104,6 +106,14 @@ public class AssistantActionExecutor {
                 strategy.getTimeframe(),
                 optionalInt(payload, "limit"),
                 optionalInstant(payload, "windowEnd")
+        );
+    }
+
+    private Object reviewRegimeRobustness(AssistantAction action) {
+        JsonNode payload = payload(action);
+        return marketRegimeService.summarizeRobustness(
+                requiredLong(payload, "regimeRunId"),
+                optionalLong(payload, "backtestId")
         );
     }
 
