@@ -45,6 +45,7 @@ import {
   RegimeEvidenceSnapshot,
   RegimeRunComparison,
   RegimeRunComparisonDelta,
+  RegimeRobustnessSummary,
   RegimeRunResponse,
   RegimeRunSummary,
   fetchMarketRegimeDiagnostics,
@@ -53,6 +54,7 @@ import {
   fetchRegimeEvidenceSnapshots,
   fetchMarketRegimeStatus,
   fetchRegimeRunComparison,
+  fetchRegimeRobustness,
   fetchRegimeRuns,
   runRegimeReplay,
 } from "./api/marketRegime";
@@ -215,6 +217,7 @@ function App() {
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
   const [regimeAnalysis, setRegimeAnalysis] = useState<RegimeBacktestAnalysis | null>(null);
+  const [regimeRobustness, setRegimeRobustness] = useState<RegimeRobustnessSummary | null>(null);
   const [regimeDiagnostics, setRegimeDiagnostics] = useState<MarketRegimeDiagnostics | null>(null);
   const [evidenceSnapshots, setEvidenceSnapshots] = useState<RegimeEvidenceSnapshot[]>([]);
   const [assistantSession, setAssistantSession] = useState<AssistantSession | null>(null);
@@ -604,6 +607,7 @@ function App() {
         backtestId: backtestRun?.id ?? null,
       });
       setRegimeReplay(replay);
+      setRegimeRobustness(await fetchRegimeRobustness(replay.id, backtestRun?.id ?? null));
       const analysis =
         backtestRun && replay.id ? await fetchRegimeBacktestAnalysis(backtestRun.id, replay.id) : null;
       setRegimeAnalysis(analysis);
@@ -779,6 +783,7 @@ function App() {
         experimentsState={regimeExperimentsState}
         comparisonState={regimeComparisonState}
         replay={regimeReplay}
+        robustness={regimeRobustness}
         runsState={regimeRunsState}
         selectedStrategy={selectedStrategy}
         statusState={regimeStatusState}
@@ -873,6 +878,7 @@ function RegimeReplayPanel({
   experimentsState,
   comparisonState,
   replay,
+  robustness,
   runsState,
   selectedStrategy,
   statusState,
@@ -885,6 +891,7 @@ function RegimeReplayPanel({
   experimentsState: LoadState<MarketRegimeExperimentDiagnostics>;
   comparisonState: LoadState<RegimeRunComparison>;
   replay: RegimeRunResponse | null;
+  robustness: RegimeRobustnessSummary | null;
   runsState: LoadState<RegimeRunSummary[]>;
   selectedStrategy: Strategy | null;
   statusState: LoadState<MarketRegimeStatus>;
@@ -915,6 +922,7 @@ function RegimeReplayPanel({
           />
           <CandlestickReplayChart replay={replay} />
           <AttentionEvidencePanel diagnostics={diagnostics} snapshots={evidenceSnapshots} />
+          <RegimeRobustnessPanel robustness={robustness} />
           <RegimeAnalysisTable analysis={analysis} />
         </>
       ) : (
@@ -1126,6 +1134,58 @@ function AttentionEvidencePanel({
             ["Saved", formatDateTime(latestSnapshot.createdAt)],
           ]}
         />
+      ) : null}
+    </div>
+  );
+}
+
+function RegimeRobustnessPanel({ robustness }: { robustness: RegimeRobustnessSummary | null }) {
+  if (!robustness) {
+    return <p className="muted">Run replay to generate the attention robustness review.</p>;
+  }
+  const quality = robustness.qualitySummary;
+  return (
+    <div className="robustness-panel" aria-label="Attention robustness review">
+      <div>
+        <h3>Robustness review</h3>
+        <p className="muted">Descriptive review of confidence, baseline gaps, anomalies, and optional backtest overlap.</p>
+      </div>
+      <ResultGrid
+        items={[
+          ["Review", formatAction(robustness.reviewLabel)],
+          ["Confidence", formatPercent(quality.averageConfidence)],
+          ["Baseline gap", formatPercent(quality.baselineDisagreementRate)],
+          ["Anomalies", quality.anomalyCount],
+        ]}
+      />
+      <ul className="compact-list">
+        {robustness.reviewReasons.map((reason) => (
+          <li key={reason}>{reason}</li>
+        ))}
+      </ul>
+      {robustness.regimes.length ? (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Regime</th>
+              <th>Trades</th>
+              <th>Win rate</th>
+              <th>Net PnL</th>
+              <th>Baseline gaps</th>
+            </tr>
+          </thead>
+          <tbody>
+            {robustness.regimes.map((regime) => (
+              <tr key={regime.regimeLabel}>
+                <td>{formatAction(regime.regimeLabel)}</td>
+                <td>{regime.tradeCount}</td>
+                <td>{formatPercent(regime.winRate)}</td>
+                <td>{formatCurrency(regime.totalNetPnl)}</td>
+                <td>{regime.baselineDisagreementCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       ) : null}
     </div>
   );

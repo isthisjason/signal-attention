@@ -498,6 +498,7 @@ textarea {
 }
 
 .model-lab-panel,
+.robustness-panel,
 .evidence-panel {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -509,6 +510,7 @@ textarea {
 
 .model-lab-panel h3,
 .model-lab-panel h4,
+.robustness-panel h3,
 .evidence-panel h3,
 .evidence-panel h4 {
   margin: 0;
@@ -522,12 +524,14 @@ textarea {
 }
 
 .model-lab-panel .compact-list,
+.robustness-panel .compact-list,
 .evidence-panel .compact-list {
   list-style: none;
   padding-left: 0;
 }
 
 .model-lab-panel .compact-list li,
+.robustness-panel .compact-list li,
 .evidence-panel .compact-list li {
   align-items: center;
   border-top: 1px solid var(--border);

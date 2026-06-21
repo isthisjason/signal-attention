@@ -166,6 +166,26 @@ export type RegimeRunResponse = {
 
 export type RegimeRunSummary = Omit<RegimeRunResponse, "candles" | "points" | "tradeMarkers">;
 
+export type RegimeRobustnessSummary = {
+  regimeRunId: number;
+  backtestId?: number | null;
+  symbol: string;
+  timeframe: string;
+  reviewLabel: string;
+  qualitySummary: RegimeRunQualitySummary;
+  reviewReasons: string[];
+  regimes: Array<{
+    regimeLabel: string;
+    tradeCount: number;
+    winRate: number;
+    totalNetPnl: number;
+    averageReturn: number;
+    bestTrade: number;
+    worstTrade: number;
+    baselineDisagreementCount: number;
+  }>;
+};
+
 export type RegimeRunComparisonDelta = {
   averageConfidenceDelta?: number | null;
   baselineDisagreementRateDelta?: number | null;
@@ -252,6 +272,15 @@ export function fetchRegimeRuns(symbol = "BTC-USD", timeframe = "1h", limit = 10
 export function fetchRegimeRunComparison(symbol = "BTC-USD", timeframe = "1h", limit = 10) {
   const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
   return getJson<RegimeRunComparison>(`/api/regime-runs/comparison?${params.toString()}`);
+}
+
+export function fetchRegimeRobustness(regimeRunId: number, backtestId?: number | null) {
+  const params = new URLSearchParams();
+  if (backtestId !== null && backtestId !== undefined) {
+    params.set("backtestId", String(backtestId));
+  }
+  const query = params.toString();
+  return getJson<RegimeRobustnessSummary>(`/api/regime-runs/${regimeRunId}/robustness${query ? `?${query}` : ""}`);
 }
 
 export function runRegimeReplay(request: RegimeRunRequest) {

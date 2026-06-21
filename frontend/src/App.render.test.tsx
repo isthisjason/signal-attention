@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   fetchMarketRegimeStatus: vi.fn(),
   fetchRegimeEvidenceSnapshots: vi.fn(),
   fetchRegimeRunComparison: vi.fn(),
+  fetchRegimeRobustness: vi.fn(),
   fetchRegimeRuns: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
@@ -65,6 +66,7 @@ vi.mock("./api/marketRegime", () => ({
   fetchMarketRegimeStatus: mocks.fetchMarketRegimeStatus,
   fetchRegimeEvidenceSnapshots: mocks.fetchRegimeEvidenceSnapshots,
   fetchRegimeRunComparison: mocks.fetchRegimeRunComparison,
+  fetchRegimeRobustness: mocks.fetchRegimeRobustness,
   fetchRegimeRuns: mocks.fetchRegimeRuns,
   runRegimeReplay: mocks.runRegimeReplay,
 }));
@@ -189,6 +191,24 @@ beforeEach(() => {
   });
   mocks.fetchRegimeRuns.mockResolvedValue([]);
   mocks.fetchRegimeRunComparison.mockResolvedValue({ symbol: "BTC-USD", timeframe: "1h", runs: [] });
+  mocks.fetchRegimeRobustness.mockResolvedValue({
+    regimeRunId: 33,
+    backtestId: null,
+    symbol: "BTC-USD",
+    timeframe: "1h",
+    reviewLabel: "stable",
+    qualitySummary: {
+      averageConfidence: 75,
+      lowConfidenceWindowCount: 0,
+      baselineDisagreementCount: 0,
+      baselineDisagreementRate: 0,
+      anomalyCount: 0,
+      dominantRegimeLabel: "TRENDING_UP",
+      regimeCounts: { TRENDING_UP: 1 },
+    },
+    reviewReasons: ["Regime windows were high confidence, baseline aligned, and anomaly free."],
+    regimes: [],
+  });
   mocks.fetchRegimeEvidenceSnapshots.mockResolvedValue([]);
   mocks.fetchMarketRegimeDiagnostics.mockResolvedValue({
     symbol: "BTC-USD",
@@ -384,6 +404,7 @@ describe("dashboard render states", () => {
     expect(screen.getByText("No paper positions for the selected session.")).toBeInTheDocument();
     expect(screen.getByText("No assessment chart yet")).toBeInTheDocument();
     expect(screen.getByLabelText("Model lab diagnostics")).toHaveTextContent("No experiments recorded yet.");
+    expect(screen.queryByLabelText("Attention robustness review")).not.toBeInTheDocument();
     expect(screen.getByText("No anomaly check yet")).toBeInTheDocument();
     expect(screen.getByText("No risk alerts are active.")).toBeInTheDocument();
     expect(screen.getByText("No audit events have been recorded yet.")).toBeInTheDocument();
@@ -557,6 +578,8 @@ describe("dashboard render states", () => {
     expect(within(legend).getByText("Buy")).toBeInTheDocument();
     expect(screen.getByLabelText("TRENDING_UP regime marker")).toBeInTheDocument();
     expect(screen.getByLabelText("buy trade marker")).toBeInTheDocument();
+    expect(screen.getByLabelText("Attention robustness review")).toHaveTextContent("stable");
+    expect(screen.getByText("Regime windows were high confidence, baseline aligned, and anomaly free.")).toBeInTheDocument();
     expect(screen.getByText("O $40,000.00")).toBeInTheDocument();
 
     await user.hover(screen.getByLabelText(/open \$40,500.00 high \$41,500.00/));
