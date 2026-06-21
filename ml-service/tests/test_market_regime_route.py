@@ -60,7 +60,7 @@ def test_market_regime_experiments_route_function(monkeypatch, tmp_path) -> None
 
     response = get_market_regime_experiments()
 
-    assert response.summary["totalRuns"] == 0
+    assert response.summary.totalRuns == 0
     assert response.runs == []
     assert response.promotion is None
     assert response.warnings == []
@@ -75,7 +75,7 @@ def test_market_regime_experiments_reports_malformed_registry(monkeypatch, tmp_p
 
     response = get_market_regime_experiments()
 
-    assert response.summary["totalRuns"] == 0
+    assert response.summary.totalRuns == 0
     assert "experiment registry is not valid JSON" in response.warnings
 
 

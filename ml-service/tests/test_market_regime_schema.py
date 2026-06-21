@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.market_regime_schema import MarketRegimeRequest
+from app.schemas.market_regime_schema import MarketRegimeExperimentDiagnosticsResponse, MarketRegimeRequest
 
 
 def candle(index: int, close: Decimal = Decimal("100")) -> dict[str, object]:
@@ -55,3 +55,39 @@ def test_market_regime_request_rejects_invalid_ohlc_bounds() -> None:
 
     with pytest.raises(ValidationError):
         MarketRegimeRequest(**request_payload(candles=candles))
+
+
+def test_experiment_diagnostics_response_uses_typed_runs() -> None:
+    response = MarketRegimeExperimentDiagnosticsResponse(
+        summary={
+            "totalRuns": 1,
+            "trainedRuns": 1,
+            "evaluatedRuns": 1,
+            "promotionEligibleRuns": 1,
+            "bestRun": {
+                "name": "btc-v2",
+                "runId": "run-1",
+                "accuracy": 0.72,
+                "promotionGate": {"eligible": True, "failures": []},
+                "weakestLabels": [{"label": "SIDEWAYS", "f1": 0.5}],
+                "confusionPairs": [{"expected": "SIDEWAYS", "predicted": "TRENDING_UP", "count": 2}],
+            },
+        },
+        runs=[],
+        incompleteRuns=[],
+    )
+
+    assert response.summary.bestRun is not None
+    assert response.summary.bestRun.runId == "run-1"
+    assert response.summary.bestRun.promotionGate.eligible is True
+    assert response.summary.bestRun.weakestLabels[0].label == "SIDEWAYS"
+    assert response.summary.bestRun.confusionPairs[0].count == 2
+
+
+def test_experiment_diagnostics_defaults_do_not_share_lists() -> None:
+    first = MarketRegimeExperimentDiagnosticsResponse(summary={})
+    second = MarketRegimeExperimentDiagnosticsResponse(summary={})
+
+    first.warnings.append("local warning")
+
+    assert second.warnings == []

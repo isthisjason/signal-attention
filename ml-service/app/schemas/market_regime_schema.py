@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -107,22 +108,68 @@ class MarketRegimeStatusResponse(BaseModel):
     artifactName: str | None = None
     artifactPath: str | None = None
     architecture: str | None = None
-    labels: list[str] = []
+    labels: list[str] = Field(default_factory=list)
     modelConfig: dict | None = None
     promotionStatus: str | None = None
     promotedRunId: str | None = None
     promotionGeneratedAt: str | None = None
     promotionArtifactMatches: bool | None = None
-    promotionWarnings: list[str] = []
-    warnings: list[str] = []
+    promotionWarnings: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class PromotionGateDiagnostics(BaseModel):
+    eligible: bool = False
+    failures: list[str] = Field(default_factory=list)
+    gates: dict[str, Any] = Field(default_factory=dict)
+
+
+class WeakLabelDiagnostics(BaseModel):
+    label: str | None = None
+    f1: float | None = None
+    recall: float | None = None
+    precision: float | None = None
+    support: int | None = None
+
+
+class ConfusionPairDiagnostics(BaseModel):
+    expected: str | None = None
+    predicted: str | None = None
+    count: int | None = None
+
+
+class MarketRegimeExperimentRunDiagnostics(BaseModel):
+    name: str | None = None
+    runId: str | None = None
+    hasTraining: bool = False
+    hasEvaluation: bool = False
+    validationAccuracy: float | None = None
+    accuracy: float | None = None
+    baselineAccuracy: float | None = None
+    liftOverBaseline: float | None = None
+    confidence: dict[str, Any] | None = None
+    labelDistribution: dict[str, Any] | None = None
+    windowRanges: dict[str, Any] | None = None
+    promotionGate: PromotionGateDiagnostics = Field(default_factory=PromotionGateDiagnostics)
+    weakestLabels: list[WeakLabelDiagnostics] = Field(default_factory=list)
+    confusionPairs: list[ConfusionPairDiagnostics] = Field(default_factory=list)
+    reportPath: str | None = None
+
+
+class MarketRegimeExperimentSummary(BaseModel):
+    totalRuns: int = 0
+    trainedRuns: int = 0
+    evaluatedRuns: int = 0
+    promotionEligibleRuns: int = 0
+    bestRun: MarketRegimeExperimentRunDiagnostics | None = None
 
 
 class MarketRegimeExperimentDiagnosticsResponse(BaseModel):
-    summary: dict
-    runs: list[dict]
-    incompleteRuns: list[dict]
-    promotion: dict | None = None
-    warnings: list[str] = []
+    summary: MarketRegimeExperimentSummary
+    runs: list[MarketRegimeExperimentRunDiagnostics] = Field(default_factory=list)
+    incompleteRuns: list[MarketRegimeExperimentRunDiagnostics] = Field(default_factory=list)
+    promotion: dict[str, Any] | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class RegimeRunRequest(BaseModel):
