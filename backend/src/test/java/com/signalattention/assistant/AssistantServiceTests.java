@@ -1,6 +1,7 @@
 package com.signalattention.assistant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -80,7 +82,9 @@ class AssistantServiceTests {
         when(strategyRepository.count()).thenReturn(1L);
         when(backtestRunRepository.count()).thenReturn(1L);
         when(paperSessionRepository.countByStatus(PaperSessionStatus.RUNNING)).thenReturn(0L);
-        when(regimeRunRepository.findAll()).thenReturn(List.of(previous, latest));
+        when(regimeRunRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(latest));
+        when(regimeRunRepository.findFirstBySymbolAndTimeframeAndIdNotOrderByCreatedAtDesc("BTC-USD", "1h", 2L))
+                .thenReturn(Optional.of(previous));
         when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(2L)).thenReturn(List.of(
                 prediction(latest, "SIDEWAYS", "80.00", false),
                 prediction(latest, "TRENDING_UP", "60.00", true)
@@ -110,6 +114,22 @@ class AssistantServiceTests {
         assertThat(context.modelLabEligibleRuns()).isEqualTo(1);
         assertThat(context.modelLabBestRunId()).isEqualTo("run-123");
         assertThat(context.modelLabWarningCount()).isEqualTo(1);
+        verify(regimeRunRepository).findFirstByOrderByCreatedAtDesc();
+        verify(regimeRunRepository).findFirstBySymbolAndTimeframeAndIdNotOrderByCreatedAtDesc("BTC-USD", "1h", 2L);
+    }
+
+    @Test
+    void buildContextSnapshotHandlesMissingRegimeRuns() {
+        when(strategyRepository.count()).thenReturn(0L);
+        when(backtestRunRepository.count()).thenReturn(0L);
+        when(paperSessionRepository.countByStatus(PaperSessionStatus.RUNNING)).thenReturn(0L);
+        when(regimeRunRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.empty());
+
+        AssistantContext context = service.buildContextSnapshot(null);
+
+        assertThat(context.latestRegimeRunId()).isNull();
+        assertThat(context.latestRegimeLabel()).isNull();
+        assertThat(context.latestRegimeRobustnessLabel()).isNull();
     }
 
     private RegimeRun run(Long id, String symbol, String timeframe, String mode, String artifact, String createdAt, int pointCount) {

@@ -16,7 +16,6 @@ import com.signalattention.papertrading.PaperSessionStatus;
 import com.signalattention.papertrading.PaperSessionRepository;
 import com.signalattention.strategies.StrategyRepository;
 import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -125,9 +124,7 @@ public class AssistantService {
 
     AssistantContext buildContextSnapshot(AssistantMessageRequest request) {
         // Context is intentionally a compact snapshot so providers cannot mutate domain state directly.
-        RegimeRun latestRun = regimeRunRepository.findAll().stream()
-                .max(Comparator.comparing(RegimeRun::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                .orElse(null);
+        RegimeRun latestRun = regimeRunRepository.findFirstByOrderByCreatedAtDesc().orElse(null);
         RegimeRun previousRun = null;
         String latestLabel = null;
         Integer pointCount = null;
@@ -146,12 +143,11 @@ public class AssistantService {
                     .orElse(null);
             averageConfidence = quality.averageConfidence();
             disagreementRate = quality.baselineDisagreementRate();
-            previousRun = regimeRunRepository.findAll().stream()
-                    .filter(run -> !Objects.equals(run.getId(), latestRun.getId()))
-                    .filter(run -> Objects.equals(run.getSymbol(), latestRun.getSymbol()))
-                    .filter(run -> Objects.equals(run.getTimeframe(), latestRun.getTimeframe()))
-                    .max(Comparator.comparing(RegimeRun::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
-                    .orElse(null);
+            previousRun = regimeRunRepository.findFirstBySymbolAndTimeframeAndIdNotOrderByCreatedAtDesc(
+                    latestRun.getSymbol(),
+                    latestRun.getTimeframe(),
+                    latestRun.getId()
+            ).orElse(null);
             robustnessLabel = evidenceSummarizer.robustnessLabel(quality, latestPredictions.isEmpty());
         }
         if (latestRun != null && previousRun != null) {
