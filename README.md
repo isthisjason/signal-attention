@@ -176,7 +176,7 @@ Smoke check against a running local stack:
 python3 scripts/smoke_demo.py
 ```
 
-The smoke script checks that the services are reachable, imports the sample CSV, creates an SMA strategy, runs a backtest, saves an ML risk score, exercises paper trading, and checks dashboard, model status, persisted regime runs, regime run comparison, regime grouped backtest analysis, anomaly, and audit endpoints. It is safe to rerun against an existing local database. Duplicate sample candles are treated as a sign that the data is already loaded.
+The smoke script checks that the services are reachable, imports the sample CSV, creates the SMA baseline, runs a comparison backtest, saves an ML risk score, exercises paper trading, and checks dashboard, model status, Model Lab diagnostics, persisted regime runs, regime run comparison, robustness review, regime grouped backtest analysis, anomaly, assistant model-review proposals, and audit endpoints. It is safe to rerun against an existing local database. Duplicate sample candles are treated as a sign that the data is already loaded.
 
 It also checks the market data quality endpoint so the sample candles have an explainable coverage summary before the rest of the demo depends on them.
 
@@ -188,7 +188,7 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 
 The frontend reads `VITE_API_BASE_URL`, defaulting to `http://localhost:8080`.
 
-The dashboard includes controls for importing the sample CSV, creating an SMA strategy, running a backtest, scoring ML risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary, risk alert, audit, and regime panels. Saved regime runs now include quality summaries and a comparison table so recent runs can be reviewed by confidence, baseline disagreement, dominant regime, anomaly count, and model/artifact changes.
+The attention workbench includes controls for importing the sample CSV, creating the SMA baseline, running a comparison backtest, scoring baseline risk, managing paper sessions, submitting manual paper orders, replaying candles, and reviewing summary, risk alert, audit, Model Lab, robustness, and attention-regime panels. Saved regime runs include quality summaries and a comparison table so recent runs can be reviewed by confidence, baseline disagreement, dominant regime, anomaly count, and model/artifact changes.
 
 ## Main API routes
 
@@ -269,7 +269,7 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read-only experiment diagnostics, persisted market regime runs, derived regime run quality summaries, recent regime run comparison, baseline versus primary regime comparison, regime robustness review, regime grouped backtest analysis, CPU safe market regime classification, optional torch backed regime inference, a simple anomaly check, baseline risk policies, paper trading sessions, dashboard summary APIs, Model Lab and candlestick assessment feedback in the React workbench, assistant model review actions, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read-only experiment diagnostics, typed model lab responses, persisted market regime runs, derived regime run quality summaries, recent regime run comparison, baseline versus primary regime comparison, regime robustness review as the primary UI for trade-by-regime evidence, CPU safe market regime classification, optional torch backed regime inference, a simple anomaly check, baseline risk policies, paper trading sessions, dashboard summary APIs, Model Lab and candlestick assessment feedback in the React attention workbench, assistant model review actions, and a smoke script for the running stack.
 
 Backend, ML service, frontend tests, frontend build, and smoke helper tests are covered by the local verification flow. Docker Compose config, full Docker Compose startup, and the running stack smoke demo require Docker to be available in the development environment.
 

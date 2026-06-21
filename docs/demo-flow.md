@@ -8,7 +8,7 @@ docker compose up --build
 
 The React dashboard is available at `http://localhost:5173` when the frontend service or local Vite dev server is running.
 
-The dashboard can drive the same flow as the curl commands below. Start from the next-action panel and sticky workbench navigation, then import candles, create the SMA strategy, run the backtest, inspect responsive equity/drawdown charts, score ML risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/regime panels.
+The dashboard can drive the same flow as the curl commands below. Start from the next-action panel and sticky workbench navigation, then import candles, create the SMA baseline, run the comparison backtest, inspect responsive equity/drawdown charts, score baseline risk, create/start paper sessions, submit manual paper orders, replay candles, and refresh summary/audit/attention-regime panels.
 
 To run the same workflow as an automated smoke check:
 
@@ -16,7 +16,7 @@ To run the same workflow as an automated smoke check:
 python3 scripts/smoke_demo.py
 ```
 
-The smoke script assumes the stack is already running and uses `http://localhost:8080`, `http://localhost:5173`, and `http://localhost:8000` by default. Use `--backend-url`, `--frontend-url`, `--ml-url`, or `--sample-csv` to point it at different local endpoints or data.
+The smoke script assumes the stack is already running and uses `http://localhost:8080`, `http://localhost:5173`, and `http://localhost:8000` by default. Use `--backend-url`, `--frontend-url`, `--ml-url`, or `--sample-csv` to point it at different local endpoints or data. The analysis portion now verifies Model Lab diagnostics, persisted regime runs, robustness review, attention evidence, and assistant model-review proposals.
 
 Use `--timeout-seconds` when the local stack is cold or running on slower hardware:
 
@@ -230,7 +230,7 @@ curl http://localhost:8080/api/dashboard/strategy-performance
 curl http://localhost:8080/api/dashboard/risk-alerts
 ```
 
-Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, derived risk alerts, strategy performance, market regime status, and recent audit events.
+Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, derived risk alerts, baseline performance, attention regime status, and recent audit events.
 The top of the page now prioritizes scan speed with a sticky section nav, next-action panel, summary cards, and risk state before the detailed workflow controls.
 
 The dashboard also includes workbench controls for the main demo flow:
@@ -274,7 +274,7 @@ curl "http://localhost:8080/api/backtests/BACKTEST_ID/regime-analysis?regimeRunI
 curl "http://localhost:8080/api/regime-runs/REGIME_RUN_ID/robustness?backtestId=BACKTEST_ID"
 ```
 
-Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, candle windows, and a derived quality summary. The regime analysis endpoint groups completed backtest trades by the inferred regime active at trade entry time. The robustness endpoint combines confidence, baseline disagreement, anomalies, and optional trade grouping into a neutral review label such as `stable`, `mixed`, or `needs_review`; it is review evidence, not a recommendation.
+Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, candle windows, and a derived quality summary. The regime analysis endpoint still groups completed backtest trades by the inferred regime active at trade entry time. The dashboard now presents that trade-by-regime evidence through the robustness review, which combines confidence, baseline disagreement, anomalies, and optional trade grouping into a neutral review label such as `stable`, `mixed`, or `needs_review`; it is review evidence, not a recommendation.
 
 Compare recent saved runs:
 
@@ -299,7 +299,7 @@ curl -X POST http://localhost:8080/api/anomaly-check \
 
 The anomaly response includes a score, label, reasons, derived features, and classifier source. It is a research warning only, not a trade signal.
 
-The dashboard regime replay panel adds a Model Lab section, a candlestick assessment chart, attention evidence, and a robustness review over the selected date range. The chart shows candle direction, price context, regime windows, and backtest trade markers when a backtest is available. Below the chart, the saved-run comparison table keeps recent runs scannable by mode, artifact, confidence, baseline gap, dominant regime, anomalies, and run-to-run deltas.
+The dashboard attention regime replay panel adds a Model Lab section, a candlestick assessment chart, attention evidence, and a robustness review over the selected date range. The chart shows candle direction, price context, regime windows, and baseline trade markers when a backtest is available. Below the chart, the saved-run comparison table keeps recent runs scannable by mode, artifact, confidence, baseline gap, dominant regime, anomalies, and run-to-run deltas.
 
 For optional torch experiments, install `ml-service/requirements-torch.txt`, train an artifact, and evaluate it before enabling torch mode:
 

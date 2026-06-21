@@ -39,9 +39,9 @@ flowchart LR
 ## Runtime Services
 
 - `postgres`: Stores strategies, candles, backtests, trades, risk policies, paper sessions, positions, orders, and audit events.
-- `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, equity/drawdown chart data, risk evaluation, paper trading, dashboard aggregation, derived risk alerts, model status and experiment diagnostics proxying, persisted regime runs, derived run quality summaries, recent regime run comparison, regime robustness summaries, regime grouped backtest analysis, and anomaly proxying.
-- `ml-service`: Provides CPU-first rule-based strategy risk scoring, market regime classification, rolling regime runs with rule baseline comparison, model status, read-only experiment diagnostics, and anomaly checks.
-- `frontend`: Provides a local React dashboard/workbench for importing candles, creating SMA strategies, running backtests, scoring ML risk, managing paper sessions, and reviewing summary, charts, risk alerts, strategy comparison, audit, anomaly, model lab diagnostics, market regime status, robustness review, and recent regime run comparison.
+- `backend`: Owns REST APIs, validation, persistence, deterministic backtesting, equity/drawdown chart data, risk evaluation, paper trading, dashboard aggregation, derived risk alerts, model status and experiment diagnostics proxying, persisted regime runs, derived run quality summaries, recent regime run comparison, shared regime robustness summaries, regime grouped backtest analysis, assistant review context, and anomaly proxying.
+- `ml-service`: Provides CPU-first rule-based strategy risk scoring, market regime classification, rolling regime runs with rule baseline comparison, model status, typed read-only experiment diagnostics, and anomaly checks.
+- `frontend`: Provides a local React attention workbench for importing candles, creating the SMA baseline, running comparison backtests, scoring baseline risk, managing paper sessions, and reviewing summary, charts, risk alerts, baseline comparison, audit, anomaly, model lab diagnostics, attention regime status, robustness review, and recent regime run comparison. The direct regime-analysis endpoint remains available, but the workbench uses the robustness review as the single trade-by-regime evidence surface.
 
 ## Market Regime Modes
 

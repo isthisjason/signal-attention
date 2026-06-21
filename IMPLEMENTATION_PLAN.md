@@ -147,12 +147,12 @@ The frontend should feel like an ML workbench, not a generic trading terminal or
 Implemented surfaces:
 
 - Import sample data and show quality summary.
-- Create the default BTC-USD SMA crossover strategy.
-- Run the January 2024 sample backtest.
+- Create the default BTC-USD SMA crossover baseline.
+- Run the January 2024 comparison backtest.
 - Review metrics, trades, equity, and drawdown.
-- Score ML risk and show persisted risk labels.
+- Score baseline risk and show persisted risk labels.
 - Manage paper sessions, simulated orders, positions, summary, and replay.
-- Show dashboard summary, risk alerts, strategy performance, and audit events.
+- Show dashboard summary, risk alerts, baseline performance, and audit events.
 - Show model status, model lab diagnostics, saved regime runs, run quality summaries, recent run comparison, baseline disagreement, anomaly context, regime grouped backtest analysis, robustness review, attention evidence, and saved evidence snapshots.
 - Provide an assistant panel with message history, proposed actions, confirmation controls, and action refresh behavior.
 
@@ -200,23 +200,23 @@ Completed major waves:
 - Promoted artifact lifecycle wave: v2-aware evaluation, verified promotion summaries, auto loading from promoted artifacts, backend status fields, workbench visibility, smoke coverage, and documentation.
 - Regime run comparison wave: derived run quality summaries, read only comparison API, assistant comparison context, workbench comparison table, smoke coverage, and documentation.
 - Model lab and robustness wave: read only experiment diagnostics API, backend proxy, workbench Model Lab panel, regime robustness summaries, assistant model review actions, tests, and documentation.
+- ML-first cleanup wave: removed the duplicate frontend regime-analysis table in favor of the robustness review path, extracted shared regime quality and robustness labels, optimized assistant context lookup, typed model lab diagnostics schemas, refocused workbench copy around attention regimes and baselines, and expanded smoke checks for model lab plus robustness review.
 
 Current recent commits:
 
 ```text
-a48c05a documented promoted artifact lifecycle wave
-04e897b trained inspectable attention artifacts
-6f6c00a evaluated v2 attention diagnostics
-02cf7d8 promoted artifacts with runnable manifests
-29bab76 loaded promoted artifacts in auto mode
-667ea83 reported and surfaced promoted artifact state
-d6f2355 added regime run comparison evidence
-1aad5a6 exposed market regime experiment diagnostics
-ea71d1c proxied model lab diagnostics through backend
-4d4ff4f surfaced model lab in the workbench
-7bc5bf4 added regime robustness summaries
-a11589e displayed attention robustness review
+804b26c expanded smoke coverage for model lab robustness
+0116363 showcased attention workflow in workbench copy
+691d099 typed model lab diagnostics schemas
+7ae6d66 optimized assistant regime context lookup
+f215cf7 extracted market regime quality summaries
+3ee3ba9 removed duplicate regime analysis ui
+9b10489 updated ml first verification docs
 88029d3 extended assistant model review context
+a11589e displayed attention robustness review
+7bc5bf4 added regime robustness summaries
+4d4ff4f surfaced model lab in the workbench
+ea71d1c proxied model lab diagnostics through backend
 ```
 
 ## 11. Verification Matrix
