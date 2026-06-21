@@ -690,8 +690,8 @@ function App() {
     <main className="app-shell" id="overview">
       <header className="dashboard-header">
         <div>
-          <p className="eyebrow">SignalAttention</p>
-          <h1>Trading research dashboard</h1>
+          <p className="eyebrow">SignalAttention local attention workbench</p>
+          <h1>Attention regime workbench</h1>
         </div>
         <button className="button" disabled={loading} onClick={() => void loadDashboard()} type="button">
           {loading ? "Refreshing" : "Refresh"}
@@ -718,7 +718,7 @@ function App() {
       <SummaryCards state={summaryState} />
       <RiskAlertsPanel state={riskAlertsState} />
 
-      <section className="workflow-grid" id="workflow" aria-label="Research workflow controls">
+      <section className="workflow-grid" id="workflow" aria-label="Attention workflow controls">
         <MarketDataImportPanel
           busy={busyAction === "import"}
           importSummary={importSummary}
@@ -892,8 +892,8 @@ function RegimeReplayPanel({
     <section className="panel analysis-panel" id="analysis">
       <div className="panel-heading">
         <div>
-          <h2>Regime replay</h2>
-          <p>{selectedStrategy ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}` : "Select a strategy first."}</p>
+          <h2>Attention regime replay</h2>
+          <p>{selectedStrategy ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}` : "Select a baseline strategy first."}</p>
         </div>
         <button className="button" disabled={busy || !selectedStrategy} onClick={onReplay} type="button">
           {busy ? "Loading" : "Run replay"}
@@ -1263,8 +1263,8 @@ function WorkbenchNav() {
   const links = [
     ["Overview", "#overview"],
     ["Data", "#data"],
-    ["Strategy", "#strategy"],
-    ["Backtest", "#backtest"],
+    ["Baseline", "#strategy"],
+    ["Compare", "#backtest"],
     ["Paper", "#paper"],
     ["Analysis", "#analysis"],
     ["Audit", "#audit"],
@@ -1530,9 +1530,9 @@ function StrategyWorkflowPanel({
 }) {
   return (
     <section className="panel" id="strategy">
-      <SectionTitle title="Strategy" status={selectedStrategyId ? "ready" : "needs setup"} />
+      <SectionTitle title="Baseline strategy" status={selectedStrategyId ? "ready" : "needs setup"} />
       <label>
-        Active strategy
+        Active baseline
         <select
           disabled={state.status !== "success"}
           value={selectedStrategyId ?? ""}
@@ -1551,7 +1551,7 @@ function StrategyWorkflowPanel({
       {state.status === "loading" ? <p className="muted">Loading saved strategies.</p> : null}
       {state.status === "error" ? <p className="muted">{serviceErrorMessage(state.error, "backend")}</p> : null}
       {state.status === "success" && state.data.length === 0 ? (
-        <p className="muted">No saved strategies yet. Create the sample SMA strategy to unlock backtests and paper sessions.</p>
+        <p className="muted">No saved baselines yet. Create the sample SMA baseline to unlock comparisons and paper sessions.</p>
       ) : null}
       <form className="control-stack" onSubmit={onSubmit}>
         <div className="form-grid">
@@ -1560,7 +1560,7 @@ function StrategyWorkflowPanel({
           <TextInput label="Timeframe" name="timeframe" state={form} setState={onUpdate} />
         </div>
         <details className="advanced-controls">
-          <summary>Strategy tuning</summary>
+          <summary>Baseline tuning</summary>
           <div className="form-grid">
             <TextInput label="Short SMA" name="shortWindow" state={form} setState={onUpdate} type="number" />
             <TextInput label="Long SMA" name="longWindow" state={form} setState={onUpdate} type="number" />
@@ -1576,7 +1576,7 @@ function StrategyWorkflowPanel({
           </div>
         </details>
         <button className="button" disabled={busy} type="submit">
-          {busy ? "Creating" : "Create SMA strategy"}
+          {busy ? "Creating" : "Create SMA baseline"}
         </button>
       </form>
     </section>
@@ -1610,11 +1610,11 @@ function BacktestWorkflowPanel({
 }) {
   return (
     <section className="panel" id="backtest">
-      <SectionTitle title="Backtest" status={backtestRun ? "complete" : selectedStrategy ? "ready" : "needs strategy"} />
+      <SectionTitle title="Baseline comparison" status={backtestRun ? "complete" : selectedStrategy ? "ready" : "needs baseline"} />
       <p>
         {selectedStrategy
           ? `${selectedStrategy.symbol} ${selectedStrategy.timeframe}`
-          : "Create or select a strategy first. Backtests use the selected strategy rules."}
+          : "Create or select a baseline first. Comparisons use the selected baseline rules."}
       </p>
       <form className="control-stack" onSubmit={onSubmit}>
         <div className="form-grid">
@@ -1623,10 +1623,10 @@ function BacktestWorkflowPanel({
         </div>
         <div className="button-row">
           <button className="button" disabled={busy || !selectedStrategy} type="submit">
-            {busy ? "Working" : "Run backtest"}
+            {busy ? "Working" : "Run comparison"}
           </button>
           <button className="button button-secondary" disabled={busy || !backtestRun} onClick={onRiskScore} type="button">
-            Score ML risk
+            Score baseline risk
           </button>
         </div>
       </form>
@@ -2146,23 +2146,23 @@ function RiskAlertsPanel({ state }: { state: LoadState<DashboardRiskAlert[]> }) 
 
 function StrategyTable({ state }: { state: LoadState<StrategyPerformance[]> }) {
   if (state.status === "loading") {
-    return <PanelMessage title="Strategy performance" message="Loading strategy performance." />;
+    return <PanelMessage title="Baseline performance" message="Loading baseline performance." />;
   }
   if (state.status === "error") {
-    return <PanelMessage title="Strategy performance" tone="error" message={serviceErrorMessage(state.error, "backend")} />;
+    return <PanelMessage title="Baseline performance" tone="error" message={serviceErrorMessage(state.error, "backend")} />;
   }
   if (state.data.length === 0) {
-    return <PanelMessage title="Strategy performance" message="No strategies have been created yet. Start by importing candles, then create an SMA strategy." />;
+    return <PanelMessage title="Baseline performance" message="No baselines have been created yet. Start by importing candles, then create an SMA baseline." />;
   }
 
   return (
     <section className="panel" id="audit">
-      <h2>Strategy performance</h2>
+      <h2>Baseline performance</h2>
       <div className="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Strategy</th>
+              <th>Baseline</th>
               <th>Market</th>
               <th>Status</th>
               <th>Return</th>
@@ -2214,7 +2214,7 @@ function StrategyComparisonPanel({ state }: { state: LoadState<StrategyPerforman
 
   return (
     <section className="panel">
-      <h2>Strategy comparison</h2>
+      <h2>Baseline comparison</h2>
       <StrategyComparisonChart strategies={strategiesWithRuns} />
       <div className="comparison-grid">
         <ComparisonCard title="Best return" strategy={bestReturn} value={formatPercent(bestReturn.latestTotalReturn)} />
@@ -2234,7 +2234,7 @@ function StrategyComparisonChart({ strategies }: { strategies: StrategyPerforman
   }));
 
   return (
-    <ChartShell title="Strategy metrics" height={220}>
+    <ChartShell title="Baseline metrics" height={220}>
       <BarChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="var(--border)" strokeDasharray="4 5" vertical={false} />
         <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -2311,12 +2311,12 @@ function AuditTimeline({ state }: { state: LoadState<AuditEvent[]> }) {
 
 function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }) {
   if (state.status === "loading") {
-    return <PanelMessage title="Market regime" message="Loading BTC-USD 1h market regime." />;
+    return <PanelMessage title="Attention regime" message="Loading BTC-USD 1h attention regime." />;
   }
   if (state.status === "error") {
     return (
       <PanelMessage
-        title="Market regime"
+        title="Attention regime"
         tone="error"
         message={`${serviceErrorMessage(state.error, "ml")} Import at least 20 BTC-USD 1h candles before using this panel.`}
       />
@@ -2330,7 +2330,7 @@ function MarketRegimePanel({ state }: { state: LoadState<MarketRegimeResponse> }
     <section className="panel">
       <div className="panel-heading">
         <div>
-          <h2>Market regime</h2>
+          <h2>Attention regime</h2>
           <p>BTC-USD, 1h, latest 128 candles</p>
         </div>
         <div className="regime-badge">
@@ -2518,41 +2518,41 @@ export function deriveWorkbenchAction({
     return {
       id: "import-data",
       title: "Import market data",
-      detail: "Load the BTC-USD sample candles so strategies, backtests, and analysis have data.",
+      detail: "Load the BTC-USD sample candles so baselines, comparisons, and attention analysis have data.",
     };
   }
   if (strategyCount === 0) {
     return {
       id: "create-strategy",
-      title: "Create the SMA strategy",
-      detail: "Use the default BTC-USD 1h SMA crossover setup to unlock backtests.",
+      title: "Create the SMA baseline",
+      detail: "Use the default BTC-USD 1h SMA crossover setup as the traditional comparison baseline.",
     };
   }
   if (!hasBacktest) {
     return {
       id: "run-backtest",
-      title: "Run the backtest",
-      detail: "Generate return, drawdown, trade, equity, and risk inputs for the selected strategy.",
+      title: "Run baseline comparison",
+      detail: "Generate return, drawdown, trade, equity, and risk inputs for the selected baseline.",
     };
   }
   if (!hasRiskScore) {
     return {
       id: "score-risk",
-      title: "Score ML risk",
-      detail: "Persist an explainable risk label so the dashboard and alerts can reflect it.",
+      title: "Score baseline risk",
+      detail: "Persist an explainable risk label so the baseline comparison and alerts can reflect it.",
     };
   }
   if (!hasRegimeReplay) {
     return {
       id: "run-analysis",
-      title: "Run regime replay",
-      detail: "Show candle context with regime windows and trade markers for the latest run.",
+      title: "Run attention replay",
+      detail: "Show candle context with attention-derived regime windows and baseline trade markers.",
     };
   }
   return {
     id: "review-results",
     title: "Review results",
-    detail: "The main demo path is ready: compare charts, paper trading state, risk alerts, and audit events.",
+    detail: "The main demo path is ready: review attention evidence, model lab diagnostics, robustness, and baseline comparisons.",
   };
 }
 

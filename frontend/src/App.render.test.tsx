@@ -385,8 +385,8 @@ describe("dashboard render states", () => {
   it("renders empty workflow state without enabling dependent actions", async () => {
     render(<App />);
 
-    expect(await screen.findByText(/No strategies have been created yet/)).toBeInTheDocument();
-    expect(screen.getByText(/No saved strategies yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/No baselines have been created yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No saved baselines yet/)).toBeInTheDocument();
     expect(screen.getByText("No import has run in this browser session.")).toBeInTheDocument();
     expect(screen.getByLabelText("Market data quality")).toHaveTextContent("No market data quality warnings found.");
     expect(screen.getByText(/No backtest has run in this browser session/)).toBeInTheDocument();
@@ -401,8 +401,8 @@ describe("dashboard render states", () => {
     expect(screen.getByText("No audit events have been recorded yet.")).toBeInTheDocument();
     expect(screen.getByText(/Import at least 20 BTC-USD 1h candles/)).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: "Run backtest" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Score ML risk" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run comparison" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Score baseline risk" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Start" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Submit order" })).toBeDisabled();
@@ -505,7 +505,7 @@ describe("dashboard render states", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Strategy comparison")).toBeInTheDocument();
+    expect(await screen.findByText("Baseline comparison")).toBeInTheDocument();
     expect(screen.getByText("Best return")).toBeInTheDocument();
     expect(screen.getByText("Lowest drawdown")).toBeInTheDocument();
     expect(screen.getByText("Most trades")).toBeInTheDocument();
@@ -696,7 +696,7 @@ describe("dashboard render states", () => {
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Run backtest" }));
+    await user.click(await screen.findByRole("button", { name: "Run comparison" }));
 
     expect(await screen.findByRole("img", { name: "Equity chart" })).toBeInTheDocument();
     expect(screen.getByLabelText("Equity chart summary")).toHaveTextContent("Low $9,800.00");
@@ -754,10 +754,10 @@ describe("dashboard render states", () => {
 
     render(<App />);
 
-    expect(await screen.findByRole("button", { name: "Run backtest" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Score ML risk" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Run comparison" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Score baseline risk" })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "Run backtest" }));
+    await user.click(screen.getByRole("button", { name: "Run comparison" }));
 
     expect(await screen.findByText("Backtest #12 completed.")).toBeInTheDocument();
     // Date expectations allow timezone conversion while still verifying ISO instants reach the API layer.
@@ -768,7 +768,7 @@ describe("dashboard render states", () => {
     expect(mocks.fetchBacktestEquitySeries).toHaveBeenCalledWith(12);
     expect(mocks.fetchBacktestDrawdownSeries).toHaveBeenCalledWith(12);
 
-    await user.click(screen.getByRole("button", { name: "Score ML risk" }));
+    await user.click(screen.getByRole("button", { name: "Score baseline risk" }));
 
     expect(await screen.findByText("Risk score saved as HIGH_RISK.")).toBeInTheDocument();
     expect(mocks.scoreBacktestRisk).toHaveBeenCalledWith(12);
@@ -811,7 +811,7 @@ describe("dashboard render states", () => {
 
     const dashboardCallsBeforeCreate = mocks.fetchDashboardSummary.mock.calls.length;
     const strategyCallsBeforeCreate = mocks.fetchStrategies.mock.calls.length;
-    await user.click(await screen.findByRole("button", { name: "Create SMA strategy" }));
+    await user.click(await screen.findByRole("button", { name: "Create SMA baseline" }));
 
     expect(await screen.findByText("Created strategy #42.")).toBeInTheDocument();
     expect(mocks.createStrategy).toHaveBeenCalledWith({
