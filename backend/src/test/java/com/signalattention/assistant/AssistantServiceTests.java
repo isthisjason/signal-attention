@@ -8,6 +8,7 @@ import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.marketregime.RegimePrediction;
 import com.signalattention.marketregime.RegimePredictionRepository;
 import com.signalattention.marketregime.RegimeRun;
+import com.signalattention.marketregime.RegimeRunEvidenceSummarizer;
 import com.signalattention.marketregime.RegimeRunRepository;
 import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
 import com.signalattention.ml.MlRiskClient;
@@ -67,6 +68,7 @@ class AssistantServiceTests {
                 paperSessionRepository,
                 regimeRunRepository,
                 regimePredictionRepository,
+                new RegimeRunEvidenceSummarizer(),
                 mlRiskClient
         );
     }

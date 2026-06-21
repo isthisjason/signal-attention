@@ -7,6 +7,8 @@ import com.signalattention.common.ResourceNotFoundException;
 import com.signalattention.backtesting.BacktestRunRepository;
 import com.signalattention.marketregime.RegimePredictionRepository;
 import com.signalattention.marketregime.RegimeRun;
+import com.signalattention.marketregime.RegimeRunEvidenceSummarizer;
+import com.signalattention.marketregime.RegimeRunQualitySummary;
 import com.signalattention.marketregime.RegimeRunRepository;
 import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
 import com.signalattention.ml.MlRiskClient;
@@ -14,7 +16,6 @@ import com.signalattention.papertrading.PaperSessionStatus;
 import com.signalattention.papertrading.PaperSessionRepository;
 import com.signalattention.strategies.StrategyRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -35,6 +36,7 @@ public class AssistantService {
     private final PaperSessionRepository paperSessionRepository;
     private final RegimeRunRepository regimeRunRepository;
     private final RegimePredictionRepository regimePredictionRepository;
+    private final RegimeRunEvidenceSummarizer evidenceSummarizer;
     private final MlRiskClient mlRiskClient;
 
     public AssistantService(
@@ -49,6 +51,7 @@ public class AssistantService {
             PaperSessionRepository paperSessionRepository,
             RegimeRunRepository regimeRunRepository,
             RegimePredictionRepository regimePredictionRepository,
+            RegimeRunEvidenceSummarizer evidenceSummarizer,
             MlRiskClient mlRiskClient
     ) {
         this.sessionRepository = sessionRepository;
@@ -62,6 +65,7 @@ public class AssistantService {
         this.paperSessionRepository = paperSessionRepository;
         this.regimeRunRepository = regimeRunRepository;
         this.regimePredictionRepository = regimePredictionRepository;
+        this.evidenceSummarizer = evidenceSummarizer;
         this.mlRiskClient = mlRiskClient;
     }
 
@@ -135,19 +139,20 @@ public class AssistantService {
         if (latestRun != null) {
             pointCount = latestRun.getPointCount();
             var latestPredictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(latestRun.getId());
+            RegimeRunQualitySummary quality = evidenceSummarizer.summarize(latestPredictions);
             latestLabel = latestPredictions.stream()
                     .reduce((first, second) -> second)
                     .map(prediction -> prediction.getRegimeLabel())
                     .orElse(null);
-            averageConfidence = averageConfidence(latestPredictions);
-            disagreementRate = baselineDisagreementRate(latestPredictions);
+            averageConfidence = quality.averageConfidence();
+            disagreementRate = quality.baselineDisagreementRate();
             previousRun = regimeRunRepository.findAll().stream()
                     .filter(run -> !Objects.equals(run.getId(), latestRun.getId()))
                     .filter(run -> Objects.equals(run.getSymbol(), latestRun.getSymbol()))
                     .filter(run -> Objects.equals(run.getTimeframe(), latestRun.getTimeframe()))
                     .max(Comparator.comparing(RegimeRun::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                     .orElse(null);
-            robustnessLabel = assistantRobustnessLabel(latestPredictions, disagreementRate);
+            robustnessLabel = evidenceSummarizer.robustnessLabel(quality, latestPredictions.isEmpty());
         }
         if (latestRun != null && previousRun != null) {
             modeChanged = !Objects.equals(latestRun.getEffectiveMode(), previousRun.getEffectiveMode());
@@ -186,26 +191,6 @@ public class AssistantService {
         }
     }
 
-    private String assistantRobustnessLabel(
-            List<com.signalattention.marketregime.RegimePrediction> predictions,
-            BigDecimal disagreementRate
-    ) {
-        if (predictions.isEmpty()) {
-            return "needs_review";
-        }
-        boolean lowConfidence = predictions.stream()
-                .anyMatch(prediction -> prediction.getConfidence() != null && prediction.getConfidence().compareTo(new BigDecimal("60.00")) < 0);
-        boolean anomaly = predictions.stream()
-                .anyMatch(prediction -> prediction.getAnomalyLabel() != null && !"NORMAL".equalsIgnoreCase(prediction.getAnomalyLabel()));
-        if (lowConfidence || anomaly || disagreementRate.compareTo(new BigDecimal("35.000000")) > 0) {
-            return "needs_review";
-        }
-        if (disagreementRate.compareTo(new BigDecimal("10.000000")) > 0) {
-            return "mixed";
-        }
-        return "stable";
-    }
-
     private Integer numberValue(Object value) {
         return value instanceof Number number ? number.intValue() : null;
     }
@@ -217,31 +202,6 @@ public class AssistantService {
             return runId instanceof String value ? value : null;
         }
         return null;
-    }
-
-    private BigDecimal averageConfidence(List<com.signalattention.marketregime.RegimePrediction> predictions) {
-        long count = predictions.stream().map(com.signalattention.marketregime.RegimePrediction::getConfidence).filter(Objects::nonNull).count();
-        if (count == 0) {
-            return null;
-        }
-        return predictions.stream()
-                .map(com.signalattention.marketregime.RegimePrediction::getConfidence)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(count), 6, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal baselineDisagreementRate(List<com.signalattention.marketregime.RegimePrediction> predictions) {
-        if (predictions.isEmpty()) {
-            return BigDecimal.ZERO.setScale(6);
-        }
-        long disagreements = predictions.stream()
-                .filter(prediction -> Boolean.TRUE.equals(prediction.getDisagreesWithBaseline()))
-                .count();
-        // The assistant receives evidence summaries, not authority to rank or act on runs.
-        return BigDecimal.valueOf(disagreements)
-                .multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(predictions.size()), 6, RoundingMode.HALF_UP);
     }
 
     void saveAssistantTurn(AssistantSession session, AssistantMessage assistantMessage, AssistantReply reply) {

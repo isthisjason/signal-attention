@@ -73,6 +73,7 @@ class MarketRegimeServiceTests {
                 regimeRunRepository,
                 regimePredictionRepository,
                 regimeEvidenceSnapshotRepository,
+                new RegimeRunEvidenceSummarizer(),
                 new ObjectMapper(),
                 auditService
         );
