@@ -161,6 +161,46 @@ class MlRiskClientTests {
     }
 
     @Test
+    void getMarketRegimeExperimentsMapsDiagnostics() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        MlRiskClient client = new MlRiskClient(builder.build());
+
+        server.expect(requestTo("http://ml-service:8000/predict/market-regime/experiments"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
+                .andRespond(withSuccess("""
+                        {
+                          "summary": {
+                            "totalRuns": 1,
+                            "trainedRuns": 1,
+                            "evaluatedRuns": 1,
+                            "promotionEligibleRuns": 1,
+                            "bestRun": {"name": "btc-v2", "runId": "run-1"}
+                          },
+                          "runs": [{
+                            "name": "btc-v2",
+                            "runId": "run-1",
+                            "accuracy": 0.72,
+                            "promotionGate": {"eligible": true, "failures": []}
+                          }],
+                          "incompleteRuns": [],
+                          "promotion": {"status": "promoted"},
+                          "warnings": []
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MlMarketRegimeExperimentDiagnosticsResponse response = client.getMarketRegimeExperiments();
+
+        assertThat(response.summary()).containsEntry("totalRuns", 1);
+        assertThat(response.runs()).hasSize(1);
+        assertThat(response.runs().getFirst()).containsEntry("runId", "run-1");
+        assertThat(response.promotion()).containsEntry("status", "promoted");
+        assertThat(response.warnings()).isEmpty();
+        server.verify();
+    }
+
+    @Test
     void diagnoseMarketRegimePostsWindowAndMapsEvidence() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://ml-service:8000");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

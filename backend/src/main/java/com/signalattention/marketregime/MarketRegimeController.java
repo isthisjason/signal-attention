@@ -2,6 +2,7 @@ package com.signalattention.marketregime;
 
 import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
+import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,6 +34,11 @@ public class MarketRegimeController {
     @GetMapping("/api/market-regime/status")
     public MlMarketRegimeStatusResponse getMarketRegimeStatus() {
         return marketRegimeService.getModelStatus();
+    }
+
+    @GetMapping("/api/market-regime/experiments")
+    public MlMarketRegimeExperimentDiagnosticsResponse getMarketRegimeExperiments() {
+        return marketRegimeService.getExperimentDiagnostics();
     }
 
     @GetMapping("/api/market-regime/diagnostics")

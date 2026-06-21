@@ -6,11 +6,13 @@ import static org.mockito.Mockito.when;
 
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
+import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class MarketRegimeControllerTests {
@@ -62,6 +64,25 @@ class MarketRegimeControllerTests {
 
         assertThat(actual).isSameAs(expected);
         verify(service).getModelStatus();
+    }
+
+    @Test
+    void getMarketRegimeExperimentsDelegatesToService() {
+        MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
+        MarketRegimeController controller = new MarketRegimeController(service);
+        MlMarketRegimeExperimentDiagnosticsResponse expected = new MlMarketRegimeExperimentDiagnosticsResponse(
+                Map.of("totalRuns", 1),
+                List.of(Map.of("runId", "run-1")),
+                List.of(),
+                Map.of("status", "promoted"),
+                List.of()
+        );
+        when(service.getExperimentDiagnostics()).thenReturn(expected);
+
+        MlMarketRegimeExperimentDiagnosticsResponse actual = controller.getMarketRegimeExperiments();
+
+        assertThat(actual).isSameAs(expected);
+        verify(service).getExperimentDiagnostics();
     }
 
     @Test

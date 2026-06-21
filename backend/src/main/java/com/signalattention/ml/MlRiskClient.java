@@ -82,6 +82,23 @@ public class MlRiskClient {
         }
     }
 
+    public MlMarketRegimeExperimentDiagnosticsResponse getMarketRegimeExperiments() {
+        try {
+            // Experiment diagnostics are read-only local research metadata; training and promotion remain script-driven.
+            MlMarketRegimeExperimentDiagnosticsResponse response = restClient.get()
+                    .uri("/predict/market-regime/experiments")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(MlMarketRegimeExperimentDiagnosticsResponse.class);
+            if (response == null) {
+                throw new ExternalServiceException("ML service returned an empty response", null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new ExternalServiceException("ML service is unavailable or returned an invalid response", exception);
+        }
+    }
+
     public MlMarketRegimeDiagnosticsResponse diagnoseMarketRegime(MlMarketRegimeRequest request) {
         try {
             // Diagnostics share the normal regime request shape but return explanation evidence for one window.
