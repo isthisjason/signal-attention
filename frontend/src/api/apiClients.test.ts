@@ -6,7 +6,6 @@ import {
   fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries,
   fetchBacktestTrades,
-  fetchRegimeBacktestAnalysis,
   runBacktest,
   scoreBacktestRisk,
 } from "./backtests";
@@ -167,8 +166,6 @@ describe("backtest client", () => {
     expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/ml-risk-score");
     expect(latestFetchCall().init?.method).toBe("POST");
 
-    await fetchRegimeBacktestAnalysis(11, 22);
-    expect(latestFetchCall().url).toBe("http://api.test/api/backtests/11/regime-analysis?regimeRunId=22");
   });
 });
 

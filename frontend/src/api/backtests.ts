@@ -53,23 +53,6 @@ export type BacktestDrawdownPoint = {
   drawdownPercent: number;
 };
 
-export type RegimeBacktestAnalysis = {
-  backtestId: number;
-  regimeRunId: number;
-  symbol: string;
-  timeframe: string;
-  regimes: Array<{
-    regimeLabel: string;
-    tradeCount: number;
-    winRate: number;
-    totalNetPnl: number;
-    averageReturn: number;
-    bestTrade: number;
-    worstTrade: number;
-    baselineDisagreementCount: number;
-  }>;
-};
-
 export type RunBacktestPayload = {
   startDate: string;
   endDate: string;
@@ -97,9 +80,4 @@ export function fetchBacktestDrawdownSeries(backtestId: number) {
 
 export function scoreBacktestRisk(backtestId: number) {
   return postJson<MlRiskScore>(`/api/backtests/${backtestId}/ml-risk-score`);
-}
-
-export function fetchRegimeBacktestAnalysis(backtestId: number, regimeRunId: number) {
-  const params = new URLSearchParams({ regimeRunId: String(regimeRunId) });
-  return getJson<RegimeBacktestAnalysis>(`/api/backtests/${backtestId}/regime-analysis?${params.toString()}`);
 }

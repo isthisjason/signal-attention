@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   fetchBacktestDrawdownSeries: vi.fn(),
   fetchBacktestEquitySeries: vi.fn(),
   fetchBacktestTrades: vi.fn(),
-  fetchRegimeBacktestAnalysis: vi.fn(),
   fetchDashboardRiskAlerts: vi.fn(),
   fetchDashboardSummary: vi.fn(),
   fetchMarketDataQuality: vi.fn(),
@@ -44,7 +43,6 @@ vi.mock("./api/backtests", () => ({
   fetchBacktestDrawdownSeries: mocks.fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries: mocks.fetchBacktestEquitySeries,
   fetchBacktestTrades: mocks.fetchBacktestTrades,
-  fetchRegimeBacktestAnalysis: mocks.fetchRegimeBacktestAnalysis,
   runBacktest: mocks.runBacktest,
   scoreBacktestRisk: mocks.scoreBacktestRisk,
 }));
@@ -230,13 +228,6 @@ beforeEach(() => {
     featureVersion: "torch-market-regime-features/v1",
     sequenceLength: 20,
     artifactIdentifier: null,
-  });
-  mocks.fetchRegimeBacktestAnalysis.mockResolvedValue({
-    backtestId: 12,
-    regimeRunId: 33,
-    symbol: "BTC-USD",
-    timeframe: "1h",
-    regimes: [],
   });
   mocks.runRegimeReplay.mockResolvedValue({
     id: 33,

@@ -17,12 +17,10 @@ import {
   BacktestDrawdownPoint,
   BacktestEquityPoint,
   MlRiskScore,
-  RegimeBacktestAnalysis,
   fetchBacktest,
   fetchBacktestDrawdownSeries,
   fetchBacktestEquitySeries,
   fetchBacktestTrades,
-  fetchRegimeBacktestAnalysis,
   runBacktest,
   scoreBacktestRisk,
 } from "./api/backtests";
@@ -216,7 +214,6 @@ function App() {
   const [paperPositions, setPaperPositions] = useState<PaperPosition[]>([]);
   const [anomaly, setAnomaly] = useState<AnomalyResponse | null>(null);
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
-  const [regimeAnalysis, setRegimeAnalysis] = useState<RegimeBacktestAnalysis | null>(null);
   const [regimeRobustness, setRegimeRobustness] = useState<RegimeRobustnessSummary | null>(null);
   const [regimeDiagnostics, setRegimeDiagnostics] = useState<MarketRegimeDiagnostics | null>(null);
   const [evidenceSnapshots, setEvidenceSnapshots] = useState<RegimeEvidenceSnapshot[]>([]);
@@ -608,9 +605,6 @@ function App() {
       });
       setRegimeReplay(replay);
       setRegimeRobustness(await fetchRegimeRobustness(replay.id, backtestRun?.id ?? null));
-      const analysis =
-        backtestRun && replay.id ? await fetchRegimeBacktestAnalysis(backtestRun.id, replay.id) : null;
-      setRegimeAnalysis(analysis);
       const latestWindow = replay.points.at(-1);
       if (latestWindow) {
         // Diagnostics are requested after replay so the evidence panel explains the same window the chart ends on.
@@ -777,7 +771,6 @@ function App() {
       <MarketRegimePanel state={regimeState} />
       <RegimeReplayPanel
         busy={busyAction === "regime-replay"}
-        analysis={regimeAnalysis}
         diagnostics={regimeDiagnostics}
         evidenceSnapshots={evidenceSnapshots}
         experimentsState={regimeExperimentsState}
@@ -871,7 +864,6 @@ function AssistantPanel({
 }
 
 function RegimeReplayPanel({
-  analysis,
   busy,
   diagnostics,
   evidenceSnapshots,
@@ -884,7 +876,6 @@ function RegimeReplayPanel({
   statusState,
   onReplay,
 }: {
-  analysis: RegimeBacktestAnalysis | null;
   busy: boolean;
   diagnostics: MarketRegimeDiagnostics | null;
   evidenceSnapshots: RegimeEvidenceSnapshot[];
@@ -923,7 +914,6 @@ function RegimeReplayPanel({
           <CandlestickReplayChart replay={replay} />
           <AttentionEvidencePanel diagnostics={diagnostics} snapshots={evidenceSnapshots} />
           <RegimeRobustnessPanel robustness={robustness} />
-          <RegimeAnalysisTable analysis={analysis} />
         </>
       ) : (
         <ChartState title="No assessment chart yet" message="Run replay after selecting a strategy and date range." />
@@ -1245,39 +1235,6 @@ function ModelStatusStrip({ state }: { state: LoadState<MarketRegimeStatus> }) {
         </ul>
       ) : null}
     </>
-  );
-}
-
-function RegimeAnalysisTable({ analysis }: { analysis: RegimeBacktestAnalysis | null }) {
-  if (!analysis) {
-    return <p className="muted">Run a backtest first to break trades down by inferred regime.</p>;
-  }
-  if (analysis.regimes.length === 0) {
-    return <p className="muted">No completed trades overlapped the saved regime windows.</p>;
-  }
-  return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          <th>Regime</th>
-          <th>Trades</th>
-          <th>Win rate</th>
-          <th>Net PnL</th>
-          <th>Baseline gaps</th>
-        </tr>
-      </thead>
-      <tbody>
-        {analysis.regimes.map((regime) => (
-          <tr key={regime.regimeLabel}>
-            <td>{formatAction(regime.regimeLabel)}</td>
-            <td>{regime.tradeCount}</td>
-            <td>{formatPercent(regime.winRate)}</td>
-            <td>{formatCurrency(regime.totalNetPnl)}</td>
-            <td>{regime.baselineDisagreementCount}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
