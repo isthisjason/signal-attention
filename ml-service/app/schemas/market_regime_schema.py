@@ -117,6 +117,14 @@ class MarketRegimeStatusResponse(BaseModel):
     warnings: list[str] = []
 
 
+class MarketRegimeExperimentDiagnosticsResponse(BaseModel):
+    summary: dict
+    runs: list[dict]
+    incompleteRuns: list[dict]
+    promotion: dict | None = None
+    warnings: list[str] = []
+
+
 class RegimeRunRequest(BaseModel):
     symbol: str = Field(min_length=1)
     timeframe: str = Field(min_length=1)

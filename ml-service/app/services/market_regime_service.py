@@ -7,6 +7,7 @@ from app.schemas.market_regime_schema import (
     AttentionTimestepEvidence,
     FeatureEvidence,
     MarketRegimeDiagnosticsResponse,
+    MarketRegimeExperimentDiagnosticsResponse,
     MarketRegimeRequest,
     MarketRegimeResponse,
     MarketRegimeStatusResponse,
@@ -18,7 +19,8 @@ from app.services.anomaly_service import detect_anomaly
 from app.schemas.anomaly_schema import AnomalyRequest
 from app.services.market_regime_classifier import MarketRegimeClassifier
 from app.services.market_regime_config import AUTO_MARKET_REGIME_MODE, MarketRegimeSettings, get_market_regime_settings
-from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, describe_path
+from app.services.market_regime_diagnostics import build_experiment_diagnostics
+from app.services.market_regime_experiment import MARKET_REGIME_FEATURE_VERSION, describe_path, load_experiment_registry
 from app.services.market_regime_features import build_market_regime_features
 from app.services.market_regime_torch_adapter import TorchMarketRegimeClassifier, load_artifact, load_torch, validate_artifact_metadata
 
@@ -91,6 +93,41 @@ def market_regime_status(settings: MarketRegimeSettings | None = None) -> Market
         promotionWarnings=promotion_summary["warnings"],
         warnings=warnings,
     )
+
+
+def market_regime_experiment_diagnostics(
+    settings: MarketRegimeSettings | None = None,
+) -> MarketRegimeExperimentDiagnosticsResponse:
+    selected_settings = settings or get_market_regime_settings()
+    warnings: list[str] = []
+    experiments_dir = Path(selected_settings.experiments_dir or "models/experiments")
+    registry_path = experiments_dir / "index.json"
+    try:
+        diagnostics = build_experiment_diagnostics(load_experiment_registry(registry_path))
+    except json.JSONDecodeError:
+        # A malformed local registry should be visible to the workbench without breaking model status.
+        warnings.append("experiment registry is not valid JSON")
+        diagnostics = build_experiment_diagnostics({"experiments": []})
+
+    promotion_path = Path(selected_settings.promotion_path) if selected_settings.promotion_path else experiments_dir / "promoted-market-regime.json"
+    promotion = read_promotion_summary(promotion_path, warnings)
+    return MarketRegimeExperimentDiagnosticsResponse(
+        summary=diagnostics["summary"],
+        runs=diagnostics["runs"],
+        incompleteRuns=diagnostics["incompleteRuns"],
+        promotion=promotion,
+        warnings=warnings,
+    )
+
+
+def read_promotion_summary(path: Path, warnings: list[str]) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        warnings.append("promotion summary is not valid JSON")
+        return None
 
 
 def run_market_regime(request: RegimeRunRequest) -> RegimeRunResponse:

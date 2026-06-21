@@ -2,13 +2,20 @@ from fastapi import APIRouter
 
 from app.schemas.market_regime_schema import (
     MarketRegimeDiagnosticsResponse,
+    MarketRegimeExperimentDiagnosticsResponse,
     MarketRegimeRequest,
     MarketRegimeResponse,
     MarketRegimeStatusResponse,
     RegimeRunRequest,
     RegimeRunResponse,
 )
-from app.services.market_regime_service import classify_market_regime, diagnose_market_regime, market_regime_status, run_market_regime
+from app.services.market_regime_service import (
+    classify_market_regime,
+    diagnose_market_regime,
+    market_regime_experiment_diagnostics,
+    market_regime_status,
+    run_market_regime,
+)
 
 router = APIRouter(prefix="/predict", tags=["market-regime"])
 
@@ -26,6 +33,11 @@ def diagnose_market_regime_window(request: MarketRegimeRequest) -> MarketRegimeD
 @router.get("/market-regime/status", response_model=MarketRegimeStatusResponse)
 def get_market_regime_status() -> MarketRegimeStatusResponse:
     return market_regime_status()
+
+
+@router.get("/market-regime/experiments", response_model=MarketRegimeExperimentDiagnosticsResponse)
+def get_market_regime_experiments() -> MarketRegimeExperimentDiagnosticsResponse:
+    return market_regime_experiment_diagnostics()
 
 
 @router.post("/regime-run", response_model=RegimeRunResponse)
