@@ -170,6 +170,28 @@ class MarketRegimeControllerTests {
         verify(service).compareRegimeRuns("BTC-USD", "1h", 10);
     }
 
+    @Test
+    void summarizeRobustnessDelegatesToService() {
+        MarketRegimeService service = org.mockito.Mockito.mock(MarketRegimeService.class);
+        MarketRegimeController controller = new MarketRegimeController(service);
+        RegimeRobustnessSummaryResponse expected = new RegimeRobustnessSummaryResponse(
+                20L,
+                10L,
+                "BTC-USD",
+                "1h",
+                "stable",
+                new RegimeRunQualitySummary(BigDecimal.TEN, 0, 0, BigDecimal.ZERO, 0, "TRENDING_UP", Map.of()),
+                List.of("Regime windows were high confidence, baseline aligned, and anomaly free."),
+                List.of()
+        );
+        when(service.summarizeRobustness(20L, 10L)).thenReturn(expected);
+
+        RegimeRobustnessSummaryResponse actual = controller.summarizeRobustness(20L, 10L);
+
+        assertThat(actual).isSameAs(expected);
+        verify(service).summarizeRobustness(20L, 10L);
+    }
+
     private MlMarketRegimeResponse response() {
         return new MlMarketRegimeResponse(
                 "TRENDING_UP",

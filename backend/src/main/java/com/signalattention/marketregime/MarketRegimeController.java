@@ -95,4 +95,12 @@ public class MarketRegimeController {
     ) {
         return marketRegimeService.analyzeBacktestByRegime(id, regimeRunId);
     }
+
+    @GetMapping("/api/regime-runs/{id}/robustness")
+    public RegimeRobustnessSummaryResponse summarizeRobustness(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long backtestId
+    ) {
+        return marketRegimeService.summarizeRobustness(id, backtestId);
+    }
 }

@@ -331,6 +331,28 @@ public class MarketRegimeService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public RegimeRobustnessSummaryResponse summarizeRobustness(Long regimeRunId, Long backtestId) {
+        RegimeRun regimeRun = regimeRunRepository.findById(regimeRunId)
+                .orElseThrow(() -> new ResourceNotFoundException("Regime run not found: " + regimeRunId));
+        List<RegimePrediction> predictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(regimeRunId);
+        RegimeRunQualitySummary quality = summarizePredictions(predictions);
+        List<RegimeBacktestAnalysisResponse.RegimeBacktestBucket> buckets = backtestId == null
+                ? List.of()
+                : analyzeBacktestByRegime(backtestId, regimeRunId).regimes();
+        List<String> reasons = robustnessReasons(quality, buckets, predictions.isEmpty());
+        return new RegimeRobustnessSummaryResponse(
+                regimeRunId,
+                backtestId,
+                regimeRun.getSymbol(),
+                regimeRun.getTimeframe(),
+                robustnessLabel(quality, predictions.isEmpty()),
+                quality,
+                reasons,
+                buckets
+        );
+    }
+
     private List<MarketCandle> latestCandlesAscending(String symbol, String timeframe, int limit) {
         // Repository query is newest-first for limiting, then reversed for time-series processing.
         List<MarketCandle> candles = new ArrayList<>(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeDesc(
@@ -512,6 +534,48 @@ public class MarketRegimeService {
 
     private BigDecimal subtractNullable(BigDecimal current, BigDecimal previous) {
         return current == null || previous == null ? null : current.subtract(previous);
+    }
+
+    private String robustnessLabel(RegimeRunQualitySummary quality, boolean noPredictions) {
+        if (noPredictions || quality.lowConfidenceWindowCount() > 0 || quality.anomalyCount() > 0) {
+            return "needs_review";
+        }
+        if (quality.baselineDisagreementRate().compareTo(new BigDecimal("35.000000")) > 0) {
+            return "needs_review";
+        }
+        if (quality.baselineDisagreementRate().compareTo(new BigDecimal("10.000000")) > 0) {
+            return "mixed";
+        }
+        return "stable";
+    }
+
+    private List<String> robustnessReasons(
+            RegimeRunQualitySummary quality,
+            List<RegimeBacktestAnalysisResponse.RegimeBacktestBucket> buckets,
+            boolean noPredictions
+    ) {
+        List<String> reasons = new ArrayList<>();
+        if (noPredictions) {
+            reasons.add("No persisted regime windows are available for this run.");
+            return reasons;
+        }
+        if (quality.lowConfidenceWindowCount() > 0) {
+            reasons.add(quality.lowConfidenceWindowCount() + " windows fell below the confidence review threshold.");
+        }
+        if (quality.baselineDisagreementCount() > 0) {
+            reasons.add("Attention labels disagreed with the rule baseline in " + quality.baselineDisagreementCount() + " windows.");
+        }
+        if (quality.anomalyCount() > 0) {
+            reasons.add(quality.anomalyCount() + " windows overlapped anomaly warnings.");
+        }
+        if (!buckets.isEmpty()) {
+            reasons.add("Backtest trades were grouped across " + buckets.size() + " inferred regimes.");
+        }
+        if (reasons.isEmpty()) {
+            reasons.add("Regime windows were high confidence, baseline aligned, and anomaly free.");
+        }
+        // These reasons are review prompts only; they deliberately avoid buy/sell language.
+        return reasons;
     }
 
     private String labelForTrade(BacktestTrade trade, List<RegimePrediction> predictions) {

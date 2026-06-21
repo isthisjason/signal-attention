@@ -323,6 +323,40 @@ class MarketRegimeServiceTests {
         assertThat(bucket.baselineDisagreementCount()).isEqualTo(2);
     }
 
+    @Test
+    void summarizeRobustnessMarksAlignedRunStable() {
+        RegimeRun run = savedRun(20L, "torch", "artifact-a", "2024-01-02T00:00:00Z", 2);
+        when(regimeRunRepository.findById(20L)).thenReturn(java.util.Optional.of(run));
+        when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(20L)).thenReturn(List.of(
+                prediction(run, "TRENDING_UP", "80.00", false, "NORMAL"),
+                prediction(run, "TRENDING_UP", "75.00", false, null)
+        ));
+
+        RegimeRobustnessSummaryResponse response = service.summarizeRobustness(20L, null);
+
+        assertThat(response.reviewLabel()).isEqualTo("stable");
+        assertThat(response.qualitySummary().baselineDisagreementRate()).isEqualByComparingTo("0.000000");
+        assertThat(response.reviewReasons()).contains("Regime windows were high confidence, baseline aligned, and anomaly free.");
+        assertThat(response.regimes()).isEmpty();
+    }
+
+    @Test
+    void summarizeRobustnessMarksLowConfidenceAndAnomaliesForReview() {
+        RegimeRun run = savedRun(20L, "torch", "artifact-a", "2024-01-02T00:00:00Z", 2);
+        when(regimeRunRepository.findById(20L)).thenReturn(java.util.Optional.of(run));
+        when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(20L)).thenReturn(List.of(
+                prediction(run, "TRENDING_UP", "50.00", true, "ANOMALY"),
+                prediction(run, "SIDEWAYS", "75.00", false, null)
+        ));
+
+        RegimeRobustnessSummaryResponse response = service.summarizeRobustness(20L, null);
+
+        assertThat(response.reviewLabel()).isEqualTo("needs_review");
+        assertThat(response.qualitySummary().lowConfidenceWindowCount()).isEqualTo(1);
+        assertThat(response.reviewReasons()).anyMatch(reason -> reason.contains("confidence review threshold"));
+        assertThat(response.reviewReasons()).anyMatch(reason -> reason.contains("anomaly warnings"));
+    }
+
     private List<MarketCandle> candlesDescending(int count) {
         return java.util.stream.IntStream.range(0, count)
                 .mapToObj(index -> candle(count - index))
