@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   fetchMarketDataQuality: vi.fn(),
   fetchMarketRegime: vi.fn(),
   fetchMarketRegimeDiagnostics: vi.fn(),
+  fetchMarketRegimeExperiments: vi.fn(),
   fetchMarketRegimeStatus: vi.fn(),
   fetchRegimeEvidenceSnapshots: vi.fn(),
   fetchRegimeRunComparison: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock("./api/dashboard", () => ({
 vi.mock("./api/marketRegime", () => ({
   fetchMarketRegime: mocks.fetchMarketRegime,
   fetchMarketRegimeDiagnostics: mocks.fetchMarketRegimeDiagnostics,
+  fetchMarketRegimeExperiments: mocks.fetchMarketRegimeExperiments,
   fetchMarketRegimeStatus: mocks.fetchMarketRegimeStatus,
   fetchRegimeEvidenceSnapshots: mocks.fetchRegimeEvidenceSnapshots,
   fetchRegimeRunComparison: mocks.fetchRegimeRunComparison,
@@ -170,6 +172,19 @@ beforeEach(() => {
     promotionGeneratedAt: null,
     promotionArtifactMatches: null,
     promotionWarnings: [],
+    warnings: [],
+  });
+  mocks.fetchMarketRegimeExperiments.mockResolvedValue({
+    summary: {
+      totalRuns: 0,
+      trainedRuns: 0,
+      evaluatedRuns: 0,
+      promotionEligibleRuns: 0,
+      bestRun: null,
+    },
+    runs: [],
+    incompleteRuns: [],
+    promotion: null,
     warnings: [],
   });
   mocks.fetchRegimeRuns.mockResolvedValue([]);
@@ -368,6 +383,7 @@ describe("dashboard render states", () => {
     expect(screen.getByText("No paper orders for the selected session.")).toBeInTheDocument();
     expect(screen.getByText("No paper positions for the selected session.")).toBeInTheDocument();
     expect(screen.getByText("No assessment chart yet")).toBeInTheDocument();
+    expect(screen.getByLabelText("Model lab diagnostics")).toHaveTextContent("No experiments recorded yet.");
     expect(screen.getByText("No anomaly check yet")).toBeInTheDocument();
     expect(screen.getByText("No risk alerts are active.")).toBeInTheDocument();
     expect(screen.getByText("No audit events have been recorded yet.")).toBeInTheDocument();
@@ -606,6 +622,40 @@ describe("dashboard render states", () => {
     expect(within(table).getByText("50.00%")).toBeInTheDocument();
     expect(within(table).getByText(/conf \+10.00%/)).toBeInTheDocument();
     expect(within(table).getByText(/artifact changed/)).toBeInTheDocument();
+  });
+
+  it("renders model lab diagnostics for a promoted local candidate", async () => {
+    mocks.fetchMarketRegimeExperiments.mockResolvedValue({
+      summary: {
+        totalRuns: 2,
+        trainedRuns: 2,
+        evaluatedRuns: 1,
+        promotionEligibleRuns: 1,
+        bestRun: {
+          name: "btc-v2",
+          runId: "run-20260620",
+          accuracy: 0.72,
+          liftOverBaseline: 0.08,
+          promotionGate: { eligible: true, failures: [] },
+          weakestLabels: [{ label: "SIDEWAYS", f1: 0.5, recall: 0.45, precision: 0.55, support: 4 }],
+          confusionPairs: [{ expected: "SIDEWAYS", predicted: "TRENDING_UP", count: 2 }],
+        },
+      },
+      runs: [],
+      incompleteRuns: [],
+      promotion: { status: "promoted", selectedRun: { runId: "run-20260620" } },
+      warnings: ["local registry only"],
+    });
+
+    render(<App />);
+
+    const lab = await screen.findByLabelText("Model lab diagnostics");
+    expect(within(lab).getByText("run-20260620")).toBeInTheDocument();
+    expect(within(lab).getByText("72.00%")).toBeInTheDocument();
+    expect(within(lab).getByText("8.00%")).toBeInTheDocument();
+    expect(within(lab).getByText("promoted (run-20260620)")).toBeInTheDocument();
+    expect(within(lab).getByText("sideways to trending up (2)")).toBeInTheDocument();
+    expect(within(lab).getByText("local registry only")).toBeInTheDocument();
   });
 
   it("renders backtest chart summaries after a run", async () => {

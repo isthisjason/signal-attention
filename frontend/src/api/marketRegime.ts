@@ -47,6 +47,52 @@ export type MarketRegimeStatus = {
   warnings: string[];
 };
 
+export type MarketRegimeExperimentRun = {
+  name?: string | null;
+  runId?: string | null;
+  hasTraining?: boolean;
+  hasEvaluation?: boolean;
+  validationAccuracy?: number | null;
+  accuracy?: number | null;
+  baselineAccuracy?: number | null;
+  liftOverBaseline?: number | null;
+  confidence?: Record<string, unknown> | null;
+  labelDistribution?: Record<string, number> | null;
+  windowRanges?: Record<string, unknown> | null;
+  promotionGate?: {
+    eligible?: boolean;
+    failures?: string[];
+    gates?: Record<string, unknown>;
+  } | null;
+  weakestLabels?: Array<{
+    label?: string | null;
+    f1?: number | null;
+    recall?: number | null;
+    precision?: number | null;
+    support?: number | null;
+  }>;
+  confusionPairs?: Array<{
+    expected?: string | null;
+    predicted?: string | null;
+    count?: number | null;
+  }>;
+  reportPath?: string | null;
+};
+
+export type MarketRegimeExperimentDiagnostics = {
+  summary: {
+    totalRuns: number;
+    trainedRuns: number;
+    evaluatedRuns: number;
+    promotionEligibleRuns: number;
+    bestRun?: MarketRegimeExperimentRun | null;
+  };
+  runs: MarketRegimeExperimentRun[];
+  incompleteRuns: MarketRegimeExperimentRun[];
+  promotion?: Record<string, unknown> | null;
+  warnings: string[];
+};
+
 export type RegimeRunQualitySummary = {
   averageConfidence?: number | null;
   lowConfidenceWindowCount: number;
@@ -192,6 +238,10 @@ export function fetchMarketRegime(symbol = "BTC-USD", timeframe = "1h", limit = 
 
 export function fetchMarketRegimeStatus() {
   return getJson<MarketRegimeStatus>("/api/market-regime/status");
+}
+
+export function fetchMarketRegimeExperiments() {
+  return getJson<MarketRegimeExperimentDiagnostics>("/api/market-regime/experiments");
 }
 
 export function fetchRegimeRuns(symbol = "BTC-USD", timeframe = "1h", limit = 10) {

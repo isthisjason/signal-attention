@@ -15,6 +15,7 @@ import { fetchDashboardRiskAlerts, fetchDashboardSummary, fetchStrategyPerforman
 import { fetchMarketDataQuality, importMarketData } from "./marketData";
 import {
   fetchMarketRegime,
+  fetchMarketRegimeExperiments,
   fetchMarketRegimeStatus,
   fetchRegimeRunComparison,
   fetchRegimeRuns,
@@ -234,6 +235,9 @@ describe("dashboard and analysis clients", () => {
 
     await fetchMarketRegimeStatus();
     expect(latestFetchCall().url).toBe("http://api.test/api/market-regime/status");
+
+    await fetchMarketRegimeExperiments();
+    expect(latestFetchCall().url).toBe("http://api.test/api/market-regime/experiments");
 
     await fetchRegimeRuns("ETH-USD", "4h", 3);
     expect(latestFetchCall().url).toBe("http://api.test/api/regime-runs?symbol=ETH-USD&timeframe=4h&limit=3");

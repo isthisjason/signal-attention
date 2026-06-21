@@ -39,6 +39,7 @@ import { MarketDataImportSummary, MarketDataQuality, fetchMarketDataQuality, imp
 import {
   MarketRegimeFeatures,
   MarketRegimeDiagnostics,
+  MarketRegimeExperimentDiagnostics,
   MarketRegimeResponse,
   MarketRegimeStatus,
   RegimeEvidenceSnapshot,
@@ -48,6 +49,7 @@ import {
   RegimeRunSummary,
   fetchMarketRegimeDiagnostics,
   fetchMarketRegime,
+  fetchMarketRegimeExperiments,
   fetchRegimeEvidenceSnapshots,
   fetchMarketRegimeStatus,
   fetchRegimeRunComparison,
@@ -95,6 +97,11 @@ const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
   error: null,
 };
 const loadingMarketRegimeStatus: LoadState<MarketRegimeStatus> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
+const loadingMarketRegimeExperiments: LoadState<MarketRegimeExperimentDiagnostics> = {
   status: "loading",
   data: null,
   error: null,
@@ -157,6 +164,8 @@ function App() {
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
   const [regimeStatusState, setRegimeStatusState] =
     useState<LoadState<MarketRegimeStatus>>(loadingMarketRegimeStatus);
+  const [regimeExperimentsState, setRegimeExperimentsState] =
+    useState<LoadState<MarketRegimeExperimentDiagnostics>>(loadingMarketRegimeExperiments);
   const [regimeRunsState, setRegimeRunsState] =
     useState<LoadState<RegimeRunSummary[]>>(loadingRegimeRuns);
   const [regimeComparisonState, setRegimeComparisonState] =
@@ -219,6 +228,7 @@ function App() {
     setRiskAlertsState(loadingRiskAlerts);
     setRegimeState(loadingMarketRegime);
     setRegimeStatusState(loadingMarketRegimeStatus);
+    setRegimeExperimentsState(loadingMarketRegimeExperiments);
     setRegimeRunsState(loadingRegimeRuns);
     setRegimeComparisonState(loadingRegimeComparison);
     setStrategyListState(loadingStrategyList);
@@ -238,6 +248,11 @@ function App() {
       .then((data) => setRegimeStatusState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRegimeStatusState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    const regimeExperimentsLoad = fetchMarketRegimeExperiments()
+      .then((data) => setRegimeExperimentsState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setRegimeExperimentsState({ status: "error", data: null, error: errorMessage(error) }),
       );
     const regimeRunsLoad = fetchRegimeRuns()
       .then((data) => setRegimeRunsState({ status: "success", data, error: null }))
@@ -285,6 +300,7 @@ function App() {
       summaryLoad,
       regimeLoad,
       regimeStatusLoad,
+      regimeExperimentsLoad,
       regimeRunsLoad,
       regimeComparisonLoad,
       evidenceSnapshotsLoad,
@@ -760,6 +776,7 @@ function App() {
         analysis={regimeAnalysis}
         diagnostics={regimeDiagnostics}
         evidenceSnapshots={evidenceSnapshots}
+        experimentsState={regimeExperimentsState}
         comparisonState={regimeComparisonState}
         replay={regimeReplay}
         runsState={regimeRunsState}
@@ -853,6 +870,7 @@ function RegimeReplayPanel({
   busy,
   diagnostics,
   evidenceSnapshots,
+  experimentsState,
   comparisonState,
   replay,
   runsState,
@@ -864,6 +882,7 @@ function RegimeReplayPanel({
   busy: boolean;
   diagnostics: MarketRegimeDiagnostics | null;
   evidenceSnapshots: RegimeEvidenceSnapshot[];
+  experimentsState: LoadState<MarketRegimeExperimentDiagnostics>;
   comparisonState: LoadState<RegimeRunComparison>;
   replay: RegimeRunResponse | null;
   runsState: LoadState<RegimeRunSummary[]>;
@@ -883,6 +902,7 @@ function RegimeReplayPanel({
         </button>
       </div>
       <ModelStatusStrip state={statusState} />
+      <ModelLabPanel state={experimentsState} />
       {replay ? (
         <>
           <ResultGrid
@@ -902,6 +922,90 @@ function RegimeReplayPanel({
       )}
       <RegimeRunComparisonTable comparisonState={comparisonState} runsState={runsState} />
     </section>
+  );
+}
+
+function ModelLabPanel({ state }: { state: LoadState<MarketRegimeExperimentDiagnostics> }) {
+  if (state.status === "loading") {
+    return <p className="muted">Loading model lab diagnostics.</p>;
+  }
+  if (state.status === "error") {
+    return <p className="error-text">{state.error}</p>;
+  }
+  const diagnostics = state.data;
+  const bestRun = diagnostics.summary.bestRun ?? diagnostics.runs[0] ?? null;
+  const promotionStatus = promotionValue(diagnostics.promotion, "status") ?? "not promoted";
+  const selectedRun = promotionValue(diagnostics.promotion, "selectedRun.runId");
+  return (
+    <div className="model-lab-panel" aria-label="Model lab diagnostics">
+      <div>
+        <h3>Model lab</h3>
+        <p className="muted">Local experiment registry review; promotion is a research candidate, not deployment approval.</p>
+      </div>
+      <ResultGrid
+        items={[
+          ["Runs", diagnostics.summary.totalRuns],
+          ["Evaluated", diagnostics.summary.evaluatedRuns],
+          ["Eligible", diagnostics.summary.promotionEligibleRuns],
+          ["Promotion", selectedRun ? `${promotionStatus} (${selectedRun})` : promotionStatus],
+        ]}
+      />
+      {bestRun ? (
+        <div className="model-lab-grid">
+          <div>
+            <h4>Best run</h4>
+            <ResultGrid
+              items={[
+                ["Run", bestRun.runId || "unknown"],
+                ["Accuracy", formatRatioPercent(bestRun.accuracy)],
+                ["Lift", formatRatioPercent(bestRun.liftOverBaseline)],
+                ["Gate", bestRun.promotionGate?.eligible ? "eligible" : "needs review"],
+              ]}
+            />
+            {bestRun.promotionGate?.failures?.length ? (
+              <ul className="compact-list">
+                {bestRun.promotionGate.failures.slice(0, 3).map((failure) => (
+                  <li key={failure}>{failure}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <div>
+            <h4>Review signals</h4>
+            {bestRun.weakestLabels?.length ? (
+              <ul className="compact-list">
+                {bestRun.weakestLabels.slice(0, 3).map((label) => (
+                  <li key={label.label ?? "unknown"}>
+                    <span>{formatAction(label.label ?? "unknown")}</span>
+                    <strong>f1 {formatRatioPercent(label.f1)}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No weak-label diagnostics recorded.</p>
+            )}
+            {bestRun.confusionPairs?.length ? (
+              <ul className="compact-list">
+                {bestRun.confusionPairs.slice(0, 3).map((pair) => (
+                  <li key={`${pair.expected}-${pair.predicted}`}>
+                    {formatAction(pair.expected ?? "unknown")} to {formatAction(pair.predicted ?? "unknown")} ({pair.count ?? 0})
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <p className="muted">No experiments recorded yet. Use the local training and evaluation scripts to populate the registry.</p>
+      )}
+      {diagnostics.warnings.length ? (
+        <ul className="compact-list">
+          {diagnostics.warnings.slice(0, 4).map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -2454,6 +2558,26 @@ function formatPercent(value: number | null | undefined) {
     return "N/A";
   }
   return `${Number(value).toFixed(2)}%`;
+}
+
+function formatRatioPercent(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "N/A";
+  }
+  return `${(Number(value) * 100).toFixed(2)}%`;
+}
+
+function promotionValue(source: Record<string, unknown> | null | undefined, path: string) {
+  if (!source) {
+    return null;
+  }
+  const value = path.split(".").reduce<unknown>((current, key) => {
+    if (current && typeof current === "object" && key in current) {
+      return (current as Record<string, unknown>)[key];
+    }
+    return null;
+  }, source);
+  return typeof value === "string" ? value : null;
 }
 
 function shortModelLabel(run: RegimeRunSummary) {

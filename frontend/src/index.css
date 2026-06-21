@@ -497,6 +497,7 @@ textarea {
   margin-bottom: 6px;
 }
 
+.model-lab-panel,
 .evidence-panel {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -506,22 +507,27 @@ textarea {
   padding: 14px;
 }
 
+.model-lab-panel h3,
+.model-lab-panel h4,
 .evidence-panel h3,
 .evidence-panel h4 {
   margin: 0;
 }
 
+.model-lab-grid,
 .evidence-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.model-lab-panel .compact-list,
 .evidence-panel .compact-list {
   list-style: none;
   padding-left: 0;
 }
 
+.model-lab-panel .compact-list li,
 .evidence-panel .compact-list li {
   align-items: center;
   border-top: 1px solid var(--border);
