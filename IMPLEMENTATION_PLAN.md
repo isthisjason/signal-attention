@@ -97,12 +97,12 @@ Implemented foundation:
 - Audit event persistence and query APIs.
 - Dashboard aggregation APIs.
 - ML risk, anomaly, market regime, diagnostics, and model status clients.
-- Regime run history, regime prediction persistence, baseline comparison, regime grouped backtest analysis, and evidence snapshots.
+- Regime run history, regime prediction persistence, baseline comparison, regime grouped backtest analysis, robustness summaries, experiment diagnostics proxying, and evidence snapshots.
 - Assistant sessions, messages, proposed actions, confirmation, rejection, execution results, and audit events.
 
 Continuing backend targets:
 
-- Expand model status mapping around promoted artifact lifecycle state.
+- Keep experiment diagnostics read only; training, evaluation, and promotion remain script driven.
 - Preserve backward compatible API response additions through optional fields.
 - Keep assistant execution whitelisted and reviewable.
 - Keep audit events clear for inference, diagnostics, assistant actions, paper replay, and analysis runs.
@@ -123,6 +123,7 @@ Implemented foundation:
 - Training script with seeded mini batch training, chronological validation, early stopping, normalization from train windows only, dropout, positional encoding, and selectable architecture.
 - Evaluation script with accuracy, per label metrics, confusion matrix, confidence summary, majority class baseline, lift, holdout scoring, and registry integration.
 - Experiment comparison, diagnostics, promotion, sweep dry run, and model card scripts.
+- Read only experiment diagnostics endpoint for model lab review.
 
 Completed artifact lifecycle wave:
 
@@ -152,12 +153,12 @@ Implemented surfaces:
 - Score ML risk and show persisted risk labels.
 - Manage paper sessions, simulated orders, positions, summary, and replay.
 - Show dashboard summary, risk alerts, strategy performance, and audit events.
-- Show model status, saved regime runs, run quality summaries, recent run comparison, baseline disagreement, anomaly context, regime grouped backtest analysis, attention evidence, and saved evidence snapshots.
+- Show model status, model lab diagnostics, saved regime runs, run quality summaries, recent run comparison, baseline disagreement, anomaly context, regime grouped backtest analysis, robustness review, attention evidence, and saved evidence snapshots.
 - Provide an assistant panel with message history, proposed actions, confirmation controls, and action refresh behavior.
 
 Continuing frontend targets:
 
-- Make promoted artifact state visible without implying deployment quality.
+- Keep model lab and promoted artifact state visible without implying deployment quality.
 - Keep rules fallback status clear.
 - Keep attention evidence close to regime replay and baseline comparison.
 - Preserve responsive behavior and chart readability.
@@ -171,7 +172,7 @@ Implemented behavior:
 - Provider neutral backend contract.
 - Deterministic local provider for reproducible demos.
 - Session, message, proposed action, status, payload, execution result, and confirmation persistence.
-- Reviewable actions for backtests, regime replay, attention diagnostics, paper session start, and paper replay.
+- Reviewable actions for backtests, regime replay, attention diagnostics, model lab review, robustness review, paper session start, and paper replay.
 - Confirmation and rejection APIs.
 - Audit events for assistant proposals and executed actions.
 - Frontend assistant panel integrated with workbench state.
@@ -198,6 +199,7 @@ Completed major waves:
 - Attention diagnostics wave: artifact metadata status, v2 attention architecture, compatibility comments, diagnostics generation, backend diagnostics endpoint, evidence snapshots, experiment comparison by attention behavior, workbench evidence surfacing, assistant diagnostics actions, and verification.
 - Promoted artifact lifecycle wave: v2-aware evaluation, verified promotion summaries, auto loading from promoted artifacts, backend status fields, workbench visibility, smoke coverage, and documentation.
 - Regime run comparison wave: derived run quality summaries, read only comparison API, assistant comparison context, workbench comparison table, smoke coverage, and documentation.
+- Model lab and robustness wave: read only experiment diagnostics API, backend proxy, workbench Model Lab panel, regime robustness summaries, assistant model review actions, tests, and documentation.
 
 Current recent commits:
 
@@ -209,6 +211,12 @@ a48c05a documented promoted artifact lifecycle wave
 29bab76 loaded promoted artifacts in auto mode
 667ea83 reported and surfaced promoted artifact state
 d6f2355 added regime run comparison evidence
+1aad5a6 exposed market regime experiment diagnostics
+ea71d1c proxied model lab diagnostics through backend
+4d4ff4f surfaced model lab in the workbench
+7bc5bf4 added regime robustness summaries
+a11589e displayed attention robustness review
+88029d3 extended assistant model review context
 ```
 
 ## 11. Verification Matrix

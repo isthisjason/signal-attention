@@ -271,17 +271,19 @@ curl -X POST http://localhost:8080/api/regime-runs \
   }'
 curl http://localhost:8080/api/regime-runs/REGIME_RUN_ID
 curl "http://localhost:8080/api/backtests/BACKTEST_ID/regime-analysis?regimeRunId=REGIME_RUN_ID"
+curl "http://localhost:8080/api/regime-runs/REGIME_RUN_ID/robustness?backtestId=BACKTEST_ID"
 ```
 
-Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, candle windows, and a derived quality summary. The regime analysis endpoint groups completed backtest trades by the inferred regime active at trade entry time.
+Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, candle windows, and a derived quality summary. The regime analysis endpoint groups completed backtest trades by the inferred regime active at trade entry time. The robustness endpoint combines confidence, baseline disagreement, anomalies, and optional trade grouping into a neutral review label such as `stable`, `mixed`, or `needs_review`; it is review evidence, not a recommendation.
 
 Compare recent saved runs:
 
 ```bash
 curl "http://localhost:8080/api/regime-runs/comparison?symbol=BTC-USD&timeframe=1h&limit=10"
+curl "http://localhost:8080/api/market-regime/experiments"
 ```
 
-The comparison response shows each recent run with average confidence, low-confidence windows, baseline disagreement rate, anomaly count, dominant regime, regime counts, and deltas from the prior saved run. It is review evidence, not a ranking or trading signal.
+The comparison response shows each recent run with average confidence, low-confidence windows, baseline disagreement rate, anomaly count, dominant regime, regime counts, and deltas from the prior saved run. The experiment diagnostics response powers the workbench Model Lab with local registry counts, best run, promotion gate state, weak labels, confusion pairs, and warnings. Both are review evidence, not ranking or trading signals.
 
 Run a simple anomaly check against the same recent candle window:
 
@@ -297,7 +299,7 @@ curl -X POST http://localhost:8080/api/anomaly-check \
 
 The anomaly response includes a score, label, reasons, derived features, and classifier source. It is a research warning only, not a trade signal.
 
-The dashboard regime replay panel adds a candlestick assessment chart over the selected date range. The chart shows candle direction, price context, regime windows, and backtest trade markers when a backtest is available. Below the chart, the saved-run comparison table keeps recent runs scannable by mode, artifact, confidence, baseline gap, dominant regime, anomalies, and run-to-run deltas.
+The dashboard regime replay panel adds a Model Lab section, a candlestick assessment chart, attention evidence, and a robustness review over the selected date range. The chart shows candle direction, price context, regime windows, and backtest trade markers when a backtest is available. Below the chart, the saved-run comparison table keeps recent runs scannable by mode, artifact, confidence, baseline gap, dominant regime, anomalies, and run-to-run deltas.
 
 For optional torch experiments, install `ml-service/requirements-torch.txt`, train an artifact, and evaluate it before enabling torch mode:
 
