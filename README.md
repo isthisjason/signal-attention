@@ -59,7 +59,7 @@ When everything is running, these are the main local URLs:
 
 ## Demo flow
 
-The usual demo is pretty small:
+The demo now works best when the attention regime path is the main thread. I still start with the simple data and SMA baseline setup, because the attention review needs something honest to compare against.
 
 1. Start the stack with `docker compose up --build`.
 2. Import sample BTC-USD candle data.
@@ -68,10 +68,10 @@ The usual demo is pretty small:
 5. Review generated trades and metrics.
 6. Request an ML risk score.
 7. Confirm the risk score is persisted and audit events were recorded.
-8. Optionally configure a risk policy and evaluate a simulated order.
-9. Optionally create a paper session, submit manual paper orders, replay candles, and review the paper summary.
-10. Optionally request a CPU safe market regime classification from recent imported candles.
-11. Optionally check recent candles for simple anomaly warnings.
+8. Run a market regime replay across the same candle range.
+9. Review confidence, baseline disagreement, anomaly context, and attention evidence.
+10. Optionally create a paper session, submit manual paper orders, replay candles, and review the paper summary.
+11. Optionally configure a risk policy and evaluate a simulated order.
 
 You can do this from Swagger, curl, or the React dashboard. The dashboard is the most comfortable path, but the API routes are still the main thing I wanted to build.
 
@@ -241,7 +241,7 @@ Committed portfolio screenshots are available in [docs/assets/screenshots](docs/
 
 ## What I was trying to practice
 
-The main goal was to build something that touches a few real backend problems without pretending to be a real trading platform.
+The main goal was to build something that touches real backend and ML workflow problems without pretending to be a real trading platform.
 
 - Spring Boot REST APIs with validation and consistent error responses
 - PostgreSQL persistence with JPA repositories and Flyway migrations
@@ -252,7 +252,9 @@ The main goal was to build something that touches a few real backend problems wi
 - A small React workbench that can drive the demo without copying curl commands all day
 - Optional torch experiments without making the default setup painful
 
-The ML part is intentionally conservative. The default risk score and market regime classifier use rules because that is easier to inspect and much easier to demo honestly. The torch path is there for experiments, but it is not required for the normal app.
+The part I care about most now is the attention regime workflow. The app imports candles, runs a basic strategy, saves a regime replay, then lets me inspect where the model agrees or disagrees with the rule baseline. The rules are still there on purpose. They give the attention path something plain and boring to argue with.
+
+The ML part is intentionally conservative. The default risk score and market regime classifier can still use rules because that is easier to inspect and much easier to demo honestly. The torch path is there for experiments, but it is not required for the normal app.
 
 ## What is not included
 
@@ -269,8 +271,8 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read-only experiment diagnostics, typed model lab responses, persisted market regime runs, derived regime run quality summaries, recent regime run comparison, baseline versus primary regime comparison, regime robustness review as the primary UI for trade-by-regime evidence, CPU safe market regime classification, optional torch backed regime inference, a simple anomaly check, baseline risk policies, paper trading sessions, dashboard summary APIs, Model Lab and candlestick assessment feedback in the React attention workbench, assistant model review actions, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read only experiment diagnostics, typed model lab responses, persisted market regime runs, run quality summaries, recent run comparison, baseline disagreement, robustness review, CPU safe regime classification, optional torch backed inference, anomaly checks, baseline risk policies, paper sessions, dashboard APIs, Model Lab review, attention regime panels, assistant model review actions, and a smoke script for the running stack.
 
 Backend, ML service, frontend tests, frontend build, and smoke helper tests are covered by the local verification flow. Docker Compose config, full Docker Compose startup, and the running stack smoke demo require Docker to be available in the development environment.
 
-The next work I would do is optional and should stay scoped: richer strategy types, more market data quality checks, or deeper model experiments after the local demo remains reproducible.
+The next work should stay scoped around the showcase. I would rather make the attention review easier to inspect than add a pile of trading features that make the project look like something it is not.

@@ -231,7 +231,7 @@ curl http://localhost:8080/api/dashboard/risk-alerts
 ```
 
 Open `http://localhost:5173` to view the same demo state in the dashboard. The page shows summary cards, derived risk alerts, baseline performance, attention regime status, and recent audit events.
-The top of the page now prioritizes scan speed with a sticky section nav, next-action panel, summary cards, and risk state before the detailed workflow controls.
+The top of the page should make the attention review easy to find before the older workflow controls.
 
 The dashboard also includes workbench controls for the main demo flow:
 
@@ -240,12 +240,13 @@ The dashboard also includes workbench controls for the main demo flow:
 - Run the January 1-10, 2024 backtest.
 - Review the equity and drawdown chart summaries after the backtest.
 - Score the latest backtest with the ML risk endpoint.
-- Create a paper session, start or stop it, submit manual paper orders, and replay imported candles.
 - Run regime replay to inspect the candlestick assessment chart with regime and trade markers.
+- Review confidence, baseline disagreement, anomaly context, robustness, and saved attention evidence.
+- Create a paper session, start or stop it, submit manual paper orders, and replay imported candles.
 
 ## Market Regime Analysis
 
-After importing candles, request a CPU-safe regime classification for the latest candle window:
+After importing candles, request a CPU safe regime classification for the latest candle window:
 
 ```bash
 curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"
@@ -274,7 +275,7 @@ curl "http://localhost:8080/api/backtests/BACKTEST_ID/regime-analysis?regimeRunI
 curl "http://localhost:8080/api/regime-runs/REGIME_RUN_ID/robustness?backtestId=BACKTEST_ID"
 ```
 
-Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, candle windows, and a derived quality summary. The regime analysis endpoint still groups completed backtest trades by the inferred regime active at trade entry time. The dashboard now presents that trade-by-regime evidence through the robustness review, which combines confidence, baseline disagreement, anomalies, and optional trade grouping into a neutral review label such as `stable`, `mixed`, or `needs_review`; it is review evidence, not a recommendation.
+Saved regime runs preserve model provenance, baseline rule labels, baseline disagreement flags, anomaly context, candle windows, and a derived quality summary. The regime analysis endpoint still groups completed backtest trades by the inferred regime active at trade entry time. The dashboard presents that trade by regime evidence through the robustness review, which combines confidence, baseline disagreement, anomalies, and optional trade grouping into a neutral review label such as `stable`, `mixed`, or `needs_review`. It is review evidence, not a recommendation.
 
 Compare recent saved runs:
 
