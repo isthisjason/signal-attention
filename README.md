@@ -222,6 +222,7 @@ After the stack starts, I usually use Swagger at `http://localhost:8080/swagger-
 - `GET /api/dashboard/summary`
 - `GET /api/dashboard/strategy-performance`
 - `GET /api/dashboard/risk-alerts`
+- `GET /api/attention-showcase/summary`
 - `GET /api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128`
 - `GET /api/market-regime/status`
 - `POST /api/regime-runs`
@@ -271,7 +272,7 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read only experiment diagnostics, typed model lab responses, persisted market regime runs, run quality summaries, recent run comparison, baseline disagreement, robustness review, CPU safe regime classification, optional torch backed inference, anomaly checks, baseline risk policies, paper sessions, dashboard APIs, Model Lab review, attention regime panels, assistant model review actions, and a smoke script for the running stack.
+The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read only experiment diagnostics, typed model lab responses, an attention showcase summary, persisted market regime runs, run quality summaries, recent run comparison, baseline disagreement, selectable evidence windows, robustness review, CPU safe regime classification, optional torch backed inference, anomaly checks, baseline risk policies, paper sessions, dashboard APIs, Model Lab review, attention regime panels, assistant model review actions, and a smoke script for the running stack.
 
 Backend, ML service, frontend tests, frontend build, and smoke helper tests are covered by the local verification flow. Docker Compose config, full Docker Compose startup, and the running stack smoke demo require Docker to be available in the development environment.
 

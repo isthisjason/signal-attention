@@ -40,6 +40,14 @@ curl "http://localhost:8080/api/market-data/quality?symbol=BTC-USD&timeframe=1h"
 
 Expected result: JSON with `candleCount`, `gapCount`, `invalidOhlcCount`, `zeroOrNegativeVolumeCount`, and `warnings`.
 
+Check attention showcase readiness after the smoke workflow:
+
+```bash
+curl http://localhost:8080/api/attention-showcase/summary
+```
+
+Expected result: JSON with `modelReady`, `latestRun`, `robustnessLabel`, `evidenceSnapshotCount`, `disagreementSummary`, and `nextAction`.
+
 Check Swagger UI in a browser:
 
 ```text
@@ -74,7 +82,8 @@ For a portfolio pass, save:
 
 - The smoke script output.
 - A screenshot of Swagger with the endpoint list visible.
-- A screenshot of the dashboard after the smoke demo has created data.
+- A screenshot of the dashboard after the smoke demo has created data, with the attention showcase readiness panel visible.
+- A screenshot of the selectable replay window evidence table and diagnostics panel.
 - Any Docker or environment blocker, especially if Docker is unavailable in WSL.
 
 Do not save or commit local database contents, generated model artifacts, or machine-specific environment files.

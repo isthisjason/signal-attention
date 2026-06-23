@@ -30,7 +30,7 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 | Frontend tests | `cd frontend && npm run test` | API client and dashboard state tests pass. |
 | Frontend build | `cd frontend && npm run build` | TypeScript and Vite production build complete. |
 | Smoke helper tests | `python3 -m unittest scripts/smoke_demo_test.py` | Smoke script validation helpers pass. |
-| Running-stack smoke demo | `python3 scripts/smoke_demo.py` | Service reachability, import, market data quality, strategy, backtest, ML score, paper trading, dashboard, model status, promoted artifact status fields, persisted regime runs, regime run comparison, attention diagnostics, evidence snapshots, regime grouped backtest analysis, assistant reviewable actions, anomaly, and audit checks pass when the stack is running. |
+| Running-stack smoke demo | `python3 scripts/smoke_demo.py` | Service reachability, import, market data quality, strategy, backtest, ML score, paper trading, dashboard, model status, promoted artifact status fields, persisted regime runs, attention showcase summary, regime run comparison, attention diagnostics, evidence snapshots, regime grouped backtest analysis, assistant reviewable actions, anomaly, and audit checks pass when the stack is running. |
 | Compose syntax | `docker compose config` | Compose file renders without errors. |
 | Full local stack | `docker compose up --build` | PostgreSQL, backend, and ML service start. |
 | Backend docs | Open `http://localhost:8080/swagger-ui.html` | Swagger UI lists backend endpoints. |
@@ -42,6 +42,7 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 | Dashboard risk alerts | `curl http://localhost:8080/api/dashboard/risk-alerts` | Returns derived drawdown and ML-risk alerts, or an empty list. |
 | Market regime flow | `curl "http://localhost:8080/api/market-regime?symbol=BTC-USD&timeframe=1h&limit=128"` | Returns a regime label, confidence, reasons, and derived features after candles are imported. |
 | Market regime status | `curl "http://localhost:8080/api/market-regime/status"` | Returns requested/effective mode, artifact metadata, fallback warnings, promotion status, promoted run id when present, and artifact hash verification state. |
+| Attention showcase summary | `curl http://localhost:8080/api/attention-showcase/summary` | Returns model readiness, latest replay quality, robustness label, evidence snapshot count, baseline disagreement summary, and a next review action. |
 | Persisted regime flow | `POST /api/regime-runs`, then `GET /api/regime-runs/{id}` and `GET /api/backtests/{id}/regime-analysis?regimeRunId={id}` | Saves model provenance, prediction points, baseline comparison fields, quality summaries, and grouped backtest metrics. |
 | Regime run comparison | `GET /api/regime-runs/comparison?symbol=BTC-USD&timeframe=1h&limit=10` | Returns recent saved runs with average confidence, baseline disagreement rate, dominant regime, anomaly count, and deltas from the prior saved run. |
 | Attention evidence flow | `GET /api/market-regime/diagnostics?symbol=BTC-USD&timeframe=1h&limit=20`, then `GET /api/market-regime/evidence-snapshots?symbol=BTC-USD&timeframe=1h&limit=5` | Returns the selected window prediction, baseline comparison, evidence source, top timesteps, feature evidence, and a saved snapshot for later review. |
