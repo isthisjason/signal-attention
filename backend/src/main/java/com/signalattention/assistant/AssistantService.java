@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalattention.common.BadRequestException;
 import com.signalattention.common.ResourceNotFoundException;
 import com.signalattention.backtesting.BacktestRunRepository;
+import com.signalattention.marketregime.RegimeEvidenceSnapshotRepository;
 import com.signalattention.marketregime.RegimePredictionRepository;
 import com.signalattention.marketregime.RegimeRun;
 import com.signalattention.marketregime.RegimeRunEvidenceSummarizer;
@@ -35,6 +36,7 @@ public class AssistantService {
     private final PaperSessionRepository paperSessionRepository;
     private final RegimeRunRepository regimeRunRepository;
     private final RegimePredictionRepository regimePredictionRepository;
+    private final RegimeEvidenceSnapshotRepository evidenceSnapshotRepository;
     private final RegimeRunEvidenceSummarizer evidenceSummarizer;
     private final MlRiskClient mlRiskClient;
 
@@ -50,6 +52,7 @@ public class AssistantService {
             PaperSessionRepository paperSessionRepository,
             RegimeRunRepository regimeRunRepository,
             RegimePredictionRepository regimePredictionRepository,
+            RegimeEvidenceSnapshotRepository evidenceSnapshotRepository,
             RegimeRunEvidenceSummarizer evidenceSummarizer,
             MlRiskClient mlRiskClient
     ) {
@@ -64,6 +67,7 @@ public class AssistantService {
         this.paperSessionRepository = paperSessionRepository;
         this.regimeRunRepository = regimeRunRepository;
         this.regimePredictionRepository = regimePredictionRepository;
+        this.evidenceSnapshotRepository = evidenceSnapshotRepository;
         this.evidenceSummarizer = evidenceSummarizer;
         this.mlRiskClient = mlRiskClient;
     }
@@ -130,9 +134,13 @@ public class AssistantService {
         Integer pointCount = null;
         BigDecimal averageConfidence = null;
         BigDecimal disagreementRate = null;
+        Integer disagreementCount = null;
+        Integer anomalyOverlapCount = null;
         Boolean modeChanged = null;
         Boolean artifactChanged = null;
         String robustnessLabel = null;
+        Long evidenceSnapshotCount = null;
+        String showcaseNextAction = "Run an attention regime replay after importing candles and creating the SMA baseline.";
         if (latestRun != null) {
             pointCount = latestRun.getPointCount();
             var latestPredictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(latestRun.getId());
@@ -143,6 +151,15 @@ public class AssistantService {
                     .orElse(null);
             averageConfidence = quality.averageConfidence();
             disagreementRate = quality.baselineDisagreementRate();
+            disagreementCount = quality.baselineDisagreementCount();
+            anomalyOverlapCount = (int) latestPredictions.stream()
+                    .filter(prediction -> Boolean.TRUE.equals(prediction.getDisagreesWithBaseline()))
+                    .filter(prediction -> prediction.getAnomalyLabel() != null && !"NORMAL".equalsIgnoreCase(prediction.getAnomalyLabel()))
+                    .count();
+            evidenceSnapshotCount = evidenceSnapshotRepository.countBySymbolAndTimeframe(latestRun.getSymbol(), latestRun.getTimeframe());
+            showcaseNextAction = evidenceSnapshotCount == 0
+                    ? "Open attention diagnostics for the latest replay window to save evidence."
+                    : "Inspect the lowest confidence disagreement windows.";
             previousRun = regimeRunRepository.findFirstBySymbolAndTimeframeAndIdNotOrderByCreatedAtDesc(
                     latestRun.getSymbol(),
                     latestRun.getTimeframe(),
@@ -169,9 +186,13 @@ public class AssistantService {
                 pointCount,
                 averageConfidence,
                 disagreementRate,
+                disagreementCount,
+                anomalyOverlapCount,
                 modeChanged,
                 artifactChanged,
                 robustnessLabel,
+                evidenceSnapshotCount,
+                showcaseNextAction,
                 modelLab == null ? null : numberValue(modelLab.summary().get("totalRuns")),
                 modelLab == null ? null : numberValue(modelLab.summary().get("promotionEligibleRuns")),
                 modelLab == null ? null : bestRunId(modelLab),

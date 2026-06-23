@@ -73,6 +73,20 @@ class LocalAssistantProviderTests {
     }
 
     @Test
+    void replyProposesDiagnosticsForBaselineDisagreementReview() {
+        AssistantReply reply = provider.reply(
+                "inspect disagreement windows",
+                context(1L, 2L, null)
+        );
+
+        assertThat(reply.content()).contains("2 baseline disagreement windows");
+        assertThat(reply.content()).contains("3 saved attention evidence snapshots");
+        assertThat(reply.proposedActions()).singleElement()
+                .extracting(AssistantProposedAction::actionType)
+                .isEqualTo(AssistantActionType.INSPECT_ATTENTION_DIAGNOSTICS);
+    }
+
+    @Test
     void replyProposesRobustnessReviewForLatestRegimeRun() {
         AssistantReply reply = provider.reply(
                 "review robustness",
@@ -101,9 +115,13 @@ class LocalAssistantProviderTests {
                 3,
                 new BigDecimal("72.500000"),
                 new BigDecimal("33.333333"),
+                2,
+                1,
                 false,
                 false,
                 "mixed",
+                3L,
+                "Inspect the lowest confidence disagreement windows.",
                 2,
                 1,
                 "run-123",

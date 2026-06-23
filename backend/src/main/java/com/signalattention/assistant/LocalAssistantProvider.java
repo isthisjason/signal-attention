@@ -43,6 +43,26 @@ public class LocalAssistantProvider implements AssistantProvider {
                         .append(context.latestRegimeRobustnessLabel())
                         .append(". ");
             }
+            if (context.latestRegimeBaselineDisagreementCount() != null) {
+                response.append("There are ")
+                        .append(context.latestRegimeBaselineDisagreementCount())
+                        .append(" baseline disagreement windows");
+                if (context.latestRegimeAnomalyOverlapCount() != null && context.latestRegimeAnomalyOverlapCount() > 0) {
+                    response.append(", with ")
+                            .append(context.latestRegimeAnomalyOverlapCount())
+                            .append(" overlapping anomaly warnings");
+                }
+                response.append(". ");
+            }
+            if (context.evidenceSnapshotCount() != null) {
+                response.append(context.evidenceSnapshotCount())
+                        .append(" saved attention evidence snapshots are available. ");
+            }
+            if (context.showcaseNextAction() != null) {
+                response.append("Next showcase step: ")
+                        .append(context.showcaseNextAction())
+                        .append(" ");
+            }
         }
         if (context.modelLabTotalRuns() != null) {
             response.append("Model lab has ")
@@ -58,7 +78,11 @@ public class LocalAssistantProvider implements AssistantProvider {
         }
         response.append("I can explain simulation state and prepare reviewable research actions, but I cannot give buy or sell advice.");
 
-        if (normalized.contains("model lab") || normalized.contains("experiment") || normalized.contains("promotion")) {
+        if (normalized.contains("readiness") || normalized.contains("artifact")) {
+            maybeAddModelLabReview(actions);
+        } else if (normalized.contains("disagreement") || normalized.contains("baseline gap")) {
+            maybeAddAttentionDiagnostics(context, actions);
+        } else if (normalized.contains("model lab") || normalized.contains("experiment") || normalized.contains("promotion")) {
             maybeAddModelLabReview(actions);
         } else if (normalized.contains("robust") || normalized.contains("stability")) {
             maybeAddRobustnessReview(context, actions);

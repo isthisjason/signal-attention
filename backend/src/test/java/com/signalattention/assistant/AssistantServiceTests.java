@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signalattention.backtesting.BacktestRunRepository;
+import com.signalattention.marketregime.RegimeEvidenceSnapshotRepository;
 import com.signalattention.marketregime.RegimePrediction;
 import com.signalattention.marketregime.RegimePredictionRepository;
 import com.signalattention.marketregime.RegimeRun;
@@ -52,6 +53,8 @@ class AssistantServiceTests {
     @Mock
     private RegimePredictionRepository regimePredictionRepository;
     @Mock
+    private RegimeEvidenceSnapshotRepository evidenceSnapshotRepository;
+    @Mock
     private MlRiskClient mlRiskClient;
 
     private AssistantService service;
@@ -70,6 +73,7 @@ class AssistantServiceTests {
                 paperSessionRepository,
                 regimeRunRepository,
                 regimePredictionRepository,
+                evidenceSnapshotRepository,
                 new RegimeRunEvidenceSummarizer(),
                 mlRiskClient
         );
@@ -86,9 +90,10 @@ class AssistantServiceTests {
         when(regimeRunRepository.findFirstBySymbolAndTimeframeAndIdNotOrderByCreatedAtDesc("BTC-USD", "1h", 2L))
                 .thenReturn(Optional.of(previous));
         when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(2L)).thenReturn(List.of(
-                prediction(latest, "SIDEWAYS", "80.00", false),
-                prediction(latest, "TRENDING_UP", "60.00", true)
+                prediction(latest, "SIDEWAYS", "80.00", false, null),
+                prediction(latest, "TRENDING_UP", "60.00", true, "ANOMALY")
         ));
+        when(evidenceSnapshotRepository.countBySymbolAndTimeframe("BTC-USD", "1h")).thenReturn(4L);
         when(mlRiskClient.getMarketRegimeExperiments()).thenReturn(new MlMarketRegimeExperimentDiagnosticsResponse(
                 Map.of(
                         "totalRuns", 2,
@@ -107,9 +112,13 @@ class AssistantServiceTests {
         assertThat(context.latestRegimeLabel()).isEqualTo("TRENDING_UP");
         assertThat(context.latestRegimeAverageConfidence()).isEqualByComparingTo("70.000000");
         assertThat(context.latestRegimeBaselineDisagreementRate()).isEqualByComparingTo("50.000000");
+        assertThat(context.latestRegimeBaselineDisagreementCount()).isEqualTo(1);
+        assertThat(context.latestRegimeAnomalyOverlapCount()).isEqualTo(1);
         assertThat(context.latestRegimeModeChanged()).isTrue();
         assertThat(context.latestRegimeArtifactChanged()).isTrue();
         assertThat(context.latestRegimeRobustnessLabel()).isEqualTo("needs_review");
+        assertThat(context.evidenceSnapshotCount()).isEqualTo(4L);
+        assertThat(context.showcaseNextAction()).contains("lowest confidence disagreement");
         assertThat(context.modelLabTotalRuns()).isEqualTo(2);
         assertThat(context.modelLabEligibleRuns()).isEqualTo(1);
         assertThat(context.modelLabBestRunId()).isEqualTo("run-123");
@@ -150,7 +159,7 @@ class AssistantServiceTests {
         return run;
     }
 
-    private RegimePrediction prediction(RegimeRun run, String label, String confidence, boolean disagreesWithBaseline) {
+    private RegimePrediction prediction(RegimeRun run, String label, String confidence, boolean disagreesWithBaseline, String anomalyLabel) {
         return new RegimePrediction(
                 run,
                 Instant.parse("2024-01-01T00:00:00Z"),
@@ -159,8 +168,8 @@ class AssistantServiceTests {
                 new BigDecimal(confidence),
                 "[]",
                 "{}",
-                null,
-                null,
+                anomalyLabel == null ? null : BigDecimal.ONE,
+                anomalyLabel,
                 null,
                 "SIDEWAYS",
                 new BigDecimal("50.00"),
