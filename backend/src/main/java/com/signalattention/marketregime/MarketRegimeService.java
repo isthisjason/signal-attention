@@ -338,6 +338,7 @@ public class MarketRegimeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Regime run not found: " + regimeRunId));
         List<RegimePrediction> predictions = regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(regimeRunId);
         RegimeRunQualitySummary quality = evidenceSummarizer.summarize(predictions);
+        // Backtest buckets are optional because sometimes I just want to inspect the model replay first.
         List<RegimeBacktestAnalysisResponse.RegimeBacktestBucket> buckets = backtestId == null
                 ? List.of()
                 : analyzeBacktestByRegime(backtestId, regimeRunId).regimes();

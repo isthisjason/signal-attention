@@ -543,6 +543,7 @@ function App() {
         maxCandles: Number(paperForm.maxCandles),
       });
       setPaperReplay(result);
+      // This is a little repetitive, but it keeps the paper panel honest after replay mutates session state.
       // Replay can create orders and positions, so reload the paper details immediately.
       const [summary, orders, positions] = await Promise.all([
         fetchPaperSessionSummary(selectedPaperSessionId),
@@ -592,6 +593,7 @@ function App() {
       return;
     }
     void runAction("regime-replay", async () => {
+      // The showcase story is strongest when replay and the latest backtest cover the same dates.
       // Trade markers are included only when a backtest has been run in this browser session.
       const replay = await runRegimeReplay({
         symbol: selectedStrategy.symbol,
@@ -607,6 +609,7 @@ function App() {
       setRegimeRobustness(await fetchRegimeRobustness(replay.id, backtestRun?.id ?? null));
       const latestWindow = replay.points.at(-1);
       if (latestWindow) {
+        // Pulling diagnostics for the last window gives the evidence panel a concrete point to talk about.
         // Diagnostics are requested after replay so the evidence panel explains the same window the chart ends on.
         const diagnostics = await fetchMarketRegimeDiagnostics(
           selectedStrategy.symbol,

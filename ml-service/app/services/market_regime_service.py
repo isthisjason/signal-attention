@@ -32,6 +32,7 @@ def classify_market_regime(request: MarketRegimeRequest) -> MarketRegimeResponse
 
 def diagnose_market_regime(request: MarketRegimeRequest) -> MarketRegimeDiagnosticsResponse:
     regime = classify_market_regime(request)
+    # I keep the plain rules pass beside the selected classifier so every attention answer has a boring baseline.
     baseline = RuleBasedMarketRegimeClassifier().classify(request)
     feature_evidence = rank_feature_evidence(regime.features)
     top_timesteps = rank_timestep_evidence(request)
@@ -65,6 +66,7 @@ def diagnose_market_regime(request: MarketRegimeRequest) -> MarketRegimeDiagnost
 
 def market_regime_status(settings: MarketRegimeSettings | None = None) -> MarketRegimeStatusResponse:
     selected_settings = settings or get_market_regime_settings()
+    # Status reports both requested and effective mode because auto can quietly choose rules on a fresh clone.
     effective_settings, warnings = resolve_effective_settings(selected_settings)
     artifact_summary = describe_artifact(effective_settings.artifact_path)
     metadata = read_artifact_metadata(effective_settings.artifact_path, warnings)
@@ -103,6 +105,7 @@ def market_regime_experiment_diagnostics(
     experiments_dir = Path(selected_settings.experiments_dir or "models/experiments")
     registry_path = experiments_dir / "index.json"
     try:
+        # Local experiment files are allowed to be messy while testing, but the workbench still needs to load.
         diagnostics = build_experiment_diagnostics(load_experiment_registry(registry_path))
     except json.JSONDecodeError:
         # A malformed local registry should be visible to the workbench without breaking model status.

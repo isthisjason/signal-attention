@@ -133,6 +133,7 @@ def require_keys(payload: dict[str, Any], keys: tuple[str, ...], context: str) -
 
 def only_duplicate_rejections(import_summary: dict[str, Any]) -> bool:
     errors = import_summary.get("errors", [])
+    # Re-running the demo should not fail just because the sample candles are already in Postgres.
     return bool(errors) and all("Duplicate candle already exists" in error["message"] for error in errors)
 
 
@@ -160,6 +161,7 @@ def validate_model_status(model_status: dict[str, Any]) -> None:
         "Market regime status promotionWarnings field was not a list.",
     )
     if model_status["promotionStatus"] == "promoted":
+        # The default stack does not need an artifact, but a promoted local artifact should prove its hash.
         # Promoted mode is optional; when present, the smoke check confirms the promotion is verified.
         check(model_status.get("promotedRunId"), "Promoted market regime status did not include a run id.")
         check(
