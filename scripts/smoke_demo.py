@@ -209,6 +209,40 @@ def validate_regime_robustness(robustness: dict[str, Any], regime_run_id: int, b
     )
 
 
+def validate_attention_showcase(showcase: dict[str, Any], regime_run_id: int) -> None:
+    require_keys(
+        showcase,
+        (
+            "modelReady",
+            "effectiveMode",
+            "promotionStatus",
+            "latestRun",
+            "robustnessLabel",
+            "evidenceSnapshotCount",
+            "disagreementSummary",
+            "nextAction",
+            "warnings",
+        ),
+        "Attention showcase summary",
+    )
+    check(showcase["modelReady"] is True, "Attention showcase model was not ready.")
+    check(int(showcase["latestRun"]["id"]) == regime_run_id, "Attention showcase did not point at the latest regime run.")
+    check(showcase["evidenceSnapshotCount"] >= 1, "Attention showcase did not count saved evidence snapshots.")
+    require_keys(
+        showcase["disagreementSummary"],
+        (
+            "totalWindows",
+            "disagreementCount",
+            "disagreementRate",
+            "anomalyOverlapCount",
+            "lowestConfidenceWindows",
+        ),
+        "Attention showcase disagreement summary",
+    )
+    check(showcase["disagreementSummary"]["totalWindows"] > 0, "Attention showcase did not include replay windows.")
+    check(isinstance(showcase["nextAction"], str) and showcase["nextAction"], "Attention showcase next action was empty.")
+
+
 def check_stack(config: Config) -> None:
     # First prove the three user-facing services are reachable.
     log_step("checking ML service health")
@@ -530,6 +564,10 @@ def check_analysis_workflow(config: Config, strategy_id: int, backtest_id: int) 
         config.timeout_seconds,
     )
     check(isinstance(snapshots, list) and snapshots, "Evidence snapshot list did not include the diagnostic run.")
+
+    log_step("checking attention showcase summary")
+    showcase = request_json(f"{config.backend_url}/api/attention-showcase/summary", config.timeout_seconds)
+    validate_attention_showcase(showcase, regime_run_id)
 
     log_step("checking regime grouped backtest analysis")
     regime_analysis = request_json(

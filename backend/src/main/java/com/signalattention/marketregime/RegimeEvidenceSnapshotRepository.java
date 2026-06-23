@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RegimeEvidenceSnapshotRepository extends JpaRepository<RegimeEvidenceSnapshot, Long> {
     List<RegimeEvidenceSnapshot> findBySymbolAndTimeframeOrderByCreatedAtDesc(String symbol, String timeframe, Pageable pageable);
+
+    long countBySymbolAndTimeframe(String symbol, String timeframe);
 }

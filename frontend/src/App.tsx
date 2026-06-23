@@ -10,6 +10,7 @@ import {
   rejectAssistantAction,
   sendAssistantMessage,
 } from "./api/assistant";
+import { AttentionShowcaseSummary, fetchAttentionShowcaseSummary } from "./api/attentionShowcase";
 import { AuditEvent, fetchAuditEvents } from "./api/audit";
 import {
   BacktestRun,
@@ -91,6 +92,11 @@ const loadingRiskAlerts: LoadState<DashboardRiskAlert[]> = {
   data: null,
   error: null,
 };
+const loadingAttentionShowcase: LoadState<AttentionShowcaseSummary> = {
+  status: "loading",
+  data: null,
+  error: null,
+};
 const loadingMarketRegime: LoadState<MarketRegimeResponse> = {
   status: "loading",
   data: null,
@@ -160,6 +166,8 @@ function App() {
   const [auditState, setAuditState] = useState<LoadState<AuditEvent[]>>(loadingAuditEvents);
   const [riskAlertsState, setRiskAlertsState] =
     useState<LoadState<DashboardRiskAlert[]>>(loadingRiskAlerts);
+  const [attentionShowcaseState, setAttentionShowcaseState] =
+    useState<LoadState<AttentionShowcaseSummary>>(loadingAttentionShowcase);
   const [regimeState, setRegimeState] =
     useState<LoadState<MarketRegimeResponse>>(loadingMarketRegime);
   const [regimeStatusState, setRegimeStatusState] =
@@ -226,6 +234,7 @@ function App() {
     setStrategiesState(loadingStrategies);
     setAuditState(loadingAuditEvents);
     setRiskAlertsState(loadingRiskAlerts);
+    setAttentionShowcaseState(loadingAttentionShowcase);
     setRegimeState(loadingMarketRegime);
     setRegimeStatusState(loadingMarketRegimeStatus);
     setRegimeExperimentsState(loadingMarketRegimeExperiments);
@@ -243,6 +252,11 @@ function App() {
       .then((data) => setRegimeState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRegimeState({ status: "error", data: null, error: errorMessage(error) }),
+      );
+    const attentionShowcaseLoad = fetchAttentionShowcaseSummary()
+      .then((data) => setAttentionShowcaseState({ status: "success", data, error: null }))
+      .catch((error: unknown) =>
+        setAttentionShowcaseState({ status: "error", data: null, error: errorMessage(error) }),
       );
     const regimeStatusLoad = fetchMarketRegimeStatus()
       .then((data) => setRegimeStatusState({ status: "success", data, error: null }))
@@ -299,6 +313,7 @@ function App() {
     await Promise.all([
       summaryLoad,
       regimeLoad,
+      attentionShowcaseLoad,
       regimeStatusLoad,
       regimeExperimentsLoad,
       regimeRunsLoad,
@@ -401,6 +416,7 @@ function App() {
     auditState.status === "loading" ||
     riskAlertsState.status === "loading" ||
     regimeState.status === "loading" ||
+    attentionShowcaseState.status === "loading" ||
     strategyListState.status === "loading" ||
     marketDataQualityState.status === "loading";
 
@@ -709,6 +725,7 @@ function App() {
       ) : null}
 
       <NextActionPanel action={nextAction} />
+      <AttentionShowcasePanel state={attentionShowcaseState} />
       <AssistantPanel
         busy={busyAction?.startsWith("assistant") ?? false}
         prompt={assistantPrompt}
@@ -788,6 +805,71 @@ function App() {
       <AnomalyPanel anomaly={anomaly} busy={busyAction === "anomaly"} onCheck={handleAnomalyCheck} />
       <AuditTimeline state={auditState} />
     </main>
+  );
+}
+
+function AttentionShowcasePanel({ state }: { state: LoadState<AttentionShowcaseSummary> }) {
+  if (state.status === "loading") {
+    return (
+      <section className="panel showcase-panel" aria-label="Attention showcase readiness">
+        <ChartState title="Loading showcase summary" message="Checking model status and latest replay evidence." />
+      </section>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <section className="panel showcase-panel" aria-label="Attention showcase readiness">
+        <PanelMessage tone="error" title="Showcase summary unavailable" message={state.error} />
+      </section>
+    );
+  }
+
+  const summary = state.data;
+  const latestRun = summary.latestRun;
+  return (
+    <section className="panel showcase-panel" aria-label="Attention showcase readiness">
+      <div className="panel-heading">
+        <div>
+          <h2>Attention showcase readiness</h2>
+          <p>{summary.nextAction}</p>
+        </div>
+        <span className={`status-pill status-${summary.modelReady ? "ready" : "review"}`}>
+          {summary.modelReady ? "model ready" : "check model"}
+        </span>
+      </div>
+      <ResultGrid
+        items={[
+          ["Mode", summary.effectiveMode || summary.classifierSource || "unknown"],
+          ["Promotion", summary.promotionStatus || "not promoted"],
+          ["Latest replay", latestRun ? `#${latestRun.id} ${latestRun.symbol} ${latestRun.timeframe}` : "none"],
+          ["Robustness", formatAction(summary.robustnessLabel)],
+          ["Evidence snapshots", summary.evidenceSnapshotCount],
+          ["Baseline gaps", `${summary.disagreementSummary.disagreementCount}/${summary.disagreementSummary.totalWindows}`],
+        ]}
+      />
+      {latestRun?.qualitySummary ? (
+        <p className="muted">
+          Latest replay averaged {formatPercent(latestRun.qualitySummary.averageConfidence)} confidence with{" "}
+          {formatPercent(summary.disagreementSummary.disagreementRate)} baseline disagreement.
+        </p>
+      ) : (
+        <p className="muted">Run a replay to connect model readiness with saved attention evidence.</p>
+      )}
+      {summary.disagreementSummary.lowestConfidenceWindows.length ? (
+        <div className="mini-list" aria-label="Lowest confidence disagreement windows">
+          {summary.disagreementSummary.lowestConfidenceWindows.map((window) => (
+            <article key={window.windowEnd}>
+              <span>{new Date(window.windowEnd).toLocaleString()}</span>
+              <strong>
+                {formatAction(window.regimeLabel)} vs {window.baselineRegimeLabel ? formatAction(window.baselineRegimeLabel) : "baseline n/a"}
+              </strong>
+              <p>{formatPercent(window.confidence)} confidence{window.anomalyLabel ? `, ${formatAction(window.anomalyLabel)}` : ""}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {summary.warnings.length ? <p className="muted">{summary.warnings.join(" ")}</p> : null}
+    </section>
   );
 }
 

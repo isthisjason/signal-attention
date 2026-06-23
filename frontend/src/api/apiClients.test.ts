@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkAnomaly } from "./anomaly";
+import { fetchAttentionShowcaseSummary } from "./attentionShowcase";
 import { fetchAuditEvents } from "./audit";
 import {
   fetchBacktest,
@@ -222,6 +223,9 @@ describe("dashboard and analysis clients", () => {
 
     await fetchDashboardRiskAlerts();
     expect(latestFetchCall().url).toBe("http://api.test/api/dashboard/risk-alerts");
+
+    await fetchAttentionShowcaseSummary();
+    expect(latestFetchCall().url).toBe("http://api.test/api/attention-showcase/summary");
 
     await fetchAuditEvents();
     expect(latestFetchCall().url).toBe("http://api.test/api/audit-events?limit=12");

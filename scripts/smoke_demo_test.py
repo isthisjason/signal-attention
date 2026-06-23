@@ -161,6 +161,51 @@ class SmokeDemoHelperTests(unittest.TestCase):
                 backtest_id=3,
             )
 
+    def test_validate_attention_showcase_accepts_latest_replay_summary(self) -> None:
+        smoke_demo.validate_attention_showcase(
+            {
+                "modelReady": True,
+                "effectiveMode": "rules",
+                "promotionStatus": "no_eligible_run",
+                "latestRun": {"id": 11},
+                "robustnessLabel": "mixed",
+                "evidenceSnapshotCount": 1,
+                "disagreementSummary": {
+                    "totalWindows": 4,
+                    "disagreementCount": 2,
+                    "disagreementRate": 50.0,
+                    "anomalyOverlapCount": 1,
+                    "lowestConfidenceWindows": [],
+                },
+                "nextAction": "Inspect the lowest confidence disagreement windows.",
+                "warnings": [],
+            },
+            regime_run_id=11,
+        )
+
+    def test_validate_attention_showcase_requires_saved_evidence(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "saved evidence snapshots"):
+            smoke_demo.validate_attention_showcase(
+                {
+                    "modelReady": True,
+                    "effectiveMode": "rules",
+                    "promotionStatus": "no_eligible_run",
+                    "latestRun": {"id": 11},
+                    "robustnessLabel": "mixed",
+                    "evidenceSnapshotCount": 0,
+                    "disagreementSummary": {
+                        "totalWindows": 4,
+                        "disagreementCount": 2,
+                        "disagreementRate": 50.0,
+                        "anomalyOverlapCount": 1,
+                        "lowestConfidenceWindows": [],
+                    },
+                    "nextAction": "Inspect the lowest confidence disagreement windows.",
+                    "warnings": [],
+                },
+                regime_run_id=11,
+            )
+
     def test_format_http_error_includes_method_url_status_and_body(self) -> None:
         request = Request("http://api.test/api/fails", method="POST")
         error = HTTPError(
