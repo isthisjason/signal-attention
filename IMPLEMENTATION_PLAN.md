@@ -2,15 +2,15 @@
 
 ## 1. Project Direction
 
-SignalAttention is a local research workbench for studying how trading strategies behave across attention inferred market regimes.
+SignalAttention is a local research workbench for showing how an attention based sequence model can add richer regime evidence than traditional rule based analysis alone.
 
-The core product question is no longer just whether a simple strategy made or lost money in a backtest. The stronger question is whether the strategy looks robust, fragile, overfit, or regime dependent when candle sequences are interpreted by an attention based market regime model.
+The core product question is no longer just whether a simple strategy made or lost money in a backtest. The stronger portfolio question is what an attention mechanism reveals about regime dependence, confidence, anomaly overlap, and sequence level evidence that traditional indicators or rule based labels may miss.
 
 Current pitch:
 
-SignalAttention evaluates strategy robustness across ML inferred market regimes using an attention based sequence model, with backtesting, paper replay, diagnostics, audit trails, and baseline comparison built around it.
+SignalAttention compares an attention based market regime workflow against traditional SMA and rule based baselines, using backtesting, paper replay, diagnostics, audit trails, and evidence snapshots to show where attention adds insight and where it does not.
 
-The first implementation phase proved the practical foundation: import market data, store it cleanly, run repeatable backtests, simulate paper sessions, call a separate ML service, and leave an audit trail. The current phase makes the attention model the center of the product. Traditional indicators, SMA crossover rules, rule based risk scoring, and deterministic regime labels remain, but their role is secondary. They are baselines, references, and sanity checks used to explain whether the attention based path is adding useful signal.
+The first implementation phase proved the practical foundation: import market data, store it cleanly, run repeatable backtests, simulate paper sessions, call a separate ML service, and leave an audit trail. The current phase makes the attention model the center of the product. Traditional indicators, SMA crossover rules, rule based risk scoring, and deterministic regime labels remain, but their role is secondary. They are baselines, references, and sanity checks used to explain whether the attention based path adds useful sequence level context beyond older methods.
 
 ## 2. Product Boundaries
 
@@ -61,8 +61,8 @@ The main research workflow should be:
 5. Persist regime runs, prediction points, model provenance, feature version, artifact identity, baseline labels, and inference timing.
 6. Run strategy backtests over the same candle range.
 7. Analyze backtest performance grouped by inferred regime.
-8. Compare attention labels against the rule based baseline.
-9. Inspect attention evidence, confidence, feature evidence, top timesteps, and saved evidence snapshots.
+8. Compare attention labels against the rule based baseline and call out agreement, disagreement, and low confidence cases.
+9. Inspect attention evidence, confidence, feature evidence, top timesteps, and saved evidence snapshots to show what the sequence model paid attention to.
 10. Replay paper sessions through selected windows to understand behavior under different inferred regimes.
 11. Use the assistant to explain state and propose reviewable actions, with explicit user confirmation before state changes.
 
@@ -70,7 +70,7 @@ The default demo should remain usable without local torch artifacts. In `rules` 
 
 ## 5. Baselines And Traditional Evaluation
 
-Traditional evaluations remain important, but they are no longer the main product story.
+Traditional evaluations remain important, but they are no longer the main product story. Their job is to make the attention workflow credible by giving it clear comparison points.
 
 Secondary and comparison roles:
 
@@ -81,7 +81,7 @@ Secondary and comparison roles:
 - Anomaly checks flag unusual candle behavior as research warnings.
 - Backtest metrics, equity curves, drawdown, trades, and paper summaries provide the traditional evaluation surface that attention based regime analysis is compared against.
 
-The project should not hide these baselines. It should show them beside the attention model so the user can see where the learned model agrees, disagrees, improves explanation, or fails to add value.
+The project should not hide these baselines. It should show them beside the attention model so the user can see where the learned model agrees, disagrees, improves explanation, or fails to add value. The showcase claim should be that attention gives a more inspectable sequence aware review, not that it guarantees better trades or is always more accurate.
 
 ## 6. Backend Plan
 
