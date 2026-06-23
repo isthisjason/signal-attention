@@ -224,6 +224,7 @@ function App() {
   const [regimeReplay, setRegimeReplay] = useState<RegimeRunResponse | null>(null);
   const [regimeRobustness, setRegimeRobustness] = useState<RegimeRobustnessSummary | null>(null);
   const [regimeDiagnostics, setRegimeDiagnostics] = useState<MarketRegimeDiagnostics | null>(null);
+  const [selectedRegimeWindowEnd, setSelectedRegimeWindowEnd] = useState<string | null>(null);
   const [evidenceSnapshots, setEvidenceSnapshots] = useState<RegimeEvidenceSnapshot[]>([]);
   const [assistantSession, setAssistantSession] = useState<AssistantSession | null>(null);
   const [assistantPrompt, setAssistantPrompt] = useState("What should I inspect next?");
@@ -625,6 +626,7 @@ function App() {
       setRegimeRobustness(await fetchRegimeRobustness(replay.id, backtestRun?.id ?? null));
       const latestWindow = replay.points.at(-1);
       if (latestWindow) {
+        setSelectedRegimeWindowEnd(latestWindow.windowEnd);
         // Pulling diagnostics for the last window gives the evidence panel a concrete point to talk about.
         // Diagnostics are requested after replay so the evidence panel explains the same window the chart ends on.
         const diagnostics = await fetchMarketRegimeDiagnostics(
@@ -643,6 +645,24 @@ function App() {
         setRegimeComparisonState({ status: "success", data, error: null }),
       );
       setNotice({ tone: "success", message: `Regime replay loaded ${replay.pointCount} windows.` });
+    });
+  }
+
+  function handleRegimeWindowSelect(point: RegimeRunResponse["points"][number]) {
+    if (!selectedStrategy) {
+      return;
+    }
+    void runAction("regime-window", async () => {
+      setSelectedRegimeWindowEnd(point.windowEnd);
+      const diagnostics = await fetchMarketRegimeDiagnostics(
+        selectedStrategy.symbol,
+        selectedStrategy.timeframe,
+        20,
+        point.windowEnd,
+      );
+      setRegimeDiagnostics(diagnostics);
+      setEvidenceSnapshots(await fetchRegimeEvidenceSnapshots(selectedStrategy.symbol, selectedStrategy.timeframe));
+      setNotice({ tone: "success", message: `Loaded evidence for ${new Date(point.windowEnd).toLocaleString()}.` });
     });
   }
 
@@ -798,9 +818,11 @@ function App() {
         replay={regimeReplay}
         robustness={regimeRobustness}
         runsState={regimeRunsState}
+        selectedWindowEnd={selectedRegimeWindowEnd}
         selectedStrategy={selectedStrategy}
         statusState={regimeStatusState}
         onReplay={handleRegimeReplay}
+        onSelectWindow={handleRegimeWindowSelect}
       />
       <AnomalyPanel anomaly={anomaly} busy={busyAction === "anomaly"} onCheck={handleAnomalyCheck} />
       <AuditTimeline state={auditState} />
@@ -957,9 +979,11 @@ function RegimeReplayPanel({
   replay,
   robustness,
   runsState,
+  selectedWindowEnd,
   selectedStrategy,
   statusState,
   onReplay,
+  onSelectWindow,
 }: {
   busy: boolean;
   diagnostics: MarketRegimeDiagnostics | null;
@@ -969,9 +993,11 @@ function RegimeReplayPanel({
   replay: RegimeRunResponse | null;
   robustness: RegimeRobustnessSummary | null;
   runsState: LoadState<RegimeRunSummary[]>;
+  selectedWindowEnd: string | null;
   selectedStrategy: Strategy | null;
   statusState: LoadState<MarketRegimeStatus>;
   onReplay: () => void;
+  onSelectWindow: (point: RegimeRunResponse["points"][number]) => void;
 }) {
   return (
     <section className="panel analysis-panel" id="analysis">
@@ -997,6 +1023,11 @@ function RegimeReplayPanel({
             ]}
           />
           <CandlestickReplayChart replay={replay} />
+          <RegimeWindowTable
+            points={replay.points}
+            selectedWindowEnd={selectedWindowEnd}
+            onSelectWindow={onSelectWindow}
+          />
           <AttentionEvidencePanel diagnostics={diagnostics} snapshots={evidenceSnapshots} />
           <RegimeRobustnessPanel robustness={robustness} />
         </>
@@ -1005,6 +1036,50 @@ function RegimeReplayPanel({
       )}
       <RegimeRunComparisonTable comparisonState={comparisonState} runsState={runsState} />
     </section>
+  );
+}
+
+function RegimeWindowTable({
+  points,
+  selectedWindowEnd,
+  onSelectWindow,
+}: {
+  points: RegimeRunResponse["points"];
+  selectedWindowEnd: string | null;
+  onSelectWindow: (point: RegimeRunResponse["points"][number]) => void;
+}) {
+  const rows = points.slice(-8).reverse();
+  return (
+    <div className="table-scroll">
+      <table className="data-table regime-window-table" aria-label="Selectable regime replay windows">
+        <thead>
+          <tr>
+            <th>Window end</th>
+            <th>Regime</th>
+            <th>Confidence</th>
+            <th>Baseline</th>
+            <th>Anomaly</th>
+            <th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((point) => (
+            <tr className={point.windowEnd === selectedWindowEnd ? "selected-row" : undefined} key={point.windowEnd}>
+              <td>{formatDateTime(point.windowEnd)}</td>
+              <td>{formatAction(point.regimeLabel)}</td>
+              <td>{formatPercent(point.confidence)}</td>
+              <td>{point.disagreesWithBaseline ? "disagrees" : "aligned"}</td>
+              <td>{point.anomalyLabel ? formatAction(point.anomalyLabel) : "none"}</td>
+              <td>
+                <button className="text-button" onClick={() => onSelectWindow(point)} type="button">
+                  Inspect
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

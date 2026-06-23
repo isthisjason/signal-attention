@@ -821,6 +821,25 @@ textarea {
   overflow-x: auto;
 }
 
+.selected-row {
+  background: rgb(15 118 110 / 7%);
+}
+
+.text-button {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0;
+}
+
+.text-button:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
 table {
   border-collapse: collapse;
   min-width: 860px;
