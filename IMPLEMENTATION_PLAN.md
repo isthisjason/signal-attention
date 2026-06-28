@@ -203,30 +203,35 @@ Completed major waves:
 - ML-first cleanup wave: removed the duplicate frontend regime-analysis table in favor of the robustness review path, extracted shared regime quality and robustness labels, optimized assistant context lookup, typed model lab diagnostics schemas, refocused workbench copy around attention regimes and baselines, and expanded smoke checks for model lab plus robustness review.
 - Attention showcase wave: added the read only showcase summary, selected-window evidence drilldown, baseline disagreement context, assistant review context, smoke coverage, and portfolio documentation.
 
-Current portfolio hardening wave:
+Portfolio hardening wave results:
 
-- Decompose the frontend workbench so application orchestration, shared presentation, baseline workflows, and attention review panels have clear module boundaries.
-- Split chart dependencies out of the main frontend bundle and retain the existing single page workflow.
-- Add repository CI for backend, ML, frontend, smoke helper, and Compose configuration checks.
-- Produce a real local attention transformer v2 promotion candidate without weakening the existing research gates.
-- Commit a curated model card while keeping generated artifacts, registries, and evaluation outputs local.
-- Refresh runtime verification notes and portfolio screenshots from the current attention first workbench.
+- Frontend application orchestration, shared presentation, baseline workflows, and attention review panels now have separate module boundaries.
+- React, chart, vendor, and application code build as separate chunks; the largest production chunk is below 300 KB.
+- GitHub Actions verifies backend, ML, frontend, smoke helpers, and Compose configuration.
+- The full rules-mode Compose stack and smoke workflow passed on June 27, 2026.
+- Eight real attention transformer v2 candidates were trained and scored on the chronological holdout. Each reached 0.8333 accuracy but 0.0000 lift over the 0.8333 majority baseline, so none passed the unchanged 0.05 lift gate.
+- No model card or promoted artifact was committed because there was no eligible research candidate.
+
+Next evidence targets:
+
+- Improve the dataset or training objective enough to demonstrate lift over the majority baseline before promoting an attention artifact.
+- Refresh the committed screenshots from the current attention-first workbench; the existing captures predate the showcase layout.
 
 Current recent commits:
 
 ```text
+51e192b extended attention experiment evidence
+e1be5e7 added repository verification workflow
+fe82a13 split frontend chart bundles
+9eb961f extracted attention review panels
+feb4709 extracted baseline workflow panels
+2624826 extracted shared workbench presentation
+26a851b updated portfolio hardening roadmap
 e2db707 updated attention comparison framing
 7d04499 updated attention showcase evidence docs
 023e34b expanded assistant attention review
 2a7e234 added attention evidence drilldown
 070146b added attention showcase summary
-b99918a added human notes around attention workflow code
-905a819 documented next attention showcase wave
-d931d6b updated ml first cleanup docs
-804b26c expanded smoke coverage for model lab robustness
-0116363 showcased attention workflow in workbench copy
-691d099 typed model lab diagnostics schemas
-7ae6d66 optimized assistant regime context lookup
 ```
 
 ## 11. Verification Matrix

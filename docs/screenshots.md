@@ -37,9 +37,14 @@ docs/assets/screenshots/
    - Open `http://localhost:8080/swagger-ui.html`.
    - Show the backend endpoint groups for strategies, market data, backtests, risk, paper trading, dashboard, audit, market regime, and anomaly checks.
 
+7. Attention evidence drilldown
+   - File: `docs/assets/screenshots/attention-evidence.png`
+   - Run a regime replay, select a disagreement or low-confidence window, and keep its top timesteps, feature evidence, provenance, and robustness review visible.
+
 ## Notes
 
 - Use the sample BTC-USD data so screenshots match the documented demo flow.
-- The committed dashboard screenshots are full-page captures of the real local frontend after the smoke demo has created data.
+- The committed dashboard screenshots are real historical captures, but they predate the current attention-showcase layout and should not be treated as current UI evidence.
+- Replace `dashboard-overview.png` and `market-regime-anomaly.png`, then add `attention-evidence.png`, after running the current smoke workflow in a browser-enabled environment.
 - Do not include `.env` values, local database credentials, browser profiles, or generated model artifacts.
 - If Docker is unavailable in the current WSL environment, record that blocker in `PROJECT_PROGRESS.local.md` and capture screenshots later from a Docker-enabled environment.

@@ -530,7 +530,9 @@ describe("dashboard render states", () => {
     render(<App />);
 
     expect(await screen.findByText("sideways")).toBeInTheDocument();
-    expect(screen.getByText("rules")).toBeInTheDocument();
+    const regimePanel = screen.getByRole("heading", { name: "Attention regime" }).closest("section");
+    expect(regimePanel).not.toBeNull();
+    expect(within(regimePanel!).getByText("rules")).toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.getByText("not loaded")).toBeInTheDocument();
   });
@@ -879,7 +881,8 @@ describe("dashboard render states", () => {
     expect(await screen.findByText("Started session #9.")).toBeInTheDocument();
     expect(mocks.startPaperSession).toHaveBeenCalledWith(9);
 
-    await user.click(screen.getByRole("button", { name: "Submit order" }));
+    // Paper actions share one busy state, so wait for the prior start request to release the controls.
+    await user.click(await screen.findByRole("button", { name: "Submit order" }));
     expect(await screen.findByText("Order #17 filled.")).toBeInTheDocument();
     expect(mocks.submitPaperOrder).toHaveBeenCalledWith(9, {
       side: "BUY",
@@ -888,11 +891,13 @@ describe("dashboard render states", () => {
       price: 42000,
     });
 
+    await waitFor(() => expect(screen.getByRole("button", { name: "Replay candles" })).toBeEnabled());
     await user.click(screen.getByRole("button", { name: "Replay candles" }));
     expect(await screen.findByText("Replay filled 1 orders.")).toBeInTheDocument();
     // Replay uses the selected session and the numeric form value after string-to-number conversion.
     expect(mocks.replayPaperSession).toHaveBeenCalledWith(9, expect.objectContaining({ maxCandles: 250 }));
 
+    await waitFor(() => expect(screen.getByRole("button", { name: "Stop" })).toBeEnabled());
     await user.click(screen.getByRole("button", { name: "Stop" }));
     expect(await screen.findByText("Stopped session #9.")).toBeInTheDocument();
     expect(mocks.stopPaperSession).toHaveBeenCalledWith(9);

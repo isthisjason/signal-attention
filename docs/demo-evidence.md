@@ -99,4 +99,4 @@ The current portfolio screenshots are committed under `docs/assets/screenshots/`
 - `market-regime-anomaly.png`
 - `swagger-endpoints.png`
 
-The dashboard captures use the local sample BTC-USD demo data produced by the smoke workflow.
+These captures use local sample BTC-USD demo data, but the dashboard images predate the attention-showcase layout. Refresh them before using the repository as current visual evidence.
