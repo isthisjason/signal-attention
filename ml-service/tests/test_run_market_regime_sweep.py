@@ -18,6 +18,7 @@ def args(**overrides) -> Namespace:
         "seeds": "42,43",
         "dropouts": "0.1,0.2",
         "positional_encoding_modes": "on,off",
+        "architecture": "transformer-v1",
     }
     defaults.update(overrides)
     return Namespace(**defaults)
@@ -45,6 +46,24 @@ def test_build_sweep_commands_uses_default_cpu_training_path() -> None:
     assert "--cpu" in train_command
     assert "../data/btc-usd-1h-sample.csv" in train_command
     assert "sweep-seed42-dropout0.1-poson" in train_command
+    assert train_command[train_command.index("--architecture") + 1] == "transformer-v1"
+    assert train_command[train_command.index("--model-version") + 1] == "local-transformer-v1"
+
+
+def test_build_sweep_commands_gives_attention_v2_distinct_identity() -> None:
+    commands = build_sweep_commands(
+        args(
+            seeds="42",
+            dropouts="0.1",
+            positional_encoding_modes="on",
+            architecture="attention-transformer-v2",
+        )
+    )
+
+    train_command = commands[0]
+    assert any(value.endswith("market-regime-seed42-dropout0.1-poson-attention-v2.pt") for value in train_command)
+    assert "sweep-seed42-dropout0.1-poson-attention-v2" in train_command
+    assert train_command[train_command.index("--model-version") + 1] == "local-attention-transformer-v2"
 
 
 def test_parse_modes_rejects_unknown_modes() -> None:

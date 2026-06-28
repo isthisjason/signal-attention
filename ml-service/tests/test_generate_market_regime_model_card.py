@@ -11,7 +11,9 @@ def promotion_summary() -> dict:
             "name": "baseline",
             "runId": "run-1",
             "modelVersion": "local-transformer-v1",
+            "architecture": "attention-transformer-v2",
             "featureVersion": "torch-market-regime-features/v1",
+            "sequenceLength": 20,
             "dataset": {"name": "candles.csv", "sha256": "dataset-hash"},
             "artifact": {"name": "market-regime.pt", "sha256": "artifact-hash"},
             "evaluation": {
@@ -20,7 +22,9 @@ def promotion_summary() -> dict:
                 "baselineAccuracy": 0.5,
                 "liftOverBaseline": 0.25,
                 "confidence": {"average": 80},
+                "windowCount": 44,
             },
+            "training": {"trainWindowCount": 176, "validationWindowCount": 44},
             "promotionGate": {"eligible": True, "failures": []},
         },
     }
@@ -33,6 +37,10 @@ def test_render_model_card_includes_key_sections() -> None:
     assert "- Run ID: run-1" in card
     assert "- Artifact SHA-256: artifact-hash" in card
     assert "- Lift over baseline: 0.25" in card
+    assert "- Architecture: attention-transformer-v2" in card
+    assert "- Sequence length: 20" in card
+    assert "- Training windows: 176" in card
+    assert "- Evaluation windows: 44" in card
     assert "not trading advice" in card
 
 

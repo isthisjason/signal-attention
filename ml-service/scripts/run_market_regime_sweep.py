@@ -1,6 +1,14 @@
 import argparse
 import subprocess
+import sys
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from app.services.market_regime_torch_model import (
+    TORCH_MODEL_ARCHITECTURE_V1,
+    TORCH_MODEL_ARCHITECTURE_V2,
+)
 
 
 def main() -> None:
@@ -24,6 +32,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seeds", default="42,43")
     parser.add_argument("--dropouts", default="0.1,0.2")
     parser.add_argument("--positional-encoding-modes", default="on,off")
+    parser.add_argument(
+        "--architecture",
+        choices=[TORCH_MODEL_ARCHITECTURE_V1, TORCH_MODEL_ARCHITECTURE_V2],
+        default=TORCH_MODEL_ARCHITECTURE_V1,
+        help="Select the artifact architecture for every sweep candidate.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -33,7 +47,9 @@ def build_sweep_commands(args: argparse.Namespace) -> list[list[str]]:
     for seed in parse_int_list(args.seeds):
         for dropout in parse_float_list(args.dropouts):
             for positional_mode in parse_modes(args.positional_encoding_modes):
-                suffix = f"seed{seed}-dropout{dropout}-pos{positional_mode}"
+                # Preserve legacy v1 names while making v2 artifacts unmistakable in a shared registry.
+                architecture_suffix = "" if args.architecture == TORCH_MODEL_ARCHITECTURE_V1 else "-attention-v2"
+                suffix = f"seed{seed}-dropout{dropout}-pos{positional_mode}{architecture_suffix}"
                 artifact = args.models_dir / f"market-regime-{suffix}.pt"
                 experiment_name = f"sweep-{suffix}"
                 train_command = [
@@ -46,6 +62,10 @@ def build_sweep_commands(args: argparse.Namespace) -> list[list[str]]:
                     "--cpu",
                     "--seed",
                     str(seed),
+                    "--architecture",
+                    str(args.architecture),
+                    "--model-version",
+                    model_version_for_architecture(args.architecture),
                     "--dropout",
                     str(dropout),
                     "--sequence-length",
@@ -97,6 +117,12 @@ def parse_modes(value: str) -> list[str]:
     if invalid:
         raise SystemExit("--positional-encoding-modes must contain only on or off")
     return modes
+
+
+def model_version_for_architecture(architecture: str) -> str:
+    if architecture == TORCH_MODEL_ARCHITECTURE_V2:
+        return "local-attention-transformer-v2"
+    return "local-transformer-v1"
 
 
 if __name__ == "__main__":

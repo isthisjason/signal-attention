@@ -7,6 +7,7 @@ def render_model_card(promotion: dict[str, Any]) -> str:
     artifact = selected.get("artifact") or evaluation.get("artifact") or {}
     dataset = selected.get("dataset") or evaluation.get("dataset") or {}
     gate = selected.get("promotionGate") or {}
+    training = selected.get("training") or {}
     failures = gate.get("failures") or []
 
     lines = [
@@ -17,7 +18,9 @@ def render_model_card(promotion: dict[str, Any]) -> str:
         f"- Experiment: {selected.get('name', 'N/A')}",
         f"- Run ID: {selected.get('runId', 'N/A')}",
         f"- Model version: {selected.get('modelVersion', 'N/A')}",
+        f"- Architecture: {selected.get('architecture') or evaluation.get('architecture') or 'N/A'}",
         f"- Feature version: {selected.get('featureVersion', 'N/A')}",
+        f"- Sequence length: {selected.get('sequenceLength', 'N/A')}",
         "",
         "## Data And Artifact",
         f"- Dataset: {dataset.get('name', 'N/A')}",
@@ -31,6 +34,9 @@ def render_model_card(promotion: dict[str, Any]) -> str:
         f"- Baseline accuracy: {render_metric(evaluation.get('baselineAccuracy'))}",
         f"- Lift over baseline: {render_metric(evaluation.get('liftOverBaseline'))}",
         f"- Average confidence: {render_metric((evaluation.get('confidence') or {}).get('average'))}",
+        f"- Training windows: {render_count(training.get('trainWindowCount'))}",
+        f"- Validation windows: {render_count(training.get('validationWindowCount'))}",
+        f"- Evaluation windows: {render_count(evaluation.get('windowCount'))}",
         "",
         "## Promotion Gates",
         f"- Eligible: {gate.get('eligible', False)}",
@@ -59,3 +65,7 @@ def render_metric(value: Any) -> str:
     if isinstance(value, (int, float)):
         return str(value)
     return "N/A"
+
+
+def render_count(value: Any) -> str:
+    return str(value) if isinstance(value, int) and not isinstance(value, bool) else "N/A"
