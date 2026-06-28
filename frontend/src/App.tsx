@@ -74,11 +74,20 @@ import {
   submitPaperOrder,
 } from "./api/paperTrading";
 import { Strategy, createStrategy, fetchStrategies } from "./api/strategies";
-
-type LoadState<T> =
-  | { status: "loading"; data: null; error: null }
-  | { status: "success"; data: T; error: null }
-  | { status: "error"; data: null; error: string };
+import {
+  formatAction,
+  formatComparisonDelta,
+  formatCurrency,
+  formatDateTime,
+  formatNumber,
+  formatPercent,
+  formatRatioPercent,
+  promotionValue,
+  shortModelLabel,
+} from "./workbench/format";
+import { DateInput, PanelMessage, ResultGrid, serviceErrorMessage, TextInput } from "./workbench/presentation";
+import { LoadState, WorkbenchAction, WorkbenchActionId } from "./workbench/types";
+import { deriveWorkbenchAction, selectPaperSessionId, toInstant } from "./workbench/workflow";
 
 const loadingSummary: LoadState<DashboardSummary> = { status: "loading", data: null, error: null };
 const loadingStrategies: LoadState<StrategyPerformance[]> = {
@@ -130,20 +139,6 @@ const loadingMarketDataQuality: LoadState<MarketDataQuality> = {
 };
 
 type Notice = { tone: "success" | "error"; message: string } | null;
-
-export type WorkbenchActionId =
-  | "import-data"
-  | "create-strategy"
-  | "run-backtest"
-  | "score-risk"
-  | "run-analysis"
-  | "review-results";
-
-export type WorkbenchAction = {
-  id: WorkbenchActionId;
-  title: string;
-  detail: string;
-};
 
 type StrategyFormState = {
   name: string;
@@ -1984,60 +1979,6 @@ function PaperTradingPanel({
   );
 }
 
-function TextInput<T extends Record<string, string>>({
-  label,
-  name,
-  state,
-  setState,
-  type = "text",
-}: {
-  label: string;
-  name: keyof T & string;
-  state: T;
-  setState: (state: T) => void;
-  type?: string;
-}) {
-  return (
-    <label>
-      {label}
-      <input
-        min={type === "number" ? "0" : undefined}
-        step={type === "number" ? "any" : undefined}
-        type={type}
-        value={state[name]}
-        onChange={(event) => setState({ ...state, [name]: event.target.value })}
-      />
-    </label>
-  );
-}
-
-function DateInput<T extends Record<string, string>>({
-  label,
-  name,
-  state,
-  setState,
-}: {
-  label: string;
-  name: keyof T & string;
-  state: T;
-  setState: (state: T) => void;
-}) {
-  return <TextInput label={label} name={name} state={state} setState={setState} type="datetime-local" />;
-}
-
-function ResultGrid({ items }: { items: Array<[string, string | number]> }) {
-  return (
-    <dl className="result-grid">
-      {items.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
 function EquityChart({
   title,
   points,
@@ -2615,197 +2556,6 @@ function Feature({ label, value, suffix = "" }: { label: string; value: number; 
       </strong>
     </div>
   );
-}
-
-function PanelMessage({
-  title,
-  message,
-  tone = "neutral",
-}: {
-  title: string;
-  message: string;
-  tone?: "neutral" | "error";
-}) {
-  return (
-    <section className={`panel panel-message panel-message-${tone}`}>
-      <h2>{title}</h2>
-      <p>{message}</p>
-    </section>
-  );
-}
-
-function serviceErrorMessage(message: string, service: "backend" | "ml") {
-  const serviceName = service === "backend" ? "backend API" : "ML service";
-  return `${message} Check that the ${serviceName} is running, then refresh this dashboard.`;
-}
-
-export function toInstant(value: string, label = "Date") {
-  const date = new Date(value);
-  if (!value || Number.isNaN(date.getTime())) {
-    throw new Error(`${label} must be a valid date and time.`);
-  }
-  return date.toISOString();
-}
-
-export function selectPaperSessionId(
-  current: number | null,
-  sessions: PaperSession[],
-  preferred?: number,
-) {
-  if (preferred !== undefined && sessions.some((session) => session.id === preferred)) {
-    return preferred;
-  }
-  if (current !== null && sessions.some((session) => session.id === current)) {
-    return current;
-  }
-  return sessions[0]?.id ?? null;
-}
-
-export function deriveWorkbenchAction({
-  candleCount,
-  strategyCount,
-  hasBacktest,
-  hasRiskScore,
-  hasRegimeReplay,
-}: {
-  candleCount: number;
-  strategyCount: number;
-  hasBacktest: boolean;
-  hasRiskScore: boolean;
-  hasRegimeReplay: boolean;
-}): WorkbenchAction {
-  if (candleCount === 0) {
-    return {
-      id: "import-data",
-      title: "Import market data",
-      detail: "Load the BTC-USD sample candles so baselines, comparisons, and attention analysis have data.",
-    };
-  }
-  if (strategyCount === 0) {
-    return {
-      id: "create-strategy",
-      title: "Create the SMA baseline",
-      detail: "Use the default BTC-USD 1h SMA crossover setup as the traditional comparison baseline.",
-    };
-  }
-  if (!hasBacktest) {
-    return {
-      id: "run-backtest",
-      title: "Run baseline comparison",
-      detail: "Generate return, drawdown, trade, equity, and risk inputs for the selected baseline.",
-    };
-  }
-  if (!hasRiskScore) {
-    return {
-      id: "score-risk",
-      title: "Score baseline risk",
-      detail: "Persist an explainable risk label so the baseline comparison and alerts can reflect it.",
-    };
-  }
-  if (!hasRegimeReplay) {
-    return {
-      id: "run-analysis",
-      title: "Run attention replay",
-      detail: "Show candle context with attention-derived regime windows and baseline trade markers.",
-    };
-  }
-  return {
-    id: "review-results",
-    title: "Review results",
-    detail: "The main demo path is ready: review attention evidence, model lab diagnostics, robustness, and baseline comparisons.",
-  };
-}
-
-function formatAction(value: string) {
-  return value.replaceAll("_", " ").toLowerCase();
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "N/A";
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatPercent(value: number | null | undefined) {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
-  return `${Number(value).toFixed(2)}%`;
-}
-
-function formatRatioPercent(value: number | null | undefined) {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
-  return `${(Number(value) * 100).toFixed(2)}%`;
-}
-
-function promotionValue(source: Record<string, unknown> | null | undefined, path: string) {
-  if (!source) {
-    return null;
-  }
-  const value = path.split(".").reduce<unknown>((current, key) => {
-    if (current && typeof current === "object" && key in current) {
-      return (current as Record<string, unknown>)[key];
-    }
-    return null;
-  }, source);
-  return typeof value === "string" ? value : null;
-}
-
-function shortModelLabel(run: RegimeRunSummary) {
-  if (run.artifactIdentifier) {
-    return run.artifactIdentifier.slice(0, 8);
-  }
-  return run.modelVersion || run.classifierSource || "rules";
-}
-
-function formatComparisonDelta(delta: RegimeRunComparisonDelta | null | undefined) {
-  if (!delta) {
-    return "baseline";
-  }
-  const markers = [
-    delta.averageConfidenceDelta === null || delta.averageConfidenceDelta === undefined
-      ? null
-      : `conf ${formatSignedPercent(delta.averageConfidenceDelta)}`,
-    delta.baselineDisagreementRateDelta === null || delta.baselineDisagreementRateDelta === undefined
-      ? null
-      : `gap ${formatSignedPercent(delta.baselineDisagreementRateDelta)}`,
-    delta.pointCountDelta === null || delta.pointCountDelta === undefined ? null : `windows ${formatSignedNumber(delta.pointCountDelta)}`,
-    delta.modeChanged ? "mode changed" : null,
-    delta.artifactChanged ? "artifact changed" : null,
-  ].filter(Boolean);
-  return markers.length ? markers.join(" | ") : "no material change";
-}
-
-function formatSignedPercent(value: number) {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
-}
-
-function formatSignedNumber(value: number) {
-  return `${value >= 0 ? "+" : ""}${value}`;
-}
-
-function formatNumber(value: number | null | undefined) {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
-  return Number(value).toFixed(2);
-}
-
-function formatCurrency(value: number | null | undefined) {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
-  return new Intl.NumberFormat(undefined, {
-    currency: "USD",
-    style: "currency",
-    maximumFractionDigits: 2,
-  }).format(Number(value));
 }
 
 export default App;

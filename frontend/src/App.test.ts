@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveWorkbenchAction, selectPaperSessionId, toInstant } from "./App";
+import { deriveWorkbenchAction, selectPaperSessionId, toInstant } from "./workbench/workflow";
 import { PaperSession } from "./api/paperTrading";
 
 function session(id: number): PaperSession {
