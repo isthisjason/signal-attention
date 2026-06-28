@@ -158,7 +158,6 @@ Implemented surfaces:
 
 Continuing frontend targets:
 
-- Put a compact attention showcase summary near the top of the workbench so model readiness, latest replay quality, robustness state, and evidence snapshots are visible before the older trading controls.
 - Keep model lab and promoted artifact state visible without implying deployment quality.
 - Keep rules fallback status clear.
 - Keep attention evidence close to regime replay and baseline comparison.
@@ -202,30 +201,32 @@ Completed major waves:
 - Regime run comparison wave: derived run quality summaries, read only comparison API, assistant comparison context, workbench comparison table, smoke coverage, and documentation.
 - Model lab and robustness wave: read only experiment diagnostics API, backend proxy, workbench Model Lab panel, regime robustness summaries, assistant model review actions, tests, and documentation.
 - ML-first cleanup wave: removed the duplicate frontend regime-analysis table in favor of the robustness review path, extracted shared regime quality and robustness labels, optimized assistant context lookup, typed model lab diagnostics schemas, refocused workbench copy around attention regimes and baselines, and expanded smoke checks for model lab plus robustness review.
+- Attention showcase wave: added the read only showcase summary, selected-window evidence drilldown, baseline disagreement context, assistant review context, smoke coverage, and portfolio documentation.
 
-Next showcase wave:
+Current portfolio hardening wave:
 
-- Add a read only attention showcase summary that joins model status, latest saved regime quality, robustness review, evidence snapshot count, and promotion state.
-- Make replay evidence easier to scan by putting confidence, baseline disagreement, anomaly overlap, and trade context together.
-- Add a selected-window evidence drilldown that keeps top timesteps, feature evidence, and provenance near the replay.
-- Summarize baseline disagreement patterns as research context, not proof that the model is right.
-- Keep README and comments human without turning comments into filler.
+- Decompose the frontend workbench so application orchestration, shared presentation, baseline workflows, and attention review panels have clear module boundaries.
+- Split chart dependencies out of the main frontend bundle and retain the existing single page workflow.
+- Add repository CI for backend, ML, frontend, smoke helper, and Compose configuration checks.
+- Produce a real local attention transformer v2 promotion candidate without weakening the existing research gates.
+- Commit a curated model card while keeping generated artifacts, registries, and evaluation outputs local.
+- Refresh runtime verification notes and portfolio screenshots from the current attention first workbench.
 
 Current recent commits:
 
 ```text
+e2db707 updated attention comparison framing
+7d04499 updated attention showcase evidence docs
+023e34b expanded assistant attention review
+2a7e234 added attention evidence drilldown
+070146b added attention showcase summary
+b99918a added human notes around attention workflow code
+905a819 documented next attention showcase wave
+d931d6b updated ml first cleanup docs
 804b26c expanded smoke coverage for model lab robustness
 0116363 showcased attention workflow in workbench copy
 691d099 typed model lab diagnostics schemas
 7ae6d66 optimized assistant regime context lookup
-f215cf7 extracted market regime quality summaries
-3ee3ba9 removed duplicate regime analysis ui
-9b10489 updated ml first verification docs
-88029d3 extended assistant model review context
-a11589e displayed attention robustness review
-7bc5bf4 added regime robustness summaries
-4d4ff4f surfaced model lab in the workbench
-ea71d1c proxied model lab diagnostics through backend
 ```
 
 ## 11. Verification Matrix
