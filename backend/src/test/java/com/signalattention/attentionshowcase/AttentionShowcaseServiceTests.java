@@ -67,6 +67,7 @@ class AttentionShowcaseServiceTests {
         RegimeRun run = savedRun();
         when(mlRiskClient.getMarketRegimeStatus()).thenReturn(status());
         when(regimeRunRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(run));
+        // One weak disagreement and one anomaly are enough to prove the summary points at the useful review window.
         when(regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(42L)).thenReturn(List.of(
                 prediction(run, "TRENDING_UP", "70.00", true, "NORMAL", 20),
                 prediction(run, "SIDEWAYS", "55.00", true, "ANOMALY", 21),

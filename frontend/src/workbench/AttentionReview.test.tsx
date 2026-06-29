@@ -19,6 +19,7 @@ describe("attention review panels", () => {
   });
 
   it("shows promoted model identity without implying deployment approval", () => {
+    // Promotion is research status here, so this fixture must never read like production approval.
     render(
       <ModelStatusStrip
         state={{
@@ -57,6 +58,7 @@ describe("attention review panels", () => {
 
   it("selects a replay window for evidence inspection", async () => {
     const onSelect = vi.fn();
+    // A disagreement makes the selected row easy to recognize without relying on table position.
     const point = {
       windowEnd: "2024-01-02T00:00:00Z",
       regimeLabel: "TRENDING_UP",

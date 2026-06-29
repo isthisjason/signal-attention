@@ -54,6 +54,7 @@ class SmokeDemoHelperTests(unittest.TestCase):
             smoke_demo.require_keys({"id": 1}, ("id", "status"), "Backtest")
 
     def test_validate_model_status_accepts_default_rules_mode(self) -> None:
+        # The normal demo should stay healthy even when no local Torch artifact exists.
         smoke_demo.validate_model_status(
             {
                 "mode": "rules",
@@ -70,6 +71,7 @@ class SmokeDemoHelperTests(unittest.TestCase):
         )
 
     def test_validate_model_status_requires_verified_promoted_artifact(self) -> None:
+        # A promotion label is not enough on its own since the saved artifact still has to match its recorded hash.
         with self.assertRaisesRegex(RuntimeError, "recorded hash"):
             smoke_demo.validate_model_status(
                 {
@@ -184,6 +186,7 @@ class SmokeDemoHelperTests(unittest.TestCase):
         )
 
     def test_validate_attention_showcase_requires_saved_evidence(self) -> None:
+        # A replay alone is not a complete showcase because there would be no explanation to inspect later.
         with self.assertRaisesRegex(RuntimeError, "saved evidence snapshots"):
             smoke_demo.validate_attention_showcase(
                 {

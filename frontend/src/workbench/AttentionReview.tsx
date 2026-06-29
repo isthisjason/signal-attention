@@ -109,6 +109,7 @@ export function AssistantPanel({
   onReject: (action: AssistantAction) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  // Suggestions stay separate from messages because nothing should run until the user confirms it here.
   const proposedActions = session?.actions.filter((action) => action.status === "PROPOSED") ?? [];
   return (
     <section className="panel assistant-panel" aria-label="Research assistant">
@@ -245,6 +246,7 @@ export function RegimeWindowTable({
   selectedWindowEnd: string | null;
   onSelectWindow: (point: RegimeRunResponse["points"][number]) => void;
 }) {
+  // Eight recent windows are enough to browse without turning the review panel into another run history table.
   const rows = points.slice(-8).reverse();
   return (
     <div className="table-scroll">
@@ -565,6 +567,7 @@ export function ModelStatusStrip({ state }: { state: LoadState<MarketRegimeStatu
     return <p className="error-text">{state.error}</p>;
   }
   const status = state.data;
+  // Rules mode is still a valid result since a fresh clone is supposed to work without a local artifact.
   const statusItems: Array<[string, string | number]> = [
     ["Requested", status.mode],
     ["Effective", `${status.effectiveMode} mode`],
@@ -717,7 +720,7 @@ function CandlestickReplayChart({ replay }: { replay: RegimeRunResponse }) {
               onFocus={() => setSelectedIndex(i)}
               onMouseEnter={() => setSelectedIndex(i)}
             >
-              {/* Wider transparent targets make dense candle charts easier to inspect. */}
+              {/* The visible candle is tiny, so this larger invisible target makes inspection much less fiddly. */}
               <rect x={wickX - 6} y={pad.top} width="12" height={height - pad.top - pad.bottom} fill="transparent" />
               <line x1={wickX} x2={wickX} y1={hi} y2={lo} stroke="#7c8796" strokeWidth="1" />
               <rect

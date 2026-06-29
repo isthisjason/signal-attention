@@ -251,6 +251,7 @@ function MetricChart({
   const first = points[0];
   const last = points.at(-1)!;
   const color = tone === "positive" ? "#0f766e" : "#b42318";
+  // The tone gives each chart a stable gradient name without threading another display id through every panel.
   const gradientId = `${tone}-metric-fill`;
   const data = points.map((point) => ({ ...point, label: formatDateTime(point.timestamp) }));
   return (

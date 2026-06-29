@@ -14,6 +14,7 @@ export function selectPaperSessionId(
   sessions: PaperSession[],
   preferred?: number,
 ) {
+  // A freshly created session wins, otherwise we hang onto the current choice for as long as it still exists.
   if (preferred !== undefined && sessions.some((session) => session.id === preferred)) {
     return preferred;
   }
@@ -36,6 +37,7 @@ export function deriveWorkbenchAction({
   hasRiskScore: boolean;
   hasRegimeReplay: boolean;
 }): WorkbenchAction {
+  // This order follows the demo story, so the next action should feel like the obvious missing step.
   if (candleCount === 0) {
     return {
       id: "import-data",
