@@ -124,6 +124,7 @@ def build_attention_transformer_model(
             )
             hidden = self.attention_norm(inputs + self.dropout(attended))
             fed = self.feedforward(hidden)
+            # Both residual paths stay visible here because this small model is meant to be inspected, not hidden behind a helper.
             output = self.feedforward_norm(hidden + self.dropout(fed))
             return output, weights
 
@@ -152,6 +153,7 @@ def build_attention_transformer_model(
             pooled = hidden.mean(dim=1)
             logits = self.classifier(pooled)
             if return_attention:
+                # Diagnostics ask for the extra tensors explicitly so everyday predictions stay lightweight.
                 return logits, attention_weights
             return logits
 

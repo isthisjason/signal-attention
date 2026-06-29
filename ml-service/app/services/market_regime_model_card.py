@@ -2,6 +2,7 @@ from typing import Any
 
 
 def render_model_card(promotion: dict[str, Any]) -> str:
+    # Older local runs may be missing whole sections, and a useful card is still better than no card at all.
     selected = promotion.get("selectedRun") or {}
     evaluation = selected.get("evaluation") or {}
     artifact = selected.get("artifact") or evaluation.get("artifact") or {}
@@ -44,6 +45,7 @@ def render_model_card(promotion: dict[str, Any]) -> str:
     if failures:
         lines.extend(f"- Failure: {failure}" for failure in failures)
     else:
+        # Say this plainly so an empty failure list cannot look like missing output.
         lines.append("- Failure: none")
     lines.extend(
         [

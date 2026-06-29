@@ -47,6 +47,7 @@ public class AttentionShowcaseService {
     @Transactional(readOnly = true)
     public AttentionShowcaseSummaryResponse getSummary() {
         MlMarketRegimeStatusResponse status = mlRiskClient.getMarketRegimeStatus();
+        // The newest replay is the best starting point here since this card is a quick summary, not a run browser.
         RegimeRun latestRun = regimeRunRepository.findFirstByOrderByCreatedAtDesc().orElse(null);
         if (latestRun == null) {
             return emptyReplaySummary(status);
@@ -122,6 +123,7 @@ public class AttentionShowcaseService {
                         .multiply(ONE_HUNDRED)
                         .divide(BigDecimal.valueOf(predictions.size()), 6, RoundingMode.HALF_UP);
 
+        // Put the shakier disagreements first since those are usually the windows worth opening before anything else.
         List<AttentionShowcaseSummaryResponse.DisagreementWindow> lowestConfidenceWindows = predictions.stream()
                 .filter(prediction -> Boolean.TRUE.equals(prediction.getDisagreesWithBaseline()))
                 .sorted(Comparator.comparing(RegimePrediction::getConfidence, Comparator.nullsLast(Comparator.naturalOrder())))
@@ -147,6 +149,7 @@ public class AttentionShowcaseService {
     }
 
     private String nextAction(MlMarketRegimeStatusResponse status, RegimeRun latestRun, List<RegimePrediction> predictions, long snapshotCount) {
+        // This order is deliberate because missing setup matters more than any later review suggestion.
         if (!Boolean.TRUE.equals(status.ready())) {
             return "Check ML service status before running the attention showcase.";
         }

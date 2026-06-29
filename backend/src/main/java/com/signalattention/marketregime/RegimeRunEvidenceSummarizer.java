@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class RegimeRunEvidenceSummarizer {
 
+    // These are review cues for the showcase, not claims about whether a market regime is actually safe.
     private static final BigDecimal LOW_CONFIDENCE_THRESHOLD = new BigDecimal("60.00");
     private static final BigDecimal NEEDS_REVIEW_DISAGREEMENT_RATE = new BigDecimal("35.000000");
     private static final BigDecimal MIXED_DISAGREEMENT_RATE = new BigDecimal("10.000000");
@@ -63,6 +64,7 @@ public class RegimeRunEvidenceSummarizer {
     }
 
     public String robustnessLabel(RegimeRunQualitySummary quality, boolean noPredictions) {
+        // One obvious concern is enough to ask for review before the disagreement rate gets a vote.
         if (noPredictions || quality.lowConfidenceWindowCount() > 0 || quality.anomalyCount() > 0) {
             return "needs_review";
         }

@@ -11,6 +11,7 @@ def build_experiment_diagnostics(registry: dict[str, Any]) -> dict[str, Any]:
     evaluated_runs = [run for run in runs if run["hasEvaluation"]]
     trained_runs = [run for run in runs if run["hasTraining"]]
     eligible_runs = [run for run in runs if run["promotionGate"]["eligible"]]
+    # Finished runs come first so an abandoned local experiment does not become the headline result.
     ranked_runs = sort_diagnostic_runs(evaluated_runs)
 
     return {
@@ -63,6 +64,7 @@ def load_evaluation_report(report_path: Any) -> dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
+        # Local experiment folders get messy, so one broken report should not take down the whole review page.
         return {}
 
 
@@ -96,6 +98,7 @@ def confusion_pairs(confusion_matrix: dict[str, Any], limit: int = 5) -> list[di
 
 
 def sort_diagnostic_runs(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Accuracy leads the table while lift and validation quality settle the close calls.
     return sorted(
         runs,
         key=lambda run: (
