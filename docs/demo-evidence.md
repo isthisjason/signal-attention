@@ -90,13 +90,8 @@ Do not save or commit local database contents, generated model artifacts, or mac
 
 ## Committed Evidence
 
-The current portfolio screenshots are committed under `docs/assets/screenshots/`:
+Current committed screenshot evidence under `docs/assets/screenshots/`:
 
-- `dashboard-overview.png`
-- `backtest-charts.png`
-- `risk-audit.png`
-- `paper-trading.png`
-- `market-regime-anomaly.png`
 - `swagger-endpoints.png`
 
-These captures use local sample BTC-USD demo data, but the dashboard images predate the attention-showcase layout. Refresh them before using the repository as current visual evidence.
+Dashboard screenshots are intentionally omitted until they can be recaptured from the current attention-showcase layout with local sample BTC-USD demo data.

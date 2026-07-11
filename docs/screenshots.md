@@ -1,8 +1,8 @@
 # Screenshot Guide
 
-Use these screenshots when the local stack is running and the smoke demo has created data. The goal is to show the actual app, not a staged mockup.
+Use this checklist when the local stack is running and the smoke demo has created data. The goal is to show the actual app, not a staged mockup.
 
-Committed screenshots live here:
+Committed screenshot evidence lives here:
 
 ```text
 docs/assets/screenshots/
@@ -44,7 +44,7 @@ docs/assets/screenshots/
 ## Notes
 
 - Use the sample BTC-USD data so screenshots match the documented demo flow.
-- The committed dashboard screenshots are real historical captures, but they predate the current attention-showcase layout and should not be treated as current UI evidence.
-- Replace `dashboard-overview.png` and `market-regime-anomaly.png`, then add `attention-evidence.png`, after running the current smoke workflow in a browser-enabled environment.
+- The committed Swagger screenshot is current endpoint evidence; dashboard screenshots should be recaptured from the running app before portfolio use.
+- Capture `dashboard-overview.png`, `backtest-charts.png`, `risk-audit.png`, `paper-trading.png`, `market-regime-anomaly.png`, and `attention-evidence.png` after running the current smoke workflow in a browser-enabled environment.
 - Do not include `.env` values, local database credentials, browser profiles, or generated model artifacts.
 - If Docker is unavailable in the current WSL environment, record that blocker in `PROJECT_PROGRESS.local.md` and capture screenshots later from a Docker-enabled environment.
