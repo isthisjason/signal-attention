@@ -259,47 +259,20 @@ public class MarketRegimeService {
 
     @Transactional(readOnly = true)
     public List<RegimeRunSummaryResponse> listRegimeRuns(String symbol, String timeframe, Integer requestedLimit) {
-        String normalizedSymbol = requireText(symbol, "symbol");
-        String normalizedTimeframe = requireText(timeframe, "timeframe");
-        int limit = requestedLimit == null ? 10 : requestedLimit;
-        if (limit < 1 || limit > 50) {
-            throw new BadRequestException("limit must be between 1 and 50");
-        }
-        return regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
-                        normalizedSymbol,
-                        normalizedTimeframe,
-                        PageRequest.of(0, limit)
-                ).stream()
-                .map(run -> RegimeRunSummaryResponse.from(run, evidenceSummarizer.summarize(
-                        regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(run.getId())
-                )))
-                .toList();
+        return loadRegimeRunSummaries(symbol, timeframe, requestedLimit);
     }
 
     @Transactional(readOnly = true)
     public RegimeRunComparisonResponse compareRegimeRuns(String symbol, String timeframe, Integer requestedLimit) {
-        String normalizedSymbol = requireText(symbol, "symbol");
-        String normalizedTimeframe = requireText(timeframe, "timeframe");
-        int limit = requestedLimit == null ? 10 : requestedLimit;
-        if (limit < 1 || limit > 50) {
-            throw new BadRequestException("limit must be between 1 and 50");
-        }
-        List<RegimeRunSummaryResponse> summaries = regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
-                        normalizedSymbol,
-                        normalizedTimeframe,
-                        PageRequest.of(0, limit)
-                ).stream()
-                .map(run -> RegimeRunSummaryResponse.from(run, evidenceSummarizer.summarize(
-                        regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(run.getId())
-                )))
-                .toList();
+        RegimeRunHistoryRequest historyRequest = normalizeRegimeRunHistoryRequest(symbol, timeframe, requestedLimit);
+        List<RegimeRunSummaryResponse> summaries = loadRegimeRunSummaries(historyRequest);
         List<RegimeRunComparisonResponse.RegimeRunComparisonItem> items = new ArrayList<>();
         for (int index = 0; index < summaries.size(); index++) {
             RegimeRunSummaryResponse current = summaries.get(index);
             RegimeRunSummaryResponse previous = index + 1 < summaries.size() ? summaries.get(index + 1) : null;
             items.add(new RegimeRunComparisonResponse.RegimeRunComparisonItem(current, deltaFromPrevious(current, previous)));
         }
-        return new RegimeRunComparisonResponse(normalizedSymbol, normalizedTimeframe, items);
+        return new RegimeRunComparisonResponse(historyRequest.symbol(), historyRequest.timeframe(), items);
     }
 
     @Transactional(readOnly = true)
@@ -408,6 +381,36 @@ public class MarketRegimeService {
             throw new BadRequestException("limit must be less than or equal to " + MAX_CANDLE_LIMIT);
         }
         return limit;
+    }
+
+    private List<RegimeRunSummaryResponse> loadRegimeRunSummaries(String symbol, String timeframe, Integer requestedLimit) {
+        return loadRegimeRunSummaries(normalizeRegimeRunHistoryRequest(symbol, timeframe, requestedLimit));
+    }
+
+    private RegimeRunHistoryRequest normalizeRegimeRunHistoryRequest(String symbol, String timeframe, Integer requestedLimit) {
+        String normalizedSymbol = requireText(symbol, "symbol");
+        String normalizedTimeframe = requireText(timeframe, "timeframe");
+        int limit = requestedLimit == null ? 10 : requestedLimit;
+        if (limit < 1 || limit > 50) {
+            throw new BadRequestException("limit must be between 1 and 50");
+        }
+        return new RegimeRunHistoryRequest(normalizedSymbol, normalizedTimeframe, limit);
+    }
+
+    private List<RegimeRunSummaryResponse> loadRegimeRunSummaries(RegimeRunHistoryRequest request) {
+        // List and comparison endpoints need identical run ordering and derived quality summaries.
+        return regimeRunRepository.findBySymbolAndTimeframeOrderByCreatedAtDesc(
+                        request.symbol(),
+                        request.timeframe(),
+                        PageRequest.of(0, request.limit())
+                ).stream()
+                .map(run -> RegimeRunSummaryResponse.from(run, evidenceSummarizer.summarize(
+                        regimePredictionRepository.findByRegimeRunIdOrderByWindowStartAsc(run.getId())
+                )))
+                .toList();
+    }
+
+    private record RegimeRunHistoryRequest(String symbol, String timeframe, int limit) {
     }
 
     private List<RegimeRunResponse.RegimeTradeMarker> loadTradeMarkers(
