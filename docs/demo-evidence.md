@@ -88,6 +88,8 @@ For a portfolio pass, save:
 
 Do not save or commit local database contents, generated model artifacts, or machine-specific environment files.
 
+The reproducible regime-diverse training and holdout results are recorded separately in `docs/attention-experiment-evidence.md`. That evidence describes rule-label agreement and must not be presented as trading performance.
+
 ## Committed Evidence
 
 Current committed screenshot evidence under `docs/assets/screenshots/`:

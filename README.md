@@ -103,23 +103,34 @@ cd ml-service
 python3 -m pip install -r requirements-torch.txt
 ```
 
+Fetch and inspect the fixed local research range before training. The larger CSV and its provenance file are ignored rather than committed:
+
+```bash
+cd ml-service
+python3 scripts/fetch_market_regime_candles.py
+python3 scripts/inspect_market_regime_dataset.py \
+  --csv-path ../data/generated/coinbase-btc-usd-1h-2022-2024.csv
+```
+
 Train and evaluate an optional local market regime artifact:
 
 ```bash
 cd ml-service
-python scripts/train_market_regime_model.py \
-  --csv-path ../data/btc-usd-1h-sample.csv \
+python3 scripts/train_market_regime_model.py \
+  --csv-path ../data/generated/coinbase-btc-usd-1h-2022-2024.csv \
   --output models/market-regime.pt \
   --cpu \
   --seed 42 \
-  --batch-size 32 \
-  --patience 10 \
+  --architecture attention-transformer-v2 \
+  --batch-size 64 \
+  --patience 8 \
+  --class-weighting balanced \
+  --selection-metric macro-f1 \
   --experiment-name btc-sample-v1
-python scripts/evaluate_market_regime_model.py \
-  --csv-path ../data/btc-usd-1h-sample.csv \
+python3 scripts/evaluate_market_regime_model.py \
+  --csv-path ../data/generated/coinbase-btc-usd-1h-2022-2024.csv \
   --artifact models/market-regime.pt \
   --output models/market-regime-evaluation.json \
-  --holdout-ratio 0.2 \
   --experiment-name btc-sample-v1
 python scripts/compare_market_regime_experiments.py \
   --experiments-dir models/experiments
@@ -134,7 +145,7 @@ python scripts/generate_market_regime_model_card.py \
 
 The training command runs a seeded, mini batch loop with per epoch validation and early stopping (controlled by `--patience`), then keeps the best epoch. The saved model uses light dropout and sinusoidal positional encoding, and you can turn those off with `--dropout 0` and `--no-positional-encoding` when you want to compare. The artifact and a manifest are written side by side, and the manifest records the seed, git commit, torch version, and the per epoch history so a run can be reproduced.
 
-The evaluation command writes a report with accuracy, per label metrics, a confusion matrix, and a confidence summary. It also reports a majority class baseline and the lift over that baseline, because the expected labels come from the rule based classifier rather than independent ground truth, so the model only matters if it beats simply guessing the most common regime. Pass `--holdout-ratio` to score only the later, unseen tail of the data.
+The evaluation command writes a report with accuracy, macro-F1, balanced accuracy, per label metrics, a confusion matrix, and a confidence summary. It also reports a majority class baseline and the lift over that baseline, because the expected labels come from the rule based classifier rather than independent ground truth. New artifacts pin an untouched test boundary and dataset hash; `--holdout-ratio` remains available only for older artifacts without that metadata.
 
 When `--experiment-name` is provided, both commands update `models/experiments/index.json`. Each run is kept under its own run id rather than overwriting the previous one, so the registry holds a real history. The compare script reads that registry and prints a table sorted by accuracy with the seed, dropout, positional encoding, git commit, and lift columns so I can see which run did best and why.
 
@@ -236,6 +247,7 @@ See [docs/demo-flow.md](docs/demo-flow.md) for a reproducible curl based walkthr
 See [docs/architecture.md](docs/architecture.md) for the current service and data flow diagram.
 See [docs/verification.md](docs/verification.md) for the local verification checklist.
 See [docs/demo-evidence.md](docs/demo-evidence.md) for the commands I use to collect demo proof.
+See [docs/attention-experiment-evidence.md](docs/attention-experiment-evidence.md) for the reproducible regime-diverse attention results and limitations.
 See [docs/screenshots.md](docs/screenshots.md) for the screenshot checklist.
 
 Committed portfolio evidence currently includes the Swagger endpoint screenshot in [docs/assets/screenshots](docs/assets/screenshots). Dashboard screenshots should be recaptured from the local stack before using the repository as current visual evidence.
@@ -276,6 +288,6 @@ The repo currently has the backend foundation, strategy CRUD for the SMA baselin
 
 Backend, ML service, frontend tests/build, smoke helper tests, and Compose configuration are also covered by GitHub Actions. The full local stack and running smoke demo still require Docker because they create real PostgreSQL-backed demo state.
 
-A June 2026 local attention-v2 sweep trained eight candidates across seeds, dropout, and positional encoding settings. Every candidate scored 0.8333 accuracy on the chronological holdout but matched the 0.8333 majority baseline, producing zero lift. The promotion gate therefore rejected all candidates. This is the intended governance behavior: no artifact is promoted or described as adding value until it beats the simple baseline.
+A July 2026 evidence wave replaced the 48-candle training input with a reproducibly fetched 2022-2024 Coinbase range and a leakage-free 60/20/20 chronological split. Four balanced attention-v2 candidates passed the unchanged local research gate. The best candidate scored 0.9808 accuracy, 0.9560 macro-F1, and 0.1410 lift over the 0.8398 majority baseline on 5,256 untouched test windows. This measures agreement with rule-derived weak labels, not profitable trading, independent market truth, or deployment readiness. The generated dataset, artifacts, registry, and promotion manifest remain local and ignored.
 
-The next work should stay scoped around the showcase. I would rather make the attention review easier to inspect than add a pile of trading features that make the project look like something it is not.
+The next research question is label quality. The fixed range covers sideways, rising, and falling regimes, but the current rule thresholds produce no high-volatility windows. Future work should improve label coverage or introduce an independent evaluation target before making stronger model claims.

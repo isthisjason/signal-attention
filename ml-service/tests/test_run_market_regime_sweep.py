@@ -1,3 +1,4 @@
+import sys
 from argparse import Namespace
 from pathlib import Path
 
@@ -30,8 +31,8 @@ def test_build_sweep_commands_creates_train_and_eval_for_each_grid_item() -> Non
     commands = build_sweep_commands(args())
 
     assert len(commands) == 16
-    assert commands[0][:2] == ["python", "scripts/train_market_regime_model.py"]
-    assert commands[1][:2] == ["python", "scripts/evaluate_market_regime_model.py"]
+    assert commands[0][:2] == [sys.executable, "scripts/train_market_regime_model.py"]
+    assert commands[1][:2] == [sys.executable, "scripts/evaluate_market_regime_model.py"]
 
 
 def test_build_sweep_commands_adds_no_positional_encoding_for_off_mode() -> None:

@@ -70,16 +70,14 @@ python3 scripts/smoke_demo.py --timeout-seconds 30
 
 ## Latest Local Verification
 
-Last checked on June 27, 2026:
+Last checked on July 17, 2026:
 
 - `cd backend && ./mvnw test`: passed, 138 tests with 4 Testcontainers tests skipped because the sandbox could not open the Docker socket.
-- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 157 tests.
+- `cd ml-service && ../.venv/bin/python -m pytest`: passed, 171 tests.
 - `cd frontend && npm run test`: passed, 42 tests.
 - `cd frontend && npm run build`: passed; the largest JavaScript chunk was 295.72 KB and Vite emitted no chunk-size warning.
 - `python3 -m unittest scripts/smoke_demo_test.py`: passed, 15 tests.
-- `docker compose config --quiet`: passed.
-- `docker compose up --build -d`: passed for PostgreSQL, backend, ML service, and frontend.
-- `python3 scripts/smoke_demo.py --timeout-seconds 30`: passed the stack, core, paper, analysis, and assistant workflows.
-- The live smoke workflow provides PostgreSQL-backed coverage for the persistence paths that Testcontainers could not access from the sandbox.
-- Eight CPU attention-v2 sweep candidates completed. All scored 0.8333 holdout accuracy and 0.0000 lift over the 0.8333 majority baseline, so promotion correctly returned `no_eligible_run` without lowering gates.
-- Screenshot refresh remains outstanding because the available headless browser could not be launched from the sandbox. The existing committed images predate the current showcase layout.
+- Docker Compose and the running-stack smoke workflow were not rerun on July 17 because the Docker CLI is unavailable in this WSL session. Their last successful full-stack run remains June 27, 2026.
+- Four Docker-backed backend persistence tests were skipped; the remaining 134 backend tests passed.
+- Four CPU attention-v2 candidates completed on the regime-diverse dataset. All passed the unchanged gate; the best scored 0.9808 holdout accuracy, 0.9560 macro-F1, and 0.1410 lift over the majority baseline.
+- The empirical result is documented in `docs/attention-experiment-evidence.md`; generated data and model outputs remain ignored.

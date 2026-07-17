@@ -22,7 +22,7 @@ def main() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a small market-regime training/evaluation sweep.")
-    parser.add_argument("--csv-path", type=Path, default=Path("../data/btc-usd-1h-sample.csv"))
+    parser.add_argument("--csv-path", type=Path, default=Path("../data/generated/coinbase-btc-usd-1h-2022-2024.csv"))
     parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
     parser.add_argument("--models-dir", type=Path, default=Path("models/sweeps"))
     parser.add_argument("--sequence-length", type=int, default=20)
@@ -55,7 +55,7 @@ def build_sweep_commands(args: argparse.Namespace) -> list[list[str]]:
                 artifact = args.models_dir / f"market-regime-{suffix}.pt"
                 experiment_name = f"sweep-{suffix}"
                 train_command = [
-                    "python",
+                    sys.executable,
                     "scripts/train_market_regime_model.py",
                     "--csv-path",
                     str(args.csv_path),
@@ -90,7 +90,7 @@ def build_sweep_commands(args: argparse.Namespace) -> list[list[str]]:
                 if positional_mode == "off":
                     train_command.append("--no-positional-encoding")
                 evaluate_command = [
-                    "python",
+                    sys.executable,
                     "scripts/evaluate_market_regime_model.py",
                     "--csv-path",
                     str(args.csv_path),

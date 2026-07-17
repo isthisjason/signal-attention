@@ -202,6 +202,7 @@ Completed major waves:
 - Model lab and robustness wave: read only experiment diagnostics API, backend proxy, workbench Model Lab panel, regime robustness summaries, assistant model review actions, tests, and documentation.
 - ML-first cleanup wave: removed the duplicate frontend regime-analysis table in favor of the robustness review path, extracted shared regime quality and robustness labels, optimized assistant context lookup, typed model lab diagnostics schemas, refocused workbench copy around attention regimes and baselines, and expanded smoke checks for model lab plus robustness review.
 - Attention showcase wave: added the read only showcase summary, selected-window evidence drilldown, baseline disagreement context, assistant review context, smoke coverage, and portfolio documentation.
+- Regime-diverse evidence wave: added reproducible public candle acquisition, dataset-readiness gates, leakage-free train/validation/test partitions, balanced training, macro-F1 diagnostics, and a bounded attention-v2 evidence sweep.
 
 Portfolio hardening wave results:
 
@@ -209,29 +210,24 @@ Portfolio hardening wave results:
 - React, chart, vendor, and application code build as separate chunks; the largest production chunk is below 300 KB.
 - GitHub Actions verifies backend, ML, frontend, smoke helpers, and Compose configuration.
 - The full rules-mode Compose stack and smoke workflow passed on June 27, 2026.
-- Eight real attention transformer v2 candidates were trained and scored on the chronological holdout. Each reached 0.8333 accuracy but 0.0000 lift over the 0.8333 majority baseline, so none passed the unchanged 0.05 lift gate.
-- No model card or promoted artifact was committed because there was no eligible research candidate.
+- The earlier 48-candle sweep correctly failed because its training partition contained only `SIDEWAYS` labels.
+- A fixed 2022-2024 Coinbase range produced 26,282 windows across sideways, rising, and falling weak-label regimes using a leakage-free 60/20/20 split.
+- Four balanced attention transformer v2 candidates passed the unchanged research gate. The best scored 0.9808 accuracy, 0.9560 macro-F1, and 0.1410 lift over the 0.8398 majority baseline on 5,256 untouched test windows.
+- The dataset, artifacts, registry, and local promotion manifest remain ignored; promotion is a research workflow state, not deployment approval.
 
-Next evidence targets:
+Next evidence target:
 
-- Improve the dataset or training objective enough to demonstrate lift over the majority baseline before promoting an attention artifact.
-- Refresh the committed screenshots from the current attention-first workbench; the existing captures predate the showcase layout.
+- Improve weak-label coverage or introduce an independent evaluation target. The current three-year range contains no `HIGH_VOLATILITY` labels under the existing rule threshold.
 
 Current recent commits:
 
 ```text
-51e192b extended attention experiment evidence
-e1be5e7 added repository verification workflow
-fe82a13 split frontend chart bundles
-9eb961f extracted attention review panels
-feb4709 extracted baseline workflow panels
-2624826 extracted shared workbench presentation
-26a851b updated portfolio hardening roadmap
-e2db707 updated attention comparison framing
-7d04499 updated attention showcase evidence docs
-023e34b expanded assistant attention review
-2a7e234 added attention evidence drilldown
-070146b added attention showcase summary
+aa8ba92 surfaced balanced experiment diagnostics
+3755020 balanced attention training objectives
+f07ebb2 separated validation and holdout windows
+620ca80 added market regime dataset readiness checks
+b66fc6e added reproducible coinbase candle fetcher
+12a25fa split dashboard panels from app shell
 ```
 
 ## 11. Verification Matrix
