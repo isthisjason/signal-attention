@@ -69,7 +69,9 @@ def main() -> None:
     targets = torch.tensor(train_labels, dtype=torch.long, device=device)
     model = build_training_model(torch, args.architecture, model_config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-    loss_function = torch.nn.CrossEntropyLoss()
+    class_weights = balanced_class_weights(train_labels, len(LABELS)) if args.class_weighting == "balanced" else None
+    weight_tensor = torch.tensor(class_weights, dtype=torch.float32, device=device) if class_weights is not None else None
+    loss_function = torch.nn.CrossEntropyLoss(weight=weight_tensor)
 
     training_outcome = train_with_early_stopping(
         torch,
@@ -85,6 +87,7 @@ def main() -> None:
         patience=args.patience,
         seed=args.seed,
         device=device,
+        selection_metric=args.selection_metric,
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -174,14 +177,14 @@ def build_minibatches(item_count: int, batch_size: int, seed: int) -> list[list[
     return [indices[start : start + batch_size] for start in range(0, item_count, batch_size)]
 
 
-def select_best_epoch(history: list[dict[str, float]]) -> int:
-    """Return the 1 based epoch with the highest validation accuracy.
+def select_best_epoch(history: list[dict[str, float]], metric: str = "valAccuracy") -> int:
+    """Return the 1 based epoch with the highest requested validation metric.
 
     Ties keep the earliest epoch so we favour the simpler, earlier model.
     """
     best_index = 0
     for index in range(1, len(history)):
-        if history[index]["valAccuracy"] > history[best_index]["valAccuracy"]:
+        if history[index][metric] > history[best_index][metric]:
             best_index = index
     return best_index + 1
 
@@ -201,10 +204,11 @@ def train_with_early_stopping(
     patience: int,
     seed: int,
     device,
+    selection_metric: str = "accuracy",
 ) -> dict:
     item_count = int(inputs.shape[0])
     history: list[dict[str, float]] = []
-    best_val_accuracy = -1.0
+    best_validation_score = -1.0
     best_state = None
     best_epoch = 0
     epochs_without_improvement = 0
@@ -228,6 +232,11 @@ def train_with_early_stopping(
         model.eval()
         predictions = predict_validation_labels(torch, model, normalized_validation_windows, device)
         val_accuracy = validation_accuracy(predictions, validation_labels)
+        val_macro_f1 = macro_f1_from_label_indexes(
+            [int(prediction["labelIndex"]) for prediction in predictions],
+            validation_labels,
+            len(LABELS),
+        )
         val_loss = validation_loss(torch, model, loss_function, normalized_validation_windows, validation_labels, device)
         history.append(
             {
@@ -235,12 +244,14 @@ def train_with_early_stopping(
                 "trainLoss": train_loss,
                 "valLoss": val_loss,
                 "valAccuracy": val_accuracy,
+                "valMacroF1": val_macro_f1,
             }
         )
 
-        if val_accuracy > best_val_accuracy:
+        validation_score = val_macro_f1 if selection_metric == "macro-f1" else val_accuracy
+        if validation_score > best_validation_score:
             # Keep the best validation state, not just the final epoch.
-            best_val_accuracy = val_accuracy
+            best_validation_score = validation_score
             best_state = {key: value.detach().clone() for key, value in model.state_dict().items()}
             best_epoch = epoch
             epochs_without_improvement = 0
@@ -253,14 +264,41 @@ def train_with_early_stopping(
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    best_record = history[best_epoch - 1] if history else {"trainLoss": 0.0, "valAccuracy": 0.0}
+    best_record = history[best_epoch - 1] if history else {"trainLoss": 0.0, "valAccuracy": 0.0, "valMacroF1": 0.0}
     return {
         "epochHistory": history,
         "bestEpoch": best_epoch,
         "earlyStopped": early_stopped,
         "finalTrainLoss": best_record["trainLoss"],
         "validationAccuracy": best_record["valAccuracy"],
+        "validationMacroF1": best_record["valMacroF1"],
+        "selectionMetric": selection_metric,
     }
+
+
+def balanced_class_weights(labels: list[int], class_count: int) -> list[float]:
+    """Return inverse-frequency weights normalized across classes observed in training."""
+    counts = [labels.count(index) for index in range(class_count)]
+    observed_count = sum(1 for count in counts if count > 0)
+    if not labels or observed_count == 0:
+        return [0.0 for _ in range(class_count)]
+    return [round(len(labels) / (observed_count * count), 6) if count else 0.0 for count in counts]
+
+
+def macro_f1_from_label_indexes(predicted: list[int], expected: list[int], class_count: int) -> float:
+    """Average F1 over expected classes so absent output classes do not dilute the score."""
+    scores = []
+    for label_index in range(class_count):
+        support = sum(1 for value in expected if value == label_index)
+        if support == 0:
+            continue
+        true_positive = sum(1 for actual, guess in zip(expected, predicted, strict=True) if actual == guess == label_index)
+        false_positive = sum(1 for actual, guess in zip(expected, predicted, strict=True) if actual != label_index and guess == label_index)
+        false_negative = support - true_positive
+        precision = true_positive / (true_positive + false_positive) if true_positive + false_positive else 0.0
+        recall = true_positive / (true_positive + false_negative) if true_positive + false_negative else 0.0
+        scores.append(2 * precision * recall / (precision + recall) if precision + recall else 0.0)
+    return round(sum(scores) / len(scores), 4) if scores else 0.0
 
 
 def validation_loss(
@@ -291,6 +329,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--patience", type=int, default=10, help="Stop after this many epochs without validation improvement.")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--class-weighting", choices=["none", "balanced"], default="none")
+    parser.add_argument("--selection-metric", choices=["accuracy", "macro-f1"], default="accuracy")
     parser.add_argument("--dropout", type=float, default=None, help="Override the model dropout (defaults to the model config value).")
     parser.add_argument("--no-positional-encoding", action="store_true", help="Disable sinusoidal positional encoding.")
     parser.add_argument(
@@ -476,6 +516,9 @@ def write_experiment_manifest(
             "modelVersion": args.model_version,
             "architecture": args.architecture,
             "model": model_config,
+            "classWeighting": args.class_weighting,
+            "classWeights": class_weights_for_manifest(args, train_labels),
+            "selectionMetric": args.selection_metric,
             "epochHistory": training_outcome["epochHistory"],
             "bestEpoch": training_outcome["bestEpoch"],
             "earlyStopped": training_outcome["earlyStopped"],
@@ -491,6 +534,7 @@ def write_experiment_manifest(
         test_label_distribution=label_distribution(test_labels, LABELS),
         final_train_loss=training_outcome["finalTrainLoss"],
         validation_accuracy=training_outcome["validationAccuracy"],
+        validation_macro_f1=training_outcome["validationMacroF1"],
         window_ranges=window_time_ranges(
             candles,
             args.sequence_length,
@@ -531,10 +575,14 @@ def build_training_registry_entry(args: argparse.Namespace, manifest_path: Path,
             "testRatio": manifest.get("testRatio"),
             "finalTrainLoss": manifest["finalTrainLoss"],
             "validationAccuracy": manifest["validationAccuracy"],
+            "validationMacroF1": manifest.get("validationMacroF1"),
             "bestEpoch": training.get("bestEpoch"),
             "earlyStopped": training.get("earlyStopped"),
             "dropout": training.get("model", {}).get("dropout"),
             "usePositionalEncoding": training.get("model", {}).get("usePositionalEncoding"),
+            "classWeighting": training.get("classWeighting"),
+            "classWeights": training.get("classWeights"),
+            "selectionMetric": training.get("selectionMetric"),
         },
     }
 
@@ -584,6 +632,10 @@ def evaluation_holdout_metadata(
         "windowCount": test_window_count,
         "datasetSha256": describe_path(args.csv_path)["sha256"],
     }
+
+
+def class_weights_for_manifest(args: argparse.Namespace, train_labels: list[int]) -> list[float] | None:
+    return balanced_class_weights(train_labels, len(LABELS)) if args.class_weighting == "balanced" else None
 
 
 def summarize_time_range(values: list[str]) -> dict[str, str | None]:

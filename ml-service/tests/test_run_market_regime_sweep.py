@@ -15,6 +15,8 @@ def args(**overrides) -> Namespace:
         "epochs": 50,
         "batch_size": 32,
         "patience": 10,
+        "class_weighting": "balanced",
+        "selection_metric": "macro-f1",
         "seeds": "42,43",
         "dropouts": "0.1,0.2",
         "positional_encoding_modes": "on,off",
@@ -36,7 +38,7 @@ def test_build_sweep_commands_adds_no_positional_encoding_for_off_mode() -> None
     commands = build_sweep_commands(args(seeds="42", dropouts="0.1", positional_encoding_modes="off"))
 
     assert "--no-positional-encoding" in commands[0]
-    assert "--holdout-ratio" in commands[1]
+    assert "--holdout-ratio" not in commands[1]
 
 
 def test_build_sweep_commands_uses_default_cpu_training_path() -> None:
@@ -48,6 +50,8 @@ def test_build_sweep_commands_uses_default_cpu_training_path() -> None:
     assert "sweep-seed42-dropout0.1-poson" in train_command
     assert train_command[train_command.index("--architecture") + 1] == "transformer-v1"
     assert train_command[train_command.index("--model-version") + 1] == "local-transformer-v1"
+    assert train_command[train_command.index("--class-weighting") + 1] == "balanced"
+    assert train_command[train_command.index("--selection-metric") + 1] == "macro-f1"
 
 
 def test_build_sweep_commands_gives_attention_v2_distinct_identity() -> None:

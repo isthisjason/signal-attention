@@ -13,12 +13,14 @@ from app.services.market_regime_experiment import (
 )
 from app.services.market_regime_torch_model import TORCH_MODEL_ARCHITECTURE_V1, TORCH_MODEL_ARCHITECTURE_V2
 from scripts.train_market_regime_model import (
+    balanced_class_weights,
     build_minibatches,
     build_model_config,
     build_training_model,
     build_training_registry_entry,
     chronological_split_index,
     label_distribution,
+    macro_f1_from_label_indexes,
     normalize_window,
     normalization_stats,
     predict_validation_labels,
@@ -363,6 +365,23 @@ def test_select_best_epoch_breaks_ties_toward_the_earliest_epoch() -> None:
     assert select_best_epoch(history) == 1
 
 
+def test_select_best_epoch_supports_macro_f1() -> None:
+    history = [
+        {"valAccuracy": 0.9, "valMacroF1": 0.4},
+        {"valAccuracy": 0.8, "valMacroF1": 0.7},
+    ]
+
+    assert select_best_epoch(history, "valMacroF1") == 2
+
+
+def test_balanced_class_weights_ignore_absent_classes() -> None:
+    assert balanced_class_weights([0, 0, 0, 1], 4) == [0.666667, 2.0, 0.0, 0.0]
+
+
+def test_macro_f1_averages_classes_with_expected_support() -> None:
+    assert macro_f1_from_label_indexes([0, 0, 1, 1], [0, 1, 1, 1], 4) == 0.7333
+
+
 def test_reproducibility_block_records_seed_and_environment() -> None:
     block = reproducibility_block(123, "2.4.0")
 
@@ -450,6 +469,7 @@ def test_train_with_early_stopping_stops_on_plateau_and_restores_best_state() ->
     assert outcome["bestEpoch"] == 1
     assert len(outcome["epochHistory"]) == 3
     assert outcome["validationAccuracy"] == 1.0
+    assert outcome["validationMacroF1"] == 1.0
     # Best state captured at epoch 1 must be the one reloaded at the end.
     assert model.loaded_state == model.snapshots[0]
 

@@ -29,6 +29,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--class-weighting", choices=["none", "balanced"], default="balanced")
+    parser.add_argument("--selection-metric", choices=["accuracy", "macro-f1"], default="macro-f1")
     parser.add_argument("--seeds", default="42,43")
     parser.add_argument("--dropouts", default="0.1,0.2")
     parser.add_argument("--positional-encoding-modes", default="on,off")
@@ -76,6 +78,10 @@ def build_sweep_commands(args: argparse.Namespace) -> list[list[str]]:
                     str(args.batch_size),
                     "--patience",
                     str(args.patience),
+                    "--class-weighting",
+                    args.class_weighting,
+                    "--selection-metric",
+                    args.selection_metric,
                     "--experiment-name",
                     experiment_name,
                     "--experiments-dir",
@@ -92,8 +98,6 @@ def build_sweep_commands(args: argparse.Namespace) -> list[list[str]]:
                     str(artifact),
                     "--output",
                     str(artifact.with_suffix(".evaluation.json")),
-                    "--holdout-ratio",
-                    "0.2",
                     "--experiment-name",
                     experiment_name,
                     "--experiments-dir",
