@@ -144,12 +144,16 @@ class MarketRegimeExperimentRunDiagnostics(BaseModel):
     hasTraining: bool = False
     hasEvaluation: bool = False
     validationAccuracy: float | None = None
+    validationMacroF1: float | None = None
     accuracy: float | None = None
+    macroF1: float | None = None
+    balancedAccuracy: float | None = None
     baselineAccuracy: float | None = None
     liftOverBaseline: float | None = None
     confidence: dict[str, Any] | None = None
     labelDistribution: dict[str, Any] | None = None
     windowRanges: dict[str, Any] | None = None
+    holdoutSource: str | None = None
     promotionGate: PromotionGateDiagnostics = Field(default_factory=PromotionGateDiagnostics)
     weakestLabels: list[WeakLabelDiagnostics] = Field(default_factory=list)
     confusionPairs: list[ConfusionPairDiagnostics] = Field(default_factory=list)

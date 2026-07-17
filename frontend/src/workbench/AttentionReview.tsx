@@ -315,7 +315,10 @@ function ModelLabPanel({ state }: { state: LoadState<MarketRegimeExperimentDiagn
               items={[
                 ["Run", bestRun.runId || "unknown"],
                 ["Accuracy", formatRatioPercent(bestRun.accuracy)],
+                ["Macro F1", formatRatioPercent(bestRun.macroF1)],
+                ["Balanced accuracy", formatRatioPercent(bestRun.balancedAccuracy)],
                 ["Lift", formatRatioPercent(bestRun.liftOverBaseline)],
+                ["Holdout", bestRun.holdoutSource || "legacy or full"],
                 ["Gate", bestRun.promotionGate?.eligible ? "eligible" : "needs review"],
               ]}
             />

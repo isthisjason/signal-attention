@@ -212,6 +212,8 @@ def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> d
     if not predictions:
         return {
             "accuracy": 0,
+            "macroF1": 0,
+            "balancedAccuracy": 0,
             "correctCount": 0,
             "totalCount": 0,
             "perLabel": {},
@@ -240,8 +242,11 @@ def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> d
         }
 
     confidences = [float(prediction["confidence"]) for prediction in predictions]
+    supported_metrics = [metrics for metrics in per_label.values() if metrics["support"] > 0]
     return {
         "accuracy": ratio(correct, len(predictions)),
+        "macroF1": average_metric(supported_metrics, "f1"),
+        "balancedAccuracy": average_metric(supported_metrics, "recall"),
         "correctCount": correct,
         "totalCount": len(predictions),
         "perLabel": per_label,
@@ -282,6 +287,10 @@ def ratio(numerator: float, denominator: float) -> float:
     return round(numerator / denominator, 4)
 
 
+def average_metric(metrics: list[dict[str, Any]], key: str) -> float:
+    return round(sum(float(item[key]) for item in metrics) / len(metrics), 4) if metrics else 0.0
+
+
 def write_report(output: Path | None, report: dict[str, Any]) -> None:
     payload = json.dumps(report, indent=2) + "\n"
     if output is None:
@@ -303,6 +312,8 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
             "reportPath": str(args.output) if args.output is not None else None,
             "architecture": report.get("architecture"),
             "accuracy": metrics["accuracy"],
+            "macroF1": metrics.get("macroF1"),
+            "balancedAccuracy": metrics.get("balancedAccuracy"),
             "correctCount": metrics["correctCount"],
             "totalCount": metrics["totalCount"],
             "perLabel": metrics["perLabel"],

@@ -651,7 +651,10 @@ describe("dashboard render states", () => {
           name: "btc-v2",
           runId: "run-20260620",
           accuracy: 0.72,
+          macroF1: 0.64,
+          balancedAccuracy: 0.61,
           liftOverBaseline: 0.08,
+          holdoutSource: "artifact-test-split",
           promotionGate: { eligible: true, failures: [] },
           weakestLabels: [{ label: "SIDEWAYS", f1: 0.5, recall: 0.45, precision: 0.55, support: 4 }],
           confusionPairs: [{ expected: "SIDEWAYS", predicted: "TRENDING_UP", count: 2 }],
@@ -668,6 +671,9 @@ describe("dashboard render states", () => {
     const lab = await screen.findByLabelText("Model lab diagnostics");
     expect(within(lab).getByText("run-20260620")).toBeInTheDocument();
     expect(within(lab).getByText("72.00%")).toBeInTheDocument();
+    expect(within(lab).getByText("64.00%")).toBeInTheDocument();
+    expect(within(lab).getByText("61.00%")).toBeInTheDocument();
+    expect(within(lab).getByText("artifact-test-split")).toBeInTheDocument();
     expect(within(lab).getByText("8.00%")).toBeInTheDocument();
     expect(within(lab).getByText("promoted (run-20260620)")).toBeInTheDocument();
     expect(within(lab).getByText("sideways to trending up (2)")).toBeInTheDocument();

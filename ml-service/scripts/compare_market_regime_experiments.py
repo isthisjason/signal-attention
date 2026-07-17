@@ -14,6 +14,8 @@ COLUMNS = [
     ("runId", "run"),
     ("valAccuracy", "val acc"),
     ("evalAccuracy", "eval acc"),
+    ("macroF1", "macro f1"),
+    ("balancedAccuracy", "bal acc"),
     ("liftOverBaseline", "lift"),
     ("meanConfidence", "conf"),
     ("rulesDisagreementRate", "rule diff"),
@@ -56,6 +58,8 @@ def build_comparison_rows(registry: dict[str, Any]) -> list[dict[str, Any]]:
                 "runId": experiment.get("runId"),
                 "valAccuracy": training.get("validationAccuracy"),
                 "evalAccuracy": evaluation.get("accuracy"),
+                "macroF1": evaluation.get("macroF1"),
+                "balancedAccuracy": evaluation.get("balancedAccuracy"),
                 "liftOverBaseline": evaluation.get("liftOverBaseline"),
                 "meanConfidence": confidence_mean(evaluation),
                 "rulesDisagreementRate": first_present(

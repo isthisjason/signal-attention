@@ -53,12 +53,16 @@ export type MarketRegimeExperimentRun = {
   hasTraining?: boolean;
   hasEvaluation?: boolean;
   validationAccuracy?: number | null;
+  validationMacroF1?: number | null;
   accuracy?: number | null;
+  macroF1?: number | null;
+  balancedAccuracy?: number | null;
   baselineAccuracy?: number | null;
   liftOverBaseline?: number | null;
   confidence?: Record<string, unknown> | null;
   labelDistribution?: Record<string, number> | null;
   windowRanges?: Record<string, unknown> | null;
+  holdoutSource?: string | null;
   promotionGate?: {
     eligible?: boolean;
     failures?: string[];

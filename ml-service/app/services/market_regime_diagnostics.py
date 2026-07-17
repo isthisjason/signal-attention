@@ -42,12 +42,16 @@ def summarize_run(experiment: dict[str, Any]) -> dict[str, Any]:
         "hasTraining": bool(training),
         "hasEvaluation": bool(evaluation),
         "validationAccuracy": training.get("validationAccuracy"),
+        "validationMacroF1": training.get("validationMacroF1"),
         "accuracy": evaluation.get("accuracy"),
+        "macroF1": evaluation.get("macroF1"),
+        "balancedAccuracy": evaluation.get("balancedAccuracy"),
         "baselineAccuracy": evaluation.get("baselineAccuracy"),
         "liftOverBaseline": evaluation.get("liftOverBaseline"),
         "confidence": evaluation.get("confidence"),
         "labelDistribution": evaluation.get("labelDistribution"),
         "windowRanges": evaluation.get("windowRanges") or experiment.get("windowRanges"),
+        "holdoutSource": evaluation.get("holdoutSource"),
         "promotionGate": gate,
         "weakestLabels": weakest_labels(evaluation_metrics.get("perLabel") or {}),
         "confusionPairs": confusion_pairs(evaluation_metrics.get("confusionMatrix") or {}),
@@ -131,6 +135,7 @@ def render_diagnostics_markdown(diagnostics: dict[str, Any]) -> str:
             "- "
             f"{run.get('name') or 'unnamed'} / {run.get('runId') or 'no-run-id'}: "
             f"accuracy {render_metric(run.get('accuracy'))}, "
+            f"macro f1 {render_metric(run.get('macroF1'))}, "
             f"lift {render_metric(run.get('liftOverBaseline'))}, "
             f"validation {render_metric(run.get('validationAccuracy'))}, "
             f"eligible {run['promotionGate']['eligible']}"

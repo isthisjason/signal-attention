@@ -53,6 +53,8 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
         },
         "metrics": {
             "accuracy": 0.75,
+            "macroF1": 0.6,
+            "balancedAccuracy": 0.65,
             "correctCount": 3,
             "totalCount": 4,
             "perLabel": {"SIDEWAYS": {"f1": 1}},
@@ -76,6 +78,8 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
             "reportPath": str(tmp_path / "evaluation.json"),
             "architecture": "attention-transformer-v2",
             "accuracy": 0.75,
+            "macroF1": 0.6,
+            "balancedAccuracy": 0.65,
             "correctCount": 3,
             "totalCount": 4,
             "perLabel": {"SIDEWAYS": {"f1": 1}},
