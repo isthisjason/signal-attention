@@ -26,6 +26,7 @@ from scripts.train_market_regime_model import (
     select_best_epoch,
     split_training_windows,
     validation_accuracy,
+    validate_split_ratios,
     validate_validation_ratio,
     window_time_ranges,
 )
@@ -39,6 +40,11 @@ def test_validate_validation_ratio_rejects_invalid_values(validation_ratio: floa
 
 def test_validate_validation_ratio_accepts_fractional_values() -> None:
     validate_validation_ratio(0.2)
+
+
+def test_validate_split_ratios_requires_room_for_training() -> None:
+    with pytest.raises(SystemExit, match="sum to less than 1"):
+        validate_split_ratios(0.5, 0.5)
 
 
 def test_parse_args_accepts_experiment_registry_options(monkeypatch, tmp_path) -> None:
@@ -231,7 +237,13 @@ def test_window_time_ranges_tracks_train_and_validation_windows() -> None:
         for index in range(6)
     ]
 
-    ranges = window_time_ranges(candles, sequence_length=3, train_window_count=3, validation_window_count=1)
+    ranges = window_time_ranges(
+        candles,
+        sequence_length=3,
+        train_window_count=2,
+        validation_window_count=1,
+        test_window_count=1,
+    )
 
     assert ranges == {
         "all": {
@@ -240,9 +252,13 @@ def test_window_time_ranges_tracks_train_and_validation_windows() -> None:
         },
         "train": {
             "firstWindowEnd": "2024-01-01T02:00:00+00:00",
-            "lastWindowEnd": "2024-01-01T04:00:00+00:00",
+            "lastWindowEnd": "2024-01-01T03:00:00+00:00",
         },
         "validation": {
+            "firstWindowEnd": "2024-01-01T04:00:00+00:00",
+            "lastWindowEnd": "2024-01-01T04:00:00+00:00",
+        },
+        "test": {
             "firstWindowEnd": "2024-01-01T05:00:00+00:00",
             "lastWindowEnd": "2024-01-01T05:00:00+00:00",
         },

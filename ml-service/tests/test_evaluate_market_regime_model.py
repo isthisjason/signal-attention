@@ -1,7 +1,10 @@
 from argparse import Namespace
 
+import pytest
+
 import scripts.evaluate_market_regime_model as evaluation_script
 from scripts.evaluate_market_regime_model import (
+    apply_evaluation_holdout,
     apply_holdout,
     build_evaluation_registry_entry,
     calculate_metrics,
@@ -58,6 +61,7 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
     }
 
     report["evaluationScope"] = "holdout"
+    report["holdoutSource"] = "artifact-test-split"
     report["baseline"] = {"label": "SIDEWAYS", "metrics": {"accuracy": 0.5}}
     report["liftOverBaseline"] = 0.25
 
@@ -81,13 +85,51 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
                 "firstWindowEnd": "2024-01-01T00:00:00+00:00",
                 "lastWindowEnd": "2024-01-01T03:00:00+00:00",
             },
-                "evaluationScope": "holdout",
-                "windowCount": 4,
-                "baselineAccuracy": 0.5,
+            "evaluationScope": "holdout",
+            "holdoutSource": "artifact-test-split",
+            "windowCount": 4,
+            "baselineAccuracy": 0.5,
             "baselineLabel": "SIDEWAYS",
             "liftOverBaseline": 0.25,
         },
     }
+
+
+def test_artifact_holdout_uses_pinned_boundary_and_dataset_hash() -> None:
+    examples = [
+        {"openTime": "2024-01-01T00:00:00+00:00"},
+        {"openTime": "2024-01-02T00:00:00+00:00"},
+        {"openTime": "2024-01-03T00:00:00+00:00"},
+    ]
+    metadata = {
+        "evaluationHoldout": {
+            "startWindowEnd": "2024-01-02T00:00:00+00:00",
+            "datasetSha256": "dataset-hash",
+        }
+    }
+
+    selected, scope, source = apply_evaluation_holdout(
+        examples,
+        0.9,
+        metadata,
+        {"sha256": "dataset-hash"},
+    )
+
+    assert selected == examples[1:]
+    assert scope == "holdout"
+    assert source == "artifact-test-split"
+
+
+def test_artifact_holdout_rejects_a_different_dataset() -> None:
+    metadata = {
+        "evaluationHoldout": {
+            "startWindowEnd": "2024-01-02T00:00:00+00:00",
+            "datasetSha256": "expected",
+        }
+    }
+
+    with pytest.raises(SystemExit, match="dataset hash"):
+        apply_evaluation_holdout([], None, metadata, {"sha256": "actual"})
 
 
 def test_evaluation_uses_metadata_architecture_builder(monkeypatch) -> None:

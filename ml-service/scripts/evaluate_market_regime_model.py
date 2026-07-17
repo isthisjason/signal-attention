@@ -1,15 +1,14 @@
 import argparse
-import csv
 import json
 import sys
 from datetime import datetime
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
+from app.services.market_regime_dataset import load_market_regime_candles
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
 from app.services.market_regime_torch_adapter import (
     build_model_for_metadata,
@@ -39,8 +38,14 @@ def main() -> None:
     metadata = validate_artifact_metadata(artifact)
     candles = load_candles(args.csv_path)
     examples = build_examples(candles, int(metadata["sequenceLength"]))
-    # Optional holdout scores only the later windows to mimic future data.
-    examples, evaluation_scope = apply_holdout(examples, args.holdout_ratio)
+    # New artifacts pin an untouched test tail; legacy artifacts can still use an explicit ratio.
+    dataset = describe_path(args.csv_path)
+    examples, evaluation_scope, holdout_source = apply_evaluation_holdout(
+        examples,
+        args.holdout_ratio,
+        metadata,
+        dataset,
+    )
 
     model = build_model_for_metadata(
         torch,
@@ -57,13 +62,14 @@ def main() -> None:
     baseline = majority_class_baseline(predictions, metadata["labels"])
     report = {
         "artifact": describe_path(args.artifact),
-        "dataset": describe_path(args.csv_path),
+        "dataset": dataset,
         "sequenceLength": metadata["sequenceLength"],
         "architecture": metadata.get("architecture"),
         "featureOrder": metadata["featureOrder"],
         "labels": metadata["labels"],
         "windowCount": len(examples),
         "evaluationScope": evaluation_scope,
+        "holdoutSource": holdout_source,
         "groundTruthSource": "rule-based-labels",
         "note": (
             "Expected labels come from the deterministic rule based classifier, "
@@ -109,6 +115,26 @@ def apply_holdout(examples: list[dict[str, Any]], holdout_ratio: float | None) -
     return examples[split_index:], "holdout"
 
 
+def apply_evaluation_holdout(
+    examples: list[dict[str, Any]],
+    holdout_ratio: float | None,
+    metadata: dict[str, Any],
+    dataset: dict[str, Any],
+) -> tuple[list[dict[str, Any]], str, str]:
+    holdout = metadata.get("evaluationHoldout")
+    if isinstance(holdout, dict) and holdout.get("startWindowEnd"):
+        expected_hash = holdout.get("datasetSha256")
+        if expected_hash and dataset.get("sha256") != expected_hash:
+            raise SystemExit("evaluation dataset hash does not match the artifact training dataset")
+        start_window_end = parse_datetime(str(holdout["startWindowEnd"]))
+        selected = [example for example in examples if parse_datetime(example["openTime"]) >= start_window_end]
+        if not selected:
+            raise SystemExit("artifact test boundary selected no evaluation windows")
+        return selected, "holdout", "artifact-test-split"
+    selected, scope = apply_holdout(examples, holdout_ratio)
+    return selected, scope, "legacy-ratio" if scope == "holdout" else "full"
+
+
 def majority_class_baseline(predictions: list[dict[str, Any]], labels: list[str]) -> dict[str, Any]:
     """Predict the single most common expected label for every window.
 
@@ -136,19 +162,7 @@ def majority_class_baseline(predictions: list[dict[str, Any]], labels: list[str]
 
 
 def load_candles(csv_path: Path) -> list[MarketRegimeCandle]:
-    with csv_path.open(newline="") as file:
-        rows = csv.DictReader(file)
-        return [
-            MarketRegimeCandle(
-                openTime=parse_datetime(row["openTime"]),
-                open=Decimal(row["open"]),
-                high=Decimal(row["high"]),
-                low=Decimal(row["low"]),
-                close=Decimal(row["close"]),
-                volume=Decimal(row["volume"]),
-            )
-            for row in rows
-        ]
+    return load_market_regime_candles(csv_path)
 
 
 def parse_datetime(value: str) -> datetime:
@@ -296,6 +310,7 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
             "labelDistribution": report["labelDistribution"],
             "windowRanges": report["windowRanges"],
             "evaluationScope": report.get("evaluationScope"),
+            "holdoutSource": report.get("holdoutSource"),
             "windowCount": report.get("windowCount", metrics.get("totalCount")),
             "baselineAccuracy": report.get("baseline", {}).get("metrics", {}).get("accuracy"),
             "baselineLabel": report.get("baseline", {}).get("label"),
