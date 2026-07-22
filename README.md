@@ -131,6 +131,7 @@ python3 scripts/evaluate_market_regime_model.py \
   --csv-path ../data/generated/coinbase-btc-usd-1h-2022-2024.csv \
   --artifact models/market-regime.pt \
   --output models/market-regime-evaluation.json \
+  --forward-horizon-candles 24 \
   --experiment-name btc-sample-v1
 python scripts/compare_market_regime_experiments.py \
   --experiments-dir models/experiments
@@ -146,6 +147,8 @@ python scripts/generate_market_regime_model_card.py \
 The training command runs a seeded, mini batch loop with per epoch validation and early stopping (controlled by `--patience`), then keeps the best epoch. The saved model uses light dropout and sinusoidal positional encoding, and you can turn those off with `--dropout 0` and `--no-positional-encoding` when you want to compare. The artifact and a manifest are written side by side, and the manifest records the seed, git commit, torch version, and the per epoch history so a run can be reproduced.
 
 The evaluation command writes a report with accuracy, macro-F1, balanced accuracy, per label metrics, a confusion matrix, and a confidence summary. It also reports a majority class baseline and the lift over that baseline, because the expected labels come from the rule based classifier rather than independent ground truth. New artifacts pin an untouched test boundary and dataset hash; `--holdout-ratio` remains available only for older artifacts without that metadata.
+
+The same report now groups forward return, absolute return, and realized volatility over the next 24 candles by both the model prediction and the rule label. That outcome data comes from candles after the input window, so it gives the regimes something outside their training labels to describe. It is still observational evidence, not a trading return, causal result, or independent regime truth. Change the horizon with `--forward-horizon-candles`; windows without a complete future horizon stay in label scoring but are left out of the outcome groups.
 
 When `--experiment-name` is provided, both commands update `models/experiments/index.json`. Each run is kept under its own run id rather than overwriting the previous one, so the registry holds a real history. The compare script reads that registry and prints a table sorted by accuracy with the seed, dropout, positional encoding, git commit, and lift columns so I can see which run did best and why.
 
@@ -284,10 +287,12 @@ Paper trading here means simulated orders and manual candle replay. It is useful
 
 ## Current status
 
-The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read only experiment diagnostics, typed model lab responses, an attention showcase summary, persisted market regime runs, run quality summaries, recent run comparison, baseline disagreement, selectable evidence windows, robustness review, CPU safe regime classification, optional torch backed inference, anomaly checks, baseline risk policies, paper sessions, dashboard APIs, Model Lab review, attention regime panels, assistant model review actions, and a smoke script for the running stack. The frontend now separates shared presentation, baseline workflows, and attention review panels, and its production build splits React and chart dependencies into cacheable chunks.
+The repo currently has the backend foundation, strategy CRUD for the SMA baseline, CSV candle import, market data quality checks, SMA indicators, backtesting, equity and drawdown chart data, audit events, rule based ML risk scoring, model status, read only experiment diagnostics, typed model lab responses, forward market-outcome summaries, an attention showcase summary, persisted market regime runs, run quality summaries, recent run comparison, baseline disagreement, selectable evidence windows, robustness review, CPU safe regime classification, optional torch backed inference, anomaly checks, baseline risk policies, paper sessions, dashboard APIs, Model Lab review, attention regime panels, assistant model review actions, and a smoke script for the running stack. The frontend now separates shared presentation, baseline workflows, and attention review panels, and its production build splits React and chart dependencies into cacheable chunks.
 
 Backend, ML service, frontend tests/build, smoke helper tests, and Compose configuration are also covered by GitHub Actions. The full local stack and running smoke demo still require Docker because they create real PostgreSQL-backed demo state.
 
 A July 2026 evidence wave replaced the 48-candle training input with a reproducibly fetched 2022-2024 Coinbase range and a leakage-free 60/20/20 chronological split. Four balanced attention-v2 candidates passed the unchanged local research gate. The best candidate scored 0.9808 accuracy, 0.9560 macro-F1, and 0.1410 lift over the 0.8398 majority baseline on 5,256 untouched test windows. This measures agreement with rule-derived weak labels, not profitable trading, independent market truth, or deployment readiness. The generated dataset, artifacts, registry, and promotion manifest remain local and ignored.
 
-The next research question is label quality. The fixed range covers sideways, rising, and falling regimes, but the current rule thresholds produce no high-volatility windows. Future work should improve label coverage or introduce an independent evaluation target before making stronger model claims.
+The July 22 follow-up evaluated the selected run against 5,232 complete 24-hour future windows. Predicted `TRENDING_DOWN` windows were followed by the largest average absolute move (2.4132%) and realized volatility (0.7209%), but their mean forward return was positive (0.5419%). That is a useful warning: the regime describes the sequence the model just saw; it is not a forecast of the next move's direction.
+
+The next research question is still label quality. The fixed range covers sideways, rising, and falling regimes, but the current rule thresholds produce no high-volatility windows. Future work should improve that coverage and repeat the forward-outcome review across other time ranges or markets before making stronger model claims.

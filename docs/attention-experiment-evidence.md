@@ -29,6 +29,23 @@ All candidates used attention transformer v2, CPU execution, positional encoding
 
 All four candidates passed the unchanged local research gates: holdout evaluation, accuracy of at least 0.60, and lift of at least 0.05. The selected local candidate was seed 42 with dropout 0.1. Its per-label test F1 was 0.9885 for `SIDEWAYS`, 0.9467 for `TRENDING_UP`, and 0.9329 for `TRENDING_DOWN`.
 
+## July 22, 2026 Forward Outcome Review
+
+The selected candidate was evaluated again with a 24-candle forward horizon. Of the 5,256 untouched test windows, 5,232 had a complete future horizon and the final 24 stayed in weak-label scoring but were excluded from this outcome review.
+
+Forward return compares the input window's closing price with the close 24 candles later. Realized volatility is the unannualized population standard deviation of the 24 intervening hourly returns. These values come from after the model input, unlike the rule-derived labels used for training and accuracy scoring.
+
+| Predicted regime | Windows | Mean forward return | Median forward return | Mean absolute move | Mean realized volatility |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `SIDEWAYS` | 4,363 | 0.1298% | 0.0507% | 1.8169% | 0.4612% |
+| `TRENDING_UP` | 495 | 0.2630% | 0.2933% | 1.8243% | 0.5026% |
+| `TRENDING_DOWN` | 374 | 0.5419% | 0.3934% | 2.4132% | 0.7209% |
+| `HIGH_VOLATILITY` | 0 | N/A | N/A | N/A | N/A |
+
+The `TRENDING_DOWN` cohort was followed by the largest moves and highest realized volatility, but its average and median forward returns were positive. That result is a useful limit on interpretation: the model's label summarizes the preceding sequence and does not predict that the next 24 hours will continue in the label's direction. The equivalent rule-label groups had a similar profile, which is unsurprising given the model's high agreement with those weak labels.
+
+This review adds a market outcome that is independent of the training-label calculation, but it is not independent regime ground truth. It does not establish profitability, causal predictive power, investment suitability, or deployment readiness. The missing `HIGH_VOLATILITY` support also remains unresolved.
+
 ## Reproduction
 
 From `ml-service/` with the optional Torch requirements installed:
@@ -45,6 +62,13 @@ From `ml-service/` with the optional Torch requirements installed:
   --seeds 42,43 --dropouts 0.1,0.2 \
   --positional-encoding-modes on \
   --architecture attention-transformer-v2
+../.venv/bin/python scripts/evaluate_market_regime_model.py \
+  --csv-path ../data/generated/coinbase-btc-usd-1h-2022-2024.csv \
+  --artifact models/evidence-wave/market-regime-seed42-dropout0.1-poson-attention-v2.pt \
+  --output models/evidence-wave/market-regime-seed42-dropout0.1-poson-attention-v2.evaluation.json \
+  --forward-horizon-candles 24 \
+  --experiment-name sweep-seed42-dropout0.1-poson-attention-v2 \
+  --experiments-dir models/evidence-wave-experiments
 ../.venv/bin/python scripts/promote_market_regime_experiment.py \
   --experiments-dir models/evidence-wave-experiments \
   --output models/evidence-wave-experiments/promoted-market-regime.json

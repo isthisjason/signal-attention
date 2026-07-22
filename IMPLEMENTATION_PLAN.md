@@ -203,6 +203,7 @@ Completed major waves:
 - ML-first cleanup wave: removed the duplicate frontend regime-analysis table in favor of the robustness review path, extracted shared regime quality and robustness labels, optimized assistant context lookup, typed model lab diagnostics schemas, refocused workbench copy around attention regimes and baselines, and expanded smoke checks for model lab plus robustness review.
 - Attention showcase wave: added the read only showcase summary, selected-window evidence drilldown, baseline disagreement context, assistant review context, smoke coverage, and portfolio documentation.
 - Regime-diverse evidence wave: added reproducible public candle acquisition, dataset-readiness gates, leakage-free train/validation/test partitions, balanced training, macro-F1 diagnostics, and a bounded attention-v2 evidence sweep.
+- Forward outcome evidence wave: added 24-candle forward return and realized-volatility profiles, kept incomplete tail windows out of outcome summaries without removing them from label scoring, and surfaced a compact best-run review in Model Lab.
 
 Portfolio hardening wave results:
 
@@ -213,11 +214,12 @@ Portfolio hardening wave results:
 - The earlier 48-candle sweep correctly failed because its training partition contained only `SIDEWAYS` labels.
 - A fixed 2022-2024 Coinbase range produced 26,282 windows across sideways, rising, and falling weak-label regimes using a leakage-free 60/20/20 split.
 - Four balanced attention transformer v2 candidates passed the unchanged research gate. The best scored 0.9808 accuracy, 0.9560 macro-F1, and 0.1410 lift over the 0.8398 majority baseline on 5,256 untouched test windows.
+- The selected run had 5,232 complete forward horizons. Its predicted `TRENDING_DOWN` cohort had the largest subsequent absolute move and realized volatility, while its positive average return reinforced that regime labels are not directional forecasts.
 - The dataset, artifacts, registry, and local promotion manifest remain ignored; promotion is a research workflow state, not deployment approval.
 
 Next evidence target:
 
-- Improve weak-label coverage or introduce an independent evaluation target. The current three-year range contains no `HIGH_VOLATILITY` labels under the existing rule threshold.
+- Improve weak-label coverage and repeat the independent forward-outcome review across another time range or market. The current three-year range contains no `HIGH_VOLATILITY` labels under the existing rule threshold.
 
 Current recent commits:
 
