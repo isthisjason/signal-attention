@@ -2,13 +2,16 @@ import argparse
 import json
 import sys
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
+from statistics import median
 from typing import Any
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.schemas.market_regime_schema import MarketRegimeCandle, MarketRegimeRequest
 from app.services.market_regime_dataset import load_market_regime_candles
+from app.services.market_regime_features import percent_change, standard_deviation
 from app.services.market_regime_service import RuleBasedMarketRegimeClassifier
 from app.services.market_regime_torch_adapter import (
     build_model_for_metadata,
@@ -37,7 +40,11 @@ def main() -> None:
     artifact = load_artifact(torch, args.artifact, device)
     metadata = validate_artifact_metadata(artifact)
     candles = load_candles(args.csv_path)
-    examples = build_examples(candles, int(metadata["sequenceLength"]))
+    examples = build_examples(
+        candles,
+        int(metadata["sequenceLength"]),
+        args.forward_horizon_candles,
+    )
     # New artifacts pin an untouched test tail; legacy artifacts can still use an explicit ratio.
     dataset = describe_path(args.csv_path)
     examples, evaluation_scope, holdout_source = apply_evaluation_holdout(
@@ -60,6 +67,11 @@ def main() -> None:
     predictions = predict_examples(torch, model, metadata, examples, device)
     model_metrics = calculate_metrics(predictions, metadata["labels"])
     baseline = majority_class_baseline(predictions, metadata["labels"])
+    forward_outcomes = build_forward_outcome_analysis(
+        predictions,
+        metadata["labels"],
+        args.forward_horizon_candles,
+    )
     report = {
         "artifact": describe_path(args.artifact),
         "dataset": dataset,
@@ -81,6 +93,7 @@ def main() -> None:
         "metrics": model_metrics,
         "baseline": baseline,
         "liftOverBaseline": round(model_metrics["accuracy"] - baseline["metrics"]["accuracy"], 4),
+        "forwardOutcomeAnalysis": forward_outcomes,
         "samples": predictions[: args.sample_count],
     }
     write_report(args.output, report)
@@ -95,6 +108,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--sample-count", type=int, default=10)
     parser.add_argument(
+        "--forward-horizon-candles",
+        type=positive_int,
+        default=24,
+        help="Measure market outcomes over this many candles after each evaluated window.",
+    )
+    parser.add_argument(
         "--holdout-ratio",
         type=float,
         default=None,
@@ -103,6 +122,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--experiment-name")
     parser.add_argument("--experiments-dir", type=Path, default=Path("models/experiments"))
     return parser.parse_args()
+
+
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
 
 
 def apply_holdout(examples: list[dict[str, Any]], holdout_ratio: float | None) -> tuple[list[dict[str, Any]], str]:
@@ -169,11 +195,16 @@ def parse_datetime(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def build_examples(candles: list[MarketRegimeCandle], sequence_length: int) -> list[dict[str, Any]]:
+def build_examples(
+    candles: list[MarketRegimeCandle],
+    sequence_length: int,
+    forward_horizon_candles: int = 24,
+) -> list[dict[str, Any]]:
     classifier = RuleBasedMarketRegimeClassifier()
     examples: list[dict[str, Any]] = []
     for end_index in range(sequence_length, len(candles) + 1):
         window = candles[end_index - sequence_length : end_index]
+        future_candles = candles[end_index : end_index + forward_horizon_candles]
         request = MarketRegimeRequest(symbol="local", timeframe="local", candles=window)
         # Expected labels are generated the same way as training labels for a fair comparison.
         examples.append(
@@ -181,9 +212,27 @@ def build_examples(candles: list[MarketRegimeCandle], sequence_length: int) -> l
                 "openTime": window[-1].openTime.isoformat(),
                 "expectedLabel": classifier.classify(request).regimeLabel,
                 "features": build_torch_feature_matrix(window),
+                # The last few windows stay in label scoring even though their future is not in the file yet.
+                "forwardOutcome": calculate_forward_outcome(window[-1].close, future_candles)
+                if len(future_candles) == forward_horizon_candles
+                else None,
             }
         )
     return examples
+
+
+def calculate_forward_outcome(
+    starting_close: Decimal,
+    future_candles: list[MarketRegimeCandle],
+) -> dict[str, float]:
+    closes = [starting_close, *[candle.close for candle in future_candles]]
+    forward_return = percent_change(starting_close, closes[-1])
+    hourly_returns = [percent_change(previous, current) for previous, current in zip(closes, closes[1:])]
+    return {
+        "forwardReturnPercent": round(float(forward_return), 4),
+        "absoluteForwardReturnPercent": round(float(abs(forward_return)), 4),
+        "realizedVolatilityPercent": round(float(standard_deviation(hourly_returns)), 4),
+    }
 
 
 def predict_examples(torch, model, metadata: dict[str, Any], examples: list[dict[str, Any]], device) -> list[dict[str, Any]]:
@@ -203,9 +252,60 @@ def predict_examples(torch, model, metadata: dict[str, Any], examples: list[dict
                     "predictedLabel": predicted_label,
                     "isCorrect": example["expectedLabel"] == predicted_label,
                     "confidence": round(float(confidence_value.item()) * 100, 4),
+                    "forwardOutcome": example.get("forwardOutcome"),
                 }
             )
     return predictions
+
+
+def build_forward_outcome_analysis(
+    predictions: list[dict[str, Any]],
+    labels: list[str],
+    horizon_candles: int,
+) -> dict[str, Any]:
+    eligible = [prediction for prediction in predictions if isinstance(prediction.get("forwardOutcome"), dict)]
+    return {
+        "horizonCandles": horizon_candles,
+        "eligibleWindowCount": len(eligible),
+        "excludedTailWindowCount": len(predictions) - len(eligible),
+        "methodology": (
+            "Forward return compares the window-end close with the close at the horizon. "
+            "Realized volatility is the unannualized population standard deviation of returns inside that future horizon."
+        ),
+        "note": (
+            "These outcomes describe what happened after each prediction. They are not profit, causality, "
+            "or independent regime ground truth."
+        ),
+        "byPredictedLabel": outcome_groups(eligible, labels, "predictedLabel"),
+        "byExpectedLabel": outcome_groups(eligible, labels, "expectedLabel"),
+    }
+
+
+def outcome_groups(
+    predictions: list[dict[str, Any]],
+    labels: list[str],
+    label_key: str,
+) -> dict[str, dict[str, int | float]]:
+    groups: dict[str, dict[str, int | float]] = {}
+    for label in labels:
+        outcomes = [prediction["forwardOutcome"] for prediction in predictions if prediction.get(label_key) == label]
+        returns = [float(outcome["forwardReturnPercent"]) for outcome in outcomes]
+        groups[label] = {
+            "support": len(outcomes),
+            "meanForwardReturnPercent": rounded_mean(returns),
+            "medianForwardReturnPercent": round(float(median(returns)), 4) if returns else 0.0,
+            "meanAbsoluteForwardReturnPercent": rounded_mean(
+                [float(outcome["absoluteForwardReturnPercent"]) for outcome in outcomes]
+            ),
+            "meanRealizedVolatilityPercent": rounded_mean(
+                [float(outcome["realizedVolatilityPercent"]) for outcome in outcomes]
+            ),
+        }
+    return groups
+
+
+def rounded_mean(values: list[float]) -> float:
+    return round(sum(values) / len(values), 4) if values else 0.0
 
 
 def calculate_metrics(predictions: list[dict[str, Any]], labels: list[str]) -> dict[str, Any]:
@@ -326,6 +426,7 @@ def build_evaluation_registry_entry(args: argparse.Namespace, report: dict[str, 
             "baselineAccuracy": report.get("baseline", {}).get("metrics", {}).get("accuracy"),
             "baselineLabel": report.get("baseline", {}).get("label"),
             "liftOverBaseline": report.get("liftOverBaseline"),
+            "forwardOutcomeAnalysis": report.get("forwardOutcomeAnalysis"),
         },
     }
 

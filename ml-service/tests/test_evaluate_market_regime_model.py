@@ -1,4 +1,6 @@
 from argparse import Namespace
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 
@@ -7,11 +9,16 @@ from scripts.evaluate_market_regime_model import (
     apply_evaluation_holdout,
     apply_holdout,
     build_evaluation_registry_entry,
+    build_examples,
+    build_forward_outcome_analysis,
+    calculate_forward_outcome,
     calculate_metrics,
     label_distribution_from_predictions,
     majority_class_baseline,
+    positive_int,
     window_ranges_from_predictions,
 )
+from app.schemas.market_regime_schema import MarketRegimeCandle
 
 
 def test_parse_args_accepts_experiment_registry_options(monkeypatch, tmp_path) -> None:
@@ -38,6 +45,12 @@ def test_parse_args_accepts_experiment_registry_options(monkeypatch, tmp_path) -
 
     assert args.experiment_name == "baseline"
     assert args.experiments_dir == experiments_dir
+    assert args.forward_horizon_candles == 24
+
+
+def test_parse_args_rejects_non_positive_forward_horizon() -> None:
+    with pytest.raises(Exception, match="positive integer"):
+        positive_int("0")
 
 
 def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
@@ -59,7 +72,8 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
             "totalCount": 4,
             "perLabel": {"SIDEWAYS": {"f1": 1}},
             "confidence": {"average": 80.0},
-        }
+        },
+        "forwardOutcomeAnalysis": {"horizonCandles": 24, "eligibleWindowCount": 3},
     }
 
     report["evaluationScope"] = "holdout"
@@ -95,6 +109,7 @@ def test_build_evaluation_registry_entry_uses_report_metrics(tmp_path) -> None:
             "baselineAccuracy": 0.5,
             "baselineLabel": "SIDEWAYS",
             "liftOverBaseline": 0.25,
+            "forwardOutcomeAnalysis": {"horizonCandles": 24, "eligibleWindowCount": 3},
         },
     }
 
@@ -237,3 +252,76 @@ def test_label_distribution_from_predictions_counts_expected_and_predicted_label
         "expected": {"SIDEWAYS": 1, "TRENDING_UP": 1},
         "predicted": {"SIDEWAYS": 2, "TRENDING_UP": 0},
     }
+
+
+def test_calculate_forward_outcome_uses_the_complete_future_horizon() -> None:
+    future = candles_for_closes([Decimal("102"), Decimal("104")])
+
+    outcome = calculate_forward_outcome(Decimal("100"), future)
+
+    assert outcome["forwardReturnPercent"] == 4.0
+    assert outcome["absoluteForwardReturnPercent"] == 4.0
+    assert outcome["realizedVolatilityPercent"] > 0
+
+
+def test_build_examples_keeps_tail_windows_without_forward_outcomes() -> None:
+    candles = candles_for_closes([Decimal(index + 100) for index in range(23)])
+
+    examples = build_examples(candles, sequence_length=20, forward_horizon_candles=2)
+
+    assert len(examples) == 4
+    assert examples[0]["forwardOutcome"] is not None
+    assert examples[1]["forwardOutcome"] is not None
+    assert examples[2]["forwardOutcome"] is None
+    assert examples[3]["forwardOutcome"] is None
+
+
+def test_forward_outcomes_group_predictions_and_report_incomplete_tail() -> None:
+    predictions = [
+        {
+            "expectedLabel": "SIDEWAYS",
+            "predictedLabel": "TRENDING_UP",
+            "forwardOutcome": {
+                "forwardReturnPercent": 2.0,
+                "absoluteForwardReturnPercent": 2.0,
+                "realizedVolatilityPercent": 1.0,
+            },
+        },
+        {
+            "expectedLabel": "TRENDING_UP",
+            "predictedLabel": "TRENDING_UP",
+            "forwardOutcome": {
+                "forwardReturnPercent": -1.0,
+                "absoluteForwardReturnPercent": 1.0,
+                "realizedVolatilityPercent": 3.0,
+            },
+        },
+        {"expectedLabel": "SIDEWAYS", "predictedLabel": "SIDEWAYS", "forwardOutcome": None},
+    ]
+
+    analysis = build_forward_outcome_analysis(predictions, ["SIDEWAYS", "TRENDING_UP"], 24)
+
+    assert analysis["eligibleWindowCount"] == 2
+    assert analysis["excludedTailWindowCount"] == 1
+    assert analysis["byPredictedLabel"]["TRENDING_UP"] == {
+        "support": 2,
+        "meanForwardReturnPercent": 0.5,
+        "medianForwardReturnPercent": 0.5,
+        "meanAbsoluteForwardReturnPercent": 1.5,
+        "meanRealizedVolatilityPercent": 2.0,
+    }
+    assert analysis["byExpectedLabel"]["SIDEWAYS"]["support"] == 1
+
+
+def candles_for_closes(closes: list[Decimal]) -> list[MarketRegimeCandle]:
+    return [
+        MarketRegimeCandle(
+            openTime=datetime(2024, 1, 1, tzinfo=UTC) + timedelta(hours=index),
+            open=close,
+            high=close,
+            low=close,
+            close=close,
+            volume=Decimal("100"),
+        )
+        for index, close in enumerate(closes)
+    ]
