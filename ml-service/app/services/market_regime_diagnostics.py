@@ -33,6 +33,7 @@ def summarize_run(experiment: dict[str, Any]) -> dict[str, Any]:
     report = load_evaluation_report(evaluation.get("reportPath"))
     metrics = report.get("metrics") if isinstance(report, dict) else {}
     evaluation_metrics = metrics if isinstance(metrics, dict) and metrics else evaluation
+    forward_outcomes = evaluation.get("forwardOutcomeAnalysis") or report.get("forwardOutcomeAnalysis")
     gate = evaluate_promotion_gates(experiment)
 
     # Keep the run summary compact enough for registry-level diagnostics while preserving the signals that explain ranking.
@@ -55,6 +56,7 @@ def summarize_run(experiment: dict[str, Any]) -> dict[str, Any]:
         "promotionGate": gate,
         "weakestLabels": weakest_labels(evaluation_metrics.get("perLabel") or {}),
         "confusionPairs": confusion_pairs(evaluation_metrics.get("confusionMatrix") or {}),
+        "forwardOutcomeSummary": summarize_forward_outcomes(forward_outcomes),
         "reportPath": evaluation.get("reportPath"),
     }
 
@@ -99,6 +101,45 @@ def confusion_pairs(confusion_matrix: dict[str, Any], limit: int = 5) -> list[di
                 continue
             pairs.append({"expected": expected, "predicted": predicted, "count": count})
     return sorted(pairs, key=lambda pair: pair["count"], reverse=True)[:limit]
+
+
+def summarize_forward_outcomes(analysis: Any) -> dict[str, Any] | None:
+    if not isinstance(analysis, dict):
+        return None
+    groups = analysis.get("byPredictedLabel")
+    if not isinstance(groups, dict):
+        return None
+
+    # Zero-support labels are useful in the full report, but they should not win a Model Lab comparison by accident.
+    observed = [
+        outcome_summary(label, metrics)
+        for label, metrics in groups.items()
+        if isinstance(metrics, dict) and metric_or_zero(metrics.get("support")) > 0
+    ]
+    if not observed:
+        return None
+    return {
+        "horizonCandles": analysis.get("horizonCandles"),
+        "eligibleWindowCount": analysis.get("eligibleWindowCount"),
+        "excludedTailWindowCount": analysis.get("excludedTailWindowCount"),
+        "highestForwardVolatility": max(
+            observed,
+            key=lambda item: metric_or_negative_inf(item.get("meanRealizedVolatilityPercent")),
+        ),
+        "strongestAverageAbsoluteMove": max(
+            observed,
+            key=lambda item: metric_or_negative_inf(item.get("meanAbsoluteForwardReturnPercent")),
+        ),
+    }
+
+
+def outcome_summary(label: str, metrics: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "label": label,
+        "support": metrics.get("support"),
+        "meanAbsoluteForwardReturnPercent": metrics.get("meanAbsoluteForwardReturnPercent"),
+        "meanRealizedVolatilityPercent": metrics.get("meanRealizedVolatilityPercent"),
+    }
 
 
 def sort_diagnostic_runs(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -172,3 +213,7 @@ def metric_or_negative_inf(value: Any) -> float:
 
 def metric_or_inf(value: Any) -> float:
     return float(value) if isinstance(value, (int, float)) else float("inf")
+
+
+def metric_or_zero(value: Any) -> float:
+    return float(value) if isinstance(value, (int, float)) else 0.0

@@ -293,6 +293,7 @@ function ModelLabPanel({ state }: { state: LoadState<MarketRegimeExperimentDiagn
   const bestRun = diagnostics.summary.bestRun ?? diagnostics.runs[0] ?? null;
   const promotionStatus = promotionValue(diagnostics.promotion, "status") ?? "not promoted";
   const selectedRun = promotionValue(diagnostics.promotion, "selectedRun.runId");
+  const forwardOutcomes = bestRun?.forwardOutcomeSummary;
   return (
     <div className="model-lab-panel" aria-label="Model lab diagnostics">
       <div>
@@ -353,6 +354,32 @@ function ModelLabPanel({ state }: { state: LoadState<MarketRegimeExperimentDiagn
                 ))}
               </ul>
             ) : null}
+            {forwardOutcomes ? (
+              <>
+                <h4>Forward outcomes</h4>
+                <ResultGrid
+                  items={[
+                    ["Horizon", `${forwardOutcomes.horizonCandles ?? 0} candles`],
+                    ["Windows", forwardOutcomes.eligibleWindowCount ?? 0],
+                    [
+                      "Highest volatility",
+                      formatForwardOutcome(
+                        forwardOutcomes.highestForwardVolatility?.label,
+                        forwardOutcomes.highestForwardVolatility?.meanRealizedVolatilityPercent,
+                      ),
+                    ],
+                    [
+                      "Largest move",
+                      formatForwardOutcome(
+                        forwardOutcomes.strongestAverageAbsoluteMove?.label,
+                        forwardOutcomes.strongestAverageAbsoluteMove?.meanAbsoluteForwardReturnPercent,
+                      ),
+                    ],
+                  ]}
+                />
+                <p className="muted">Observed after each prediction; this is context, not a profit score.</p>
+              </>
+            ) : null}
           </div>
         </div>
       ) : (
@@ -367,6 +394,13 @@ function ModelLabPanel({ state }: { state: LoadState<MarketRegimeExperimentDiagn
       ) : null}
     </div>
   );
+}
+
+function formatForwardOutcome(label: string | null | undefined, value: number | null | undefined) {
+  if (!label || value === null || value === undefined) {
+    return "not recorded";
+  }
+  return `${formatAction(label)} (${formatNumber(value)}%)`;
 }
 
 function RegimeRunComparisonTable({

@@ -80,7 +80,21 @@ export type MarketRegimeExperimentRun = {
     predicted?: string | null;
     count?: number | null;
   }>;
+  forwardOutcomeSummary?: {
+    horizonCandles?: number | null;
+    eligibleWindowCount?: number | null;
+    excludedTailWindowCount?: number | null;
+    highestForwardVolatility?: ForwardOutcomeRegime | null;
+    strongestAverageAbsoluteMove?: ForwardOutcomeRegime | null;
+  } | null;
   reportPath?: string | null;
+};
+
+export type ForwardOutcomeRegime = {
+  label?: string | null;
+  support?: number | null;
+  meanAbsoluteForwardReturnPercent?: number | null;
+  meanRealizedVolatilityPercent?: number | null;
 };
 
 export type MarketRegimeExperimentDiagnostics = {

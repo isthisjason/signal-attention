@@ -5,6 +5,7 @@ from app.services.market_regime_diagnostics import (
     confusion_pairs,
     render_diagnostics_markdown,
     sort_diagnostic_runs,
+    summarize_forward_outcomes,
     weakest_labels,
 )
 
@@ -156,6 +157,56 @@ def test_confusion_pairs_excludes_correct_predictions() -> None:
         {"expected": "TRENDING_UP", "predicted": "SIDEWAYS", "count": 3},
         {"expected": "SIDEWAYS", "predicted": "TRENDING_UP", "count": 2},
     ]
+
+
+def test_summarize_forward_outcomes_uses_observed_predicted_labels() -> None:
+    summary = summarize_forward_outcomes(
+        {
+            "horizonCandles": 24,
+            "eligibleWindowCount": 20,
+            "excludedTailWindowCount": 4,
+            "byPredictedLabel": {
+                "SIDEWAYS": {
+                    "support": 15,
+                    "meanAbsoluteForwardReturnPercent": 1.2,
+                    "meanRealizedVolatilityPercent": 0.8,
+                },
+                "TRENDING_UP": {
+                    "support": 5,
+                    "meanAbsoluteForwardReturnPercent": 2.4,
+                    "meanRealizedVolatilityPercent": 1.1,
+                },
+                "HIGH_VOLATILITY": {
+                    "support": 0,
+                    "meanAbsoluteForwardReturnPercent": 0,
+                    "meanRealizedVolatilityPercent": 0,
+                },
+            },
+        }
+    )
+
+    assert summary == {
+        "horizonCandles": 24,
+        "eligibleWindowCount": 20,
+        "excludedTailWindowCount": 4,
+        "highestForwardVolatility": {
+            "label": "TRENDING_UP",
+            "support": 5,
+            "meanAbsoluteForwardReturnPercent": 2.4,
+            "meanRealizedVolatilityPercent": 1.1,
+        },
+        "strongestAverageAbsoluteMove": {
+            "label": "TRENDING_UP",
+            "support": 5,
+            "meanAbsoluteForwardReturnPercent": 2.4,
+            "meanRealizedVolatilityPercent": 1.1,
+        },
+    }
+
+
+def test_summarize_forward_outcomes_handles_legacy_evaluation() -> None:
+    assert summarize_forward_outcomes(None) is None
+    assert summarize_forward_outcomes({"byPredictedLabel": {}}) is None
 
 
 def test_render_diagnostics_markdown_includes_empty_state() -> None:

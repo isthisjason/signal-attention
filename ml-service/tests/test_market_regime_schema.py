@@ -74,6 +74,15 @@ def test_experiment_diagnostics_response_uses_typed_runs() -> None:
                 "promotionGate": {"eligible": True, "failures": []},
                 "weakestLabels": [{"label": "SIDEWAYS", "f1": 0.5}],
                 "confusionPairs": [{"expected": "SIDEWAYS", "predicted": "TRENDING_UP", "count": 2}],
+                "forwardOutcomeSummary": {
+                    "horizonCandles": 24,
+                    "eligibleWindowCount": 40,
+                    "highestForwardVolatility": {
+                        "label": "TRENDING_UP",
+                        "support": 8,
+                        "meanRealizedVolatilityPercent": 1.2,
+                    },
+                },
             },
         },
         runs=[],
@@ -87,6 +96,9 @@ def test_experiment_diagnostics_response_uses_typed_runs() -> None:
     assert response.summary.bestRun.holdoutSource == "artifact-test-split"
     assert response.summary.bestRun.weakestLabels[0].label == "SIDEWAYS"
     assert response.summary.bestRun.confusionPairs[0].count == 2
+    assert response.summary.bestRun.forwardOutcomeSummary is not None
+    assert response.summary.bestRun.forwardOutcomeSummary.highestForwardVolatility is not None
+    assert response.summary.bestRun.forwardOutcomeSummary.highestForwardVolatility.label == "TRENDING_UP"
 
 
 def test_experiment_diagnostics_defaults_do_not_share_lists() -> None:

@@ -138,6 +138,21 @@ class ConfusionPairDiagnostics(BaseModel):
     count: int | None = None
 
 
+class ForwardOutcomeRegimeDiagnostics(BaseModel):
+    label: str | None = None
+    support: int | None = None
+    meanAbsoluteForwardReturnPercent: float | None = None
+    meanRealizedVolatilityPercent: float | None = None
+
+
+class ForwardOutcomeSummaryDiagnostics(BaseModel):
+    horizonCandles: int | None = None
+    eligibleWindowCount: int | None = None
+    excludedTailWindowCount: int | None = None
+    highestForwardVolatility: ForwardOutcomeRegimeDiagnostics | None = None
+    strongestAverageAbsoluteMove: ForwardOutcomeRegimeDiagnostics | None = None
+
+
 class MarketRegimeExperimentRunDiagnostics(BaseModel):
     name: str | None = None
     runId: str | None = None
@@ -157,6 +172,7 @@ class MarketRegimeExperimentRunDiagnostics(BaseModel):
     promotionGate: PromotionGateDiagnostics = Field(default_factory=PromotionGateDiagnostics)
     weakestLabels: list[WeakLabelDiagnostics] = Field(default_factory=list)
     confusionPairs: list[ConfusionPairDiagnostics] = Field(default_factory=list)
+    forwardOutcomeSummary: ForwardOutcomeSummaryDiagnostics | None = None
     reportPath: str | None = None
 
 

@@ -658,6 +658,21 @@ describe("dashboard render states", () => {
           promotionGate: { eligible: true, failures: [] },
           weakestLabels: [{ label: "SIDEWAYS", f1: 0.5, recall: 0.45, precision: 0.55, support: 4 }],
           confusionPairs: [{ expected: "SIDEWAYS", predicted: "TRENDING_UP", count: 2 }],
+          forwardOutcomeSummary: {
+            horizonCandles: 24,
+            eligibleWindowCount: 5232,
+            excludedTailWindowCount: 24,
+            highestForwardVolatility: {
+              label: "TRENDING_DOWN",
+              support: 340,
+              meanRealizedVolatilityPercent: 0.88,
+            },
+            strongestAverageAbsoluteMove: {
+              label: "TRENDING_UP",
+              support: 498,
+              meanAbsoluteForwardReturnPercent: 2.45,
+            },
+          },
         },
       },
       runs: [],
@@ -677,6 +692,10 @@ describe("dashboard render states", () => {
     expect(within(lab).getByText("8.00%")).toBeInTheDocument();
     expect(within(lab).getByText("promoted (run-20260620)")).toBeInTheDocument();
     expect(within(lab).getByText("sideways to trending up (2)")).toBeInTheDocument();
+    expect(within(lab).getByText("24 candles")).toBeInTheDocument();
+    expect(within(lab).getByText("5232")).toBeInTheDocument();
+    expect(within(lab).getByText("trending down (0.88%)")).toBeInTheDocument();
+    expect(within(lab).getByText("trending up (2.45%)")).toBeInTheDocument();
     expect(within(lab).getByText("local registry only")).toBeInTheDocument();
   });
 
