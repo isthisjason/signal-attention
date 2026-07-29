@@ -119,6 +119,7 @@ public class BacktestService {
 
         List<BacktestEquityPointResponse> points = new ArrayList<>();
         BigDecimal equity = run.getInitialBalance();
+        // Seed the series at the requested start even when the first trade closes much later.
         points.add(new BacktestEquityPointResponse(run.getStartDate(), scaleMoney(equity)));
         for (BacktestTrade trade : trades) {
             equity = equity.add(trade.getNetPnl());
@@ -240,6 +241,7 @@ public class BacktestService {
                         rules.longWindow()
                 )
                 .stream()
+                // Index lookup keeps the candle simulation linear after signals have been detected.
                 .collect(Collectors.toMap(CrossoverSignal::index, CrossoverSignal::type));
 
         // These variables represent the entire simulated account state at the current candle.
@@ -372,6 +374,7 @@ public class BacktestService {
         BigDecimal variance = returns.stream()
                 .map(value -> value.subtract(mean).multiply(value.subtract(mean)))
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
+                // Treat the observed backtest path as the full population rather than a statistical sample.
                 .divide(BigDecimal.valueOf(returns.size()), 12, RoundingMode.HALF_UP);
         return BigDecimal.valueOf(Math.sqrt(variance.doubleValue()));
     }

@@ -21,6 +21,7 @@ public class RegimeRunEvidenceSummarizer {
         if (predictions.isEmpty()) {
             return new RegimeRunQualitySummary(null, 0, 0, BigDecimal.ZERO.setScale(6), 0, null, Map.of());
         }
+        // Missing confidence values are excluded from both the sum and denominator instead of being treated as zero.
         BigDecimal totalConfidence = predictions.stream()
                 .map(RegimePrediction::getConfidence)
                 .filter(Objects::nonNull)
@@ -41,12 +42,14 @@ public class RegimeRunEvidenceSummarizer {
         int anomalyCount = (int) predictions.stream()
                 .filter(prediction -> prediction.getAnomalyLabel() != null && !"NORMAL".equalsIgnoreCase(prediction.getAnomalyLabel()))
                 .count();
+        // Preserve first-seen regime order so serialized summaries remain stable for the same prediction sequence.
         Map<String, Integer> regimeCounts = predictions.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         RegimePrediction::getRegimeLabel,
                         LinkedHashMap::new,
                         java.util.stream.Collectors.collectingAndThen(java.util.stream.Collectors.counting(), Long::intValue)
                 ));
+        // The label comparison provides deterministic tie-breaking when regimes have equal counts.
         String dominantRegime = regimeCounts.entrySet().stream()
                 .max(Map.Entry.<String, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
                 .map(Map.Entry::getKey)
@@ -71,6 +74,7 @@ public class RegimeRunEvidenceSummarizer {
         if (quality.baselineDisagreementRate().compareTo(NEEDS_REVIEW_DISAGREEMENT_RATE) > 0) {
             return "needs_review";
         }
+        // Threshold boundaries stay in the less severe band; only rates strictly above them are escalated.
         if (quality.baselineDisagreementRate().compareTo(MIXED_DISAGREEMENT_RATE) > 0) {
             return "mixed";
         }

@@ -70,6 +70,7 @@ public class MarketDataService {
         MarketDataImportSummary summary = new MarketDataImportSummary(
                 parseResult.totalRows(),
                 imported,
+                // Derive rejections from attempted rows so parser and persistence failures share one total.
                 parseResult.totalRows() - imported,
                 List.copyOf(errors)
         );
@@ -144,6 +145,7 @@ public class MarketDataService {
                 if (minutesBetweenCandles == 0) {
                     duplicateTimestampCount++;
                 } else if (minutesBetweenCandles > expectedIntervalMinutes) {
+                    // Count discontinuities, not the number of individual intervals missing inside each gap.
                     gapCount++;
                 }
             }
