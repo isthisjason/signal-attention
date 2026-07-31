@@ -19,7 +19,6 @@ import {
   fetchMarketRegimeStatus,
   fetchRegimeRunComparison,
   fetchRegimeRobustness,
-  fetchRegimeRuns,
   runRegimeReplay,
 } from "./marketRegime";
 import {
@@ -240,9 +239,6 @@ describe("dashboard and analysis clients", () => {
 
     await fetchMarketRegimeExperiments();
     expect(latestFetchCall().url).toBe("http://api.test/api/market-regime/experiments");
-
-    await fetchRegimeRuns("ETH-USD", "4h", 3);
-    expect(latestFetchCall().url).toBe("http://api.test/api/regime-runs?symbol=ETH-USD&timeframe=4h&limit=3");
 
     await fetchRegimeRunComparison("ETH-USD", "4h", 3);
     expect(latestFetchCall().url).toBe(

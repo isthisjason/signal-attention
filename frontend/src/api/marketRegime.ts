@@ -282,11 +282,6 @@ export function fetchMarketRegimeExperiments() {
   return getJson<MarketRegimeExperimentDiagnostics>("/api/market-regime/experiments");
 }
 
-export function fetchRegimeRuns(symbol = "BTC-USD", timeframe = "1h", limit = 10) {
-  const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
-  return getJson<RegimeRunSummary[]>(`/api/regime-runs?${params.toString()}`);
-}
-
 export function fetchRegimeRunComparison(symbol = "BTC-USD", timeframe = "1h", limit = 10) {
   const params = new URLSearchParams({ symbol, timeframe, limit: String(limit) });
   return getJson<RegimeRunComparison>(`/api/regime-runs/comparison?${params.toString()}`);

@@ -42,7 +42,6 @@ import {
   RegimeRunComparison,
   RegimeRobustnessSummary,
   RegimeRunResponse,
-  RegimeRunSummary,
   fetchMarketRegimeDiagnostics,
   fetchMarketRegime,
   fetchMarketRegimeExperiments,
@@ -50,7 +49,6 @@ import {
   fetchMarketRegimeStatus,
   fetchRegimeRunComparison,
   fetchRegimeRobustness,
-  fetchRegimeRuns,
   runRegimeReplay,
 } from "./api/marketRegime";
 import {
@@ -129,11 +127,6 @@ const loadingMarketRegimeExperiments: LoadState<MarketRegimeExperimentDiagnostic
   data: null,
   error: null,
 };
-const loadingRegimeRuns: LoadState<RegimeRunSummary[]> = {
-  status: "loading",
-  data: null,
-  error: null,
-};
 const loadingRegimeComparison: LoadState<RegimeRunComparison> = {
   status: "loading",
   data: null,
@@ -166,8 +159,6 @@ function App() {
     useState<LoadState<MarketRegimeStatus>>(loadingMarketRegimeStatus);
   const [regimeExperimentsState, setRegimeExperimentsState] =
     useState<LoadState<MarketRegimeExperimentDiagnostics>>(loadingMarketRegimeExperiments);
-  const [regimeRunsState, setRegimeRunsState] =
-    useState<LoadState<RegimeRunSummary[]>>(loadingRegimeRuns);
   const [regimeComparisonState, setRegimeComparisonState] =
     useState<LoadState<RegimeRunComparison>>(loadingRegimeComparison);
   const [strategyListState, setStrategyListState] =
@@ -231,7 +222,6 @@ function App() {
     setRegimeState(loadingMarketRegime);
     setRegimeStatusState(loadingMarketRegimeStatus);
     setRegimeExperimentsState(loadingMarketRegimeExperiments);
-    setRegimeRunsState(loadingRegimeRuns);
     setRegimeComparisonState(loadingRegimeComparison);
     setStrategyListState(loadingStrategyList);
     setMarketDataQualityState(loadingMarketDataQuality);
@@ -260,11 +250,6 @@ function App() {
       .then((data) => setRegimeExperimentsState({ status: "success", data, error: null }))
       .catch((error: unknown) =>
         setRegimeExperimentsState({ status: "error", data: null, error: errorMessage(error) }),
-      );
-    const regimeRunsLoad = fetchRegimeRuns()
-      .then((data) => setRegimeRunsState({ status: "success", data, error: null }))
-      .catch((error: unknown) =>
-        setRegimeRunsState({ status: "error", data: null, error: errorMessage(error) }),
       );
     const regimeComparisonLoad = fetchRegimeRunComparison()
       .then((data) => setRegimeComparisonState({ status: "success", data, error: null }))
@@ -309,7 +294,6 @@ function App() {
       attentionShowcaseLoad,
       regimeStatusLoad,
       regimeExperimentsLoad,
-      regimeRunsLoad,
       regimeComparisonLoad,
       evidenceSnapshotsLoad,
       auditLoad,
@@ -630,9 +614,6 @@ function App() {
         setRegimeDiagnostics(diagnostics);
         setEvidenceSnapshots(await fetchRegimeEvidenceSnapshots(selectedStrategy.symbol, selectedStrategy.timeframe));
       }
-      await fetchRegimeRuns(selectedStrategy.symbol, selectedStrategy.timeframe).then((data) =>
-        setRegimeRunsState({ status: "success", data, error: null }),
-      );
       await fetchRegimeRunComparison(selectedStrategy.symbol, selectedStrategy.timeframe).then((data) =>
         setRegimeComparisonState({ status: "success", data, error: null }),
       );
@@ -809,7 +790,6 @@ function App() {
         comparisonState={regimeComparisonState}
         replay={regimeReplay}
         robustness={regimeRobustness}
-        runsState={regimeRunsState}
         selectedWindowEnd={selectedRegimeWindowEnd}
         selectedStrategy={selectedStrategy}
         statusState={regimeStatusState}

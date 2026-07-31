@@ -10,7 +10,6 @@ import {
   RegimeRobustnessSummary,
   RegimeRunComparison,
   RegimeRunResponse,
-  RegimeRunSummary,
 } from "../api/marketRegime";
 import { Strategy } from "../api/strategies";
 import {
@@ -176,7 +175,6 @@ export function RegimeReplayPanel({
   comparisonState,
   replay,
   robustness,
-  runsState,
   selectedWindowEnd,
   selectedStrategy,
   statusState,
@@ -190,7 +188,6 @@ export function RegimeReplayPanel({
   comparisonState: LoadState<RegimeRunComparison>;
   replay: RegimeRunResponse | null;
   robustness: RegimeRobustnessSummary | null;
-  runsState: LoadState<RegimeRunSummary[]>;
   selectedWindowEnd: string | null;
   selectedStrategy: Strategy | null;
   statusState: LoadState<MarketRegimeStatus>;
@@ -232,7 +229,7 @@ export function RegimeReplayPanel({
       ) : (
         <ChartState title="No assessment chart yet" message="Run replay after selecting a strategy and date range." />
       )}
-      <RegimeRunComparisonTable comparisonState={comparisonState} runsState={runsState} />
+      <RegimeRunComparisonTable comparisonState={comparisonState} />
     </section>
   );
 }
@@ -403,14 +400,8 @@ function formatForwardOutcome(label: string | null | undefined, value: number | 
   return `${formatAction(label)} (${formatNumber(value)}%)`;
 }
 
-function RegimeRunComparisonTable({
-  comparisonState,
-  runsState,
-}: {
-  comparisonState: LoadState<RegimeRunComparison>;
-  runsState: LoadState<RegimeRunSummary[]>;
-}) {
-  if (comparisonState.status === "loading" || runsState.status === "loading") {
+function RegimeRunComparisonTable({ comparisonState }: { comparisonState: LoadState<RegimeRunComparison> }) {
+  if (comparisonState.status === "loading") {
     return <p className="muted">Loading saved regime runs.</p>;
   }
   if (comparisonState.status === "error") {
@@ -632,27 +623,6 @@ export function ModelStatusStrip({ state }: { state: LoadState<MarketRegimeStatu
         </ul>
       ) : null}
     </>
-  );
-}
-
-function SavedRegimeRuns({ state }: { state: LoadState<RegimeRunSummary[]> }) {
-  if (state.status === "loading") {
-    return <p className="muted">Loading saved regime runs.</p>;
-  }
-  if (state.status === "error") {
-    return <p className="error-text">{state.error}</p>;
-  }
-  if (state.data.length === 0) {
-    return <p className="muted">No saved regime runs yet.</p>;
-  }
-  return (
-    <div className="mini-list">
-      {state.data.slice(0, 3).map((run) => (
-        <span key={run.id}>
-          #{run.id} {run.effectiveMode || run.classifierSource || "unknown"} · {run.pointCount} windows
-        </span>
-      ))}
-    </div>
   );
 }
 

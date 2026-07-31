@@ -19,7 +19,6 @@ const mocks = vi.hoisted(() => ({
   fetchRegimeEvidenceSnapshots: vi.fn(),
   fetchRegimeRunComparison: vi.fn(),
   fetchRegimeRobustness: vi.fn(),
-  fetchRegimeRuns: vi.fn(),
   importMarketData: vi.fn(),
   runRegimeReplay: vi.fn(),
   createStrategy: vi.fn(),
@@ -65,7 +64,6 @@ vi.mock("./api/marketRegime", () => ({
   fetchRegimeEvidenceSnapshots: mocks.fetchRegimeEvidenceSnapshots,
   fetchRegimeRunComparison: mocks.fetchRegimeRunComparison,
   fetchRegimeRobustness: mocks.fetchRegimeRobustness,
-  fetchRegimeRuns: mocks.fetchRegimeRuns,
   runRegimeReplay: mocks.runRegimeReplay,
 }));
 
@@ -187,7 +185,6 @@ beforeEach(() => {
     promotion: null,
     warnings: [],
   });
-  mocks.fetchRegimeRuns.mockResolvedValue([]);
   mocks.fetchRegimeRunComparison.mockResolvedValue({ symbol: "BTC-USD", timeframe: "1h", runs: [] });
   mocks.fetchRegimeRobustness.mockResolvedValue({
     regimeRunId: 33,
