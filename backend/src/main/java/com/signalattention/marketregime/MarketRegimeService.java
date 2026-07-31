@@ -12,10 +12,10 @@ import com.signalattention.backtesting.BacktestTradeRepository;
 import com.signalattention.marketdata.MarketCandle;
 import com.signalattention.marketdata.CandleResponse;
 import com.signalattention.marketdata.MarketCandleRepository;
-import com.signalattention.ml.MlMarketRegimeCandle;
 import com.signalattention.ml.MlMarketRegimeExperimentDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeRequest;
+import com.signalattention.ml.MlMarketRegimeRequestFactory;
 import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
@@ -24,7 +24,6 @@ import com.signalattention.ml.MlRegimeRunResponse;
 import com.signalattention.ml.MlRiskClient;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -37,11 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MarketRegimeService {
 
-    public static final int MIN_CANDLE_LIMIT = 20;
-    public static final int DEFAULT_CANDLE_LIMIT = 128;
-    public static final int MAX_CANDLE_LIMIT = 500;
-
     private final MarketCandleRepository marketCandleRepository;
+    private final MlMarketRegimeRequestFactory requestFactory;
     private final MlRiskClient mlRiskClient;
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestTradeRepository backtestTradeRepository;
@@ -54,6 +50,7 @@ public class MarketRegimeService {
 
     public MarketRegimeService(
             MarketCandleRepository marketCandleRepository,
+            MlMarketRegimeRequestFactory requestFactory,
             MlRiskClient mlRiskClient,
             BacktestRunRepository backtestRunRepository,
             BacktestTradeRepository backtestTradeRepository,
@@ -65,6 +62,7 @@ public class MarketRegimeService {
             AuditService auditService
     ) {
         this.marketCandleRepository = marketCandleRepository;
+        this.requestFactory = requestFactory;
         this.mlRiskClient = mlRiskClient;
         this.backtestRunRepository = backtestRunRepository;
         this.backtestTradeRepository = backtestTradeRepository;
@@ -88,23 +86,19 @@ public class MarketRegimeService {
 
     @Transactional(readOnly = true)
     public MlMarketRegimeResponse predictMarketRegime(String symbol, String timeframe, Integer requestedLimit) {
-        String normalizedSymbol = requireText(symbol, "symbol");
-        String normalizedTimeframe = requireText(timeframe, "timeframe");
-        int limit = normalizeLimit(requestedLimit);
-        List<MarketCandle> candles = latestCandlesAscending(normalizedSymbol, normalizedTimeframe, limit);
-        if (candles.isEmpty()) {
+        MlMarketRegimeRequest request = requestFactory.forLatestCandles(symbol, timeframe, requestedLimit);
+        if (request.candles().isEmpty()) {
             throw new BadRequestException("No candles found for requested market regime analysis");
         }
-        if (candles.size() < MIN_CANDLE_LIMIT) {
-            throw new BadRequestException("At least " + MIN_CANDLE_LIMIT + " candles are required for market regime analysis");
+        if (request.candles().size() < MlMarketRegimeRequestFactory.MIN_CANDLE_LIMIT) {
+            throw new BadRequestException(
+                    "At least " + MlMarketRegimeRequestFactory.MIN_CANDLE_LIMIT
+                            + " candles are required for market regime analysis"
+            );
         }
 
         // The backend owns candle lookup; the ML service only receives the sequence to classify.
-        return mlRiskClient.predictMarketRegime(new MlMarketRegimeRequest(
-                normalizedSymbol,
-                normalizedTimeframe,
-                candles.stream().map(this::toMlCandle).toList()
-        ));
+        return mlRiskClient.predictMarketRegime(request);
     }
 
     @Transactional
@@ -114,21 +108,17 @@ public class MarketRegimeService {
             Integer requestedLimit,
             Instant windowEnd
     ) {
-        String normalizedSymbol = requireText(symbol, "symbol");
-        String normalizedTimeframe = requireText(timeframe, "timeframe");
-        int limit = normalizeLimit(requestedLimit);
-        List<MarketCandle> candles = windowEnd == null
-                ? latestCandlesAscending(normalizedSymbol, normalizedTimeframe, limit)
-                : candlesUpToWindowEnd(normalizedSymbol, normalizedTimeframe, windowEnd, limit);
-        if (candles.size() < MIN_CANDLE_LIMIT) {
-            throw new BadRequestException("At least " + MIN_CANDLE_LIMIT + " candles are required for market regime diagnostics");
+        MlMarketRegimeRequest request = windowEnd == null
+                ? requestFactory.forLatestCandles(symbol, timeframe, requestedLimit)
+                : requestFactory.forCandlesEndingAt(symbol, timeframe, requestedLimit, windowEnd);
+        if (request.candles().size() < MlMarketRegimeRequestFactory.MIN_CANDLE_LIMIT) {
+            throw new BadRequestException(
+                    "At least " + MlMarketRegimeRequestFactory.MIN_CANDLE_LIMIT
+                            + " candles are required for market regime diagnostics"
+            );
         }
 
-        MlMarketRegimeDiagnosticsResponse response = mlRiskClient.diagnoseMarketRegime(new MlMarketRegimeRequest(
-                normalizedSymbol,
-                normalizedTimeframe,
-                candles.stream().map(this::toMlCandle).toList()
-        ));
+        MlMarketRegimeDiagnosticsResponse response = mlRiskClient.diagnoseMarketRegime(request);
         regimeEvidenceSnapshotRepository.save(new RegimeEvidenceSnapshot(
                 response,
                 toJson(response.reasons()),
@@ -145,7 +135,7 @@ public class MarketRegimeService {
         // Snapshot persistence keeps the evidence retrievable; the audit record captures that analysis was requested.
         auditService.record(
                 "MARKET_REGIME",
-                normalizedSymbol + ":" + normalizedTimeframe,
+                request.symbol() + ":" + request.timeframe(),
                 "MARKET_REGIME_DIAGNOSTIC",
                 "Ran market regime attention diagnostics",
                 toJson(java.util.Map.of(
@@ -182,15 +172,20 @@ public class MarketRegimeService {
         }
         String symbol = requireText(request.symbol(), "symbol");
         String timeframe = requireText(request.timeframe(), "timeframe");
-        int windowSize = request.windowSize() == null ? DEFAULT_CANDLE_LIMIT : request.windowSize();
+        int windowSize = request.windowSize() == null
+                ? MlMarketRegimeRequestFactory.DEFAULT_CANDLE_LIMIT
+                : request.windowSize();
         int stride = request.stride() == null ? 8 : request.stride();
         // Anomalies default on so the replay view can correlate regime shifts with unusual candles.
         boolean includeAnomalies = request.includeAnomalies() == null || request.includeAnomalies();
         List<MarketCandle> candles = marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
                 symbol, timeframe, request.startDate(), request.endDate()
         );
-        if (candles.size() < MIN_CANDLE_LIMIT) {
-            throw new BadRequestException("At least " + MIN_CANDLE_LIMIT + " candles are required for regime replay");
+        if (candles.size() < MlMarketRegimeRequestFactory.MIN_CANDLE_LIMIT) {
+            throw new BadRequestException(
+                    "At least " + MlMarketRegimeRequestFactory.MIN_CANDLE_LIMIT
+                            + " candles are required for regime replay"
+            );
         }
         if (windowSize > candles.size()) {
             throw new BadRequestException("windowSize must be less than or equal to candle count");
@@ -212,7 +207,7 @@ public class MarketRegimeService {
                 new MlRegimeRunRequest(
                         symbol,
                         timeframe,
-                        candles.stream().map(this::toMlCandle).toList(),
+                        requestFactory.forCandles(symbol, timeframe, candles).candles(),
                         windowSize,
                         stride,
                         includeAnomalies
@@ -328,59 +323,11 @@ public class MarketRegimeService {
         );
     }
 
-    private List<MarketCandle> latestCandlesAscending(String symbol, String timeframe, int limit) {
-        // Repository query is newest-first for limiting, then reversed for time-series processing.
-        List<MarketCandle> candles = new ArrayList<>(marketCandleRepository.findBySymbolAndTimeframeOrderByOpenTimeDesc(
-                symbol,
-                timeframe,
-                PageRequest.of(0, limit)
-        ));
-        Collections.reverse(candles);
-        return candles;
-    }
-
-    private List<MarketCandle> candlesUpToWindowEnd(String symbol, String timeframe, Instant windowEnd, int limit) {
-        List<MarketCandle> candles = marketCandleRepository.findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
-                symbol,
-                timeframe,
-                Instant.EPOCH,
-                windowEnd
-        );
-        if (candles.size() <= limit) {
-            return candles;
-        }
-        // Keep the requested diagnostic window aligned to its end point while bounding ML payload size.
-        return candles.subList(candles.size() - limit, candles.size());
-    }
-
-    private MlMarketRegimeCandle toMlCandle(MarketCandle candle) {
-        return new MlMarketRegimeCandle(
-                candle.getOpenTime(),
-                candle.getOpenPrice(),
-                candle.getHigh(),
-                candle.getLow(),
-                candle.getClose(),
-                candle.getVolume()
-        );
-    }
-
     private String requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new BadRequestException(fieldName + " is required");
         }
         return value.trim();
-    }
-
-    private int normalizeLimit(Integer requestedLimit) {
-        int limit = requestedLimit == null ? DEFAULT_CANDLE_LIMIT : requestedLimit;
-        // Bound request size so local ML calls stay fast and predictable on CPU.
-        if (limit < MIN_CANDLE_LIMIT) {
-            throw new BadRequestException("limit must be at least " + MIN_CANDLE_LIMIT);
-        }
-        if (limit > MAX_CANDLE_LIMIT) {
-            throw new BadRequestException("limit must be less than or equal to " + MAX_CANDLE_LIMIT);
-        }
-        return limit;
     }
 
     private List<RegimeRunSummaryResponse> loadRegimeRunSummaries(String symbol, String timeframe, Integer requestedLimit) {

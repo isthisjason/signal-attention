@@ -11,6 +11,7 @@ import com.signalattention.marketdata.MarketCandleRepository;
 import com.signalattention.ml.MlAnomalyResponse;
 import com.signalattention.ml.MlMarketRegimeFeatures;
 import com.signalattention.ml.MlMarketRegimeRequest;
+import com.signalattention.ml.MlMarketRegimeRequestFactory;
 import com.signalattention.ml.MlRiskClient;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -36,7 +37,7 @@ class AnomalyServiceTests {
 
     @BeforeEach
     void setUp() {
-        service = new AnomalyService(marketCandleRepository, mlRiskClient);
+        service = new AnomalyService(new MlMarketRegimeRequestFactory(marketCandleRepository), mlRiskClient);
     }
 
     @Test

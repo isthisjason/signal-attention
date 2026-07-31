@@ -21,6 +21,7 @@ import com.signalattention.ml.MlAttentionTimestepEvidence;
 import com.signalattention.ml.MlFeatureEvidence;
 import com.signalattention.ml.MlMarketRegimeDiagnosticsResponse;
 import com.signalattention.ml.MlMarketRegimeRequest;
+import com.signalattention.ml.MlMarketRegimeRequestFactory;
 import com.signalattention.ml.MlMarketRegimeResponse;
 import com.signalattention.ml.MlMarketRegimeStatusResponse;
 import com.signalattention.ml.MlRiskClient;
@@ -67,6 +68,7 @@ class MarketRegimeServiceTests {
     void setUp() {
         service = new MarketRegimeService(
                 marketCandleRepository,
+                new MlMarketRegimeRequestFactory(marketCandleRepository),
                 mlRiskClient,
                 backtestRunRepository,
                 backtestTradeRepository,
