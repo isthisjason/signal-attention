@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 const mocks = vi.hoisted(() => ({
+  fetchAttentionShowcaseSummary: vi.fn(),
   fetchAuditEvents: vi.fn(),
   fetchBacktest: vi.fn(),
   fetchBacktestDrawdownSeries: vi.fn(),
@@ -35,6 +36,10 @@ const mocks = vi.hoisted(() => ({
   startPaperSession: vi.fn(),
   stopPaperSession: vi.fn(),
   submitPaperOrder: vi.fn(),
+}));
+
+vi.mock("./api/attentionShowcase", () => ({
+  fetchAttentionShowcaseSummary: mocks.fetchAttentionShowcaseSummary,
 }));
 
 vi.mock("./api/backtests", () => ({
@@ -90,6 +95,15 @@ vi.mock("./api/strategies", () => ({
 }));
 
 beforeEach(() => {
+  mocks.fetchAttentionShowcaseSummary.mockResolvedValue({
+    modelReady: true,
+    latestRun: null,
+    robustnessLabel: "needs_replay",
+    evidenceSnapshotCount: 0,
+    disagreementSummary: { totalWindows: 0, disagreementCount: 0, lowestConfidenceWindows: [] },
+    nextAction: "Run an attention regime replay.",
+    warnings: [],
+  });
   mocks.fetchDashboardSummary.mockResolvedValue({
     strategyCount: 0,
     backtestCount: 0,
@@ -914,14 +928,39 @@ describe("dashboard render states", () => {
     });
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Replay candles" })).toBeEnabled());
+    // Replay should refresh each paper resource once, without a second effect-driven load.
+    const detailCalls = [mocks.fetchPaperSessionSummary, mocks.fetchPaperOrders, mocks.fetchPaperPositions]
+      .map((mock) => mock.mock.calls.length);
     await user.click(screen.getByRole("button", { name: "Replay candles" }));
     expect(await screen.findByText("Replay filled 1 orders.")).toBeInTheDocument();
     // Replay uses the selected session and the numeric form value after string-to-number conversion.
     expect(mocks.replayPaperSession).toHaveBeenCalledWith(9, expect.objectContaining({ maxCandles: 250 }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Stop" })).toBeEnabled());
+    [mocks.fetchPaperSessionSummary, mocks.fetchPaperOrders, mocks.fetchPaperPositions]
+      .forEach((mock, index) => expect(mock).toHaveBeenCalledTimes(detailCalls[index] + 1));
     await user.click(screen.getByRole("button", { name: "Stop" }));
     expect(await screen.findByText("Stopped session #9.")).toBeInTheDocument();
     expect(mocks.stopPaperSession).toHaveBeenCalledWith(9);
+  });
+
+  it("uses saved replay guidance once after a browser reload", async () => {
+    mocks.fetchDashboardSummary.mockResolvedValue({
+      strategyCount: 1, backtestCount: 1, activePaperSessionCount: 0,
+      latestBacktest: { totalReturn: 3, mlRiskLabel: "LOW_RISK" }, recentAuditEvents: [],
+    });
+    // No replay is created in this browser session; the saved run must drive the next step.
+    mocks.fetchAttentionShowcaseSummary.mockResolvedValue({
+      modelReady: true,
+      latestRun: { id: 9, symbol: "BTC-USD", timeframe: "1h" },
+      robustnessLabel: "stable", evidenceSnapshotCount: 1,
+      disagreementSummary: { totalWindows: 1, disagreementCount: 0, lowestConfidenceWindows: [] },
+      nextAction: "Inspect the lowest confidence disagreement windows.", warnings: [],
+    });
+    mocks.fetchStrategies.mockResolvedValue([{ id: 1, name: "BTC SMA", symbol: "BTC-USD", timeframe: "1h" }]);
+    render(<App />);
+    const guidance = await screen.findByText("Inspect the lowest confidence disagreement windows.");
+    expect(within(screen.getByRole("region", { name: "Next recommended action" })).getByText("Review results")).toBeInTheDocument();
+    expect(screen.getAllByText(guidance.textContent!)).toHaveLength(1);
   });
 });

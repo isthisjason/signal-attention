@@ -1,4 +1,5 @@
 import builtins
+import pytest
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -306,6 +307,56 @@ def test_builds_v2_attention_model_from_metadata(monkeypatch) -> None:
     assert model == "v2-model"
     assert calls[0]["feature_count"] == 6
     assert calls[0]["class_count"] == 4
+
+
+@pytest.mark.parametrize("architecture", ["transformer-v1", TORCH_MODEL_ARCHITECTURE_V2])
+def test_replay_reuses_model_and_new_request_loads_fresh_artifact(tmp_path, monkeypatch, architecture) -> None:
+    from app.schemas.market_regime_schema import RegimeRunRequest
+    import app.services.market_regime_service as service
+
+    artifact_path = tmp_path / "model.pt"
+    artifact_path.write_text("placeholder")
+    artifact = {
+        "metadata": {
+            "sequenceLength": 20, "featureOrder": TORCH_MARKET_REGIME_FEATURE_ORDER,
+            "labels": ["SIDEWAYS", "TRENDING_UP"], "architecture": architecture, "model": {},
+        },
+        "modelStateDict": {"weight": "first"},
+    }
+    fake_torch = FakeTorch(artifact)
+    loads = []
+    models = []
+
+    def load(*args):
+        loads.append(1)
+        return artifact
+
+    def build(*args, **kwargs):
+        model = FakeModel()
+        models.append(model)
+        return model
+
+    monkeypatch.setattr(adapter, "load_torch", lambda: fake_torch)
+    monkeypatch.setattr(adapter, "load_artifact", load)
+    monkeypatch.setattr(adapter, "build_transformer_model", build)
+    monkeypatch.setattr(adapter, "build_attention_transformer_model", build)
+    settings = MarketRegimeSettings(mode="torch", artifact_path=str(artifact_path))
+    monkeypatch.setattr(service, "get_market_regime_classifier", lambda: adapter.TorchMarketRegimeClassifier(settings))
+    request = RegimeRunRequest(
+        symbol="BTC-USD", timeframe="1h", windowSize=20, stride=1, includeAnomalies=False,
+        candles=request_for([Decimal(100 + index) for index in range(22)]).candles,
+    )
+    result = service.run_market_regime(request)
+    assert len(result.points) == 3
+    assert all(point.regimeLabel == "TRENDING_UP" and point.confidence == Decimal("80") for point in result.points)
+    assert len(loads) == len(models) == 1
+
+    # Reuse is scoped to the replay: replacing an artifact must affect the next request.
+    artifact["modelStateDict"] = {"weight": "replacement"}
+    service.run_market_regime(request)
+    assert len(loads) == len(models) == 2
+    assert models[0].loaded_state_dict == {"weight": "first"}
+    assert models[1].loaded_state_dict == {"weight": "replacement"}
 
 
 def request_for(closes: list[Decimal]) -> MarketRegimeRequest:

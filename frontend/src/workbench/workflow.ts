@@ -30,12 +30,14 @@ export function deriveWorkbenchAction({
   hasBacktest,
   hasRiskScore,
   hasRegimeReplay,
+  researchNextAction,
 }: {
   candleCount: number;
   strategyCount: number;
   hasBacktest: boolean;
   hasRiskScore: boolean;
   hasRegimeReplay: boolean;
+  researchNextAction?: string;
 }): WorkbenchAction {
   // This order follows the demo story, so the next action should feel like the obvious missing step.
   if (candleCount === 0) {
@@ -76,6 +78,7 @@ export function deriveWorkbenchAction({
   return {
     id: "review-results",
     title: "Review results",
-    detail: "The main demo path is ready: review attention evidence, model lab diagnostics, robustness, and baseline comparisons.",
+    // Once setup is complete, use saved research evidence instead of a second competing recommendation.
+    detail: researchNextAction || "The main demo path is ready: review attention evidence, model lab diagnostics, robustness, and baseline comparisons.",
   };
 }

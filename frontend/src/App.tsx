@@ -334,30 +334,31 @@ function App() {
     void loadPaperSessions(selectedStrategyId);
   }, [loadPaperSessions, selectedStrategyId]);
 
+  const refreshPaperDetails = useCallback(async (sessionId: number) => {
+    // Selection and mutations share one refresh, so replay never fetches each resource twice.
+    const [summary, orders, positions] = await Promise.all([
+      fetchPaperSessionSummary(sessionId),
+      fetchPaperOrders(sessionId),
+      fetchPaperPositions(sessionId),
+    ]);
+    setPaperSummary(summary);
+    setPaperOrders(orders);
+    setPaperPositions(positions);
+  }, []);
+
   useEffect(() => {
-    // Session details are kept in local state because several actions update them together.
     if (selectedPaperSessionId === null) {
       setPaperSummary(null);
       setPaperOrders([]);
       setPaperPositions([]);
       return;
     }
-    Promise.all([
-      fetchPaperSessionSummary(selectedPaperSessionId),
-      fetchPaperOrders(selectedPaperSessionId),
-      fetchPaperPositions(selectedPaperSessionId),
-    ])
-      .then(([summary, orders, positions]) => {
-        setPaperSummary(summary);
-        setPaperOrders(orders);
-        setPaperPositions(positions);
-      })
-      .catch(() => {
-        setPaperSummary(null);
-        setPaperOrders([]);
-        setPaperPositions([]);
-      });
-  }, [selectedPaperSessionId, paperReplay]);
+    void refreshPaperDetails(selectedPaperSessionId).catch(() => {
+      setPaperSummary(null);
+      setPaperOrders([]);
+      setPaperPositions([]);
+    });
+  }, [selectedPaperSessionId, refreshPaperDetails]);
 
   const selectedStrategy = useMemo(() => {
     if (strategyListState.status !== "success" || selectedStrategyId === null) {
@@ -383,7 +384,9 @@ function App() {
         backtestRun?.mlRiskLabel ||
         (summaryState.status === "success" && summaryState.data.latestBacktest?.mlRiskLabel),
     ),
-    hasRegimeReplay: Boolean(regimeReplay),
+    // Saved replay evidence survives a browser reload; the showcase supplies the research guidance.
+    hasRegimeReplay: Boolean(regimeReplay || attentionShowcaseState.data?.latestRun),
+    researchNextAction: attentionShowcaseState.data?.nextAction,
   });
 
   const loading =
@@ -536,16 +539,7 @@ function App() {
         maxCandles: Number(paperForm.maxCandles),
       });
       setPaperReplay(result);
-      // This is a little repetitive, but it keeps the paper panel honest after replay mutates session state.
-      // Replay can create orders and positions, so reload the paper details immediately.
-      const [summary, orders, positions] = await Promise.all([
-        fetchPaperSessionSummary(selectedPaperSessionId),
-        fetchPaperOrders(selectedPaperSessionId),
-        fetchPaperPositions(selectedPaperSessionId),
-      ]);
-      setPaperSummary(summary);
-      setPaperOrders(orders);
-      setPaperPositions(positions);
+      await refreshPaperDetails(selectedPaperSessionId);
       setNotice({ tone: "success", message: `Replay filled ${result.filledOrders} orders.` });
       await loadDashboard();
     });
@@ -564,9 +558,7 @@ function App() {
         price: Number(paperForm.orderPrice),
       });
       // Orders can affect both cash and positions, so all paper panes reload together.
-      setPaperOrders(await fetchPaperOrders(selectedPaperSessionId));
-      setPaperPositions(await fetchPaperPositions(selectedPaperSessionId));
-      setPaperSummary(await fetchPaperSessionSummary(selectedPaperSessionId));
+      await refreshPaperDetails(selectedPaperSessionId);
       setNotice({ tone: order.status === "FILLED" ? "success" : "error", message: `Order #${order.id} ${order.status.toLowerCase()}.` });
       await loadDashboard();
     });
@@ -692,9 +684,7 @@ function App() {
     // Confirmed actions can update several panels, so reload the dashboard and targeted details.
     await loadDashboard();
     if (selectedPaperSessionId !== null && action.actionType.startsWith("REPLAY_PAPER")) {
-      setPaperSummary(await fetchPaperSessionSummary(selectedPaperSessionId));
-      setPaperOrders(await fetchPaperOrders(selectedPaperSessionId));
-      setPaperPositions(await fetchPaperPositions(selectedPaperSessionId));
+      await refreshPaperDetails(selectedPaperSessionId);
     }
   }
 

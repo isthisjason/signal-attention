@@ -49,7 +49,6 @@ export function AttentionShowcasePanel({ state }: { state: LoadState<AttentionSh
       <div className="panel-heading">
         <div>
           <h2>Attention showcase readiness</h2>
-          <p>{summary.nextAction}</p>
         </div>
         <span className={`status-pill status-${summary.modelReady ? "ready" : "review"}`}>
           {summary.modelReady ? "model ready" : "check model"}

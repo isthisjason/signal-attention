@@ -23,13 +23,32 @@ from app.services.market_regime_torch_model import (
 class TorchMarketRegimeClassifier:
     def __init__(self, settings: MarketRegimeSettings) -> None:
         self.settings = settings
+        self._loaded = None
 
-    def classify(self, request: MarketRegimeRequest) -> MarketRegimeResponse:
+    def _load_model(self):
+        # One classifier belongs to one request/replay. Pin its artifact across all windows,
+        # while a new request gets a fresh classifier and sees any replacement artifact.
+        if self._loaded is not None:
+            return self._loaded
         artifact_path = validate_artifact_path(self.settings)
         torch = load_torch()
         device = select_device(torch)
         artifact = load_artifact(torch, artifact_path, device)
         metadata = validate_artifact_metadata(artifact)
+        model = build_model_for_metadata(
+            torch,
+            feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
+            class_count=len(metadata["labels"]),
+            metadata=metadata,
+        )
+        model.load_state_dict(artifact["modelStateDict"])
+        model.to(device)
+        model.eval()
+        self._loaded = (artifact_path, torch, device, metadata, model)
+        return self._loaded
+
+    def classify(self, request: MarketRegimeRequest) -> MarketRegimeResponse:
+        artifact_path, torch, device, metadata, model = self._load_model()
         sequence_length = int(metadata["sequenceLength"])
 
         if len(request.candles) < sequence_length:
@@ -42,16 +61,6 @@ class TorchMarketRegimeClassifier:
         feature_matrix = build_torch_feature_matrix(request.candles[-sequence_length:])
         normalized_features = normalize_features(feature_matrix, metadata)
         input_tensor = torch.tensor([normalized_features], dtype=torch.float32, device=device)
-
-        model = build_model_for_metadata(
-            torch,
-            feature_count=len(TORCH_MARKET_REGIME_FEATURE_ORDER),
-            class_count=len(metadata["labels"]),
-            metadata=metadata,
-        )
-        model.load_state_dict(artifact["modelStateDict"])
-        model.to(device)
-        model.eval()
 
         with torch.no_grad():
             logits = model(input_tensor)
