@@ -332,6 +332,15 @@ npm run dev
 # Frontend will be at http://localhost:5173, proxying to backend
 ```
 
+### Develop without Docker
+When Compose is unavailable, run the preflight check and start each service natively. PostgreSQL must already be listening on `localhost:5432` with the `.env.example` credentials.
+
+```bash
+python3 scripts/dev_native.py
+```
+
+Use `POSTGRES_HOST=localhost` and `ML_SERVICE_URL=http://localhost:8000` instead of the Compose service hostnames.
+
 ### Run Tests Before Committing
 ```bash
 # Backend
@@ -384,7 +393,9 @@ See `docs/verification.md` for a local verification checklist after changes.
 ### Database Connection Failed
 - Ensure `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` match across services
 - Wait for PostgreSQL health check to pass before starting backend
+- Native runs need `POSTGRES_HOST=localhost`; Compose uses `postgres`
 - Use Testcontainers for isolated backend tests
+- Run `python3 scripts/dev_native.py` to see whether localhost:5432 is reachable
 
 ### ML Service Unavailable
 - Backend is resilient if ML service is down; risk scoring will fail gracefully

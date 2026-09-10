@@ -65,6 +65,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Test smoke helpers
-        run: python -m unittest scripts/smoke_demo_test.py
+        run: python -m unittest scripts/smoke_demo_test.py scripts/dev_native_test.py
       - name: Validate Compose configuration
         run: docker compose config --quiet
