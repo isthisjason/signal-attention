@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 SignalAttention is a local trading research sandbox with three services:
-- **Backend**: Spring Boot 3 / Java 21 REST API for strategy management, backtesting, risk scoring
-- **ML Service**: FastAPI Python service for rule-based risk analysis, market regime classification, anomaly detection
-- **Frontend**: React 19 / TypeScript dashboard for local workbench
+- **Backend**: Spring Boot 3 / Java 21 REST API for strategies, backtests, paper trading, regime runs, assistant actions, and ML proxies
+- **ML Service**: FastAPI Python service for rule-based risk, market regime, and anomaly checks, plus optional torch attention inference
+- **Frontend**: React 19 / TypeScript workbench for the local demo (not a trading terminal)
 
-The project is intentionally **research-focused, not production trading**. No real-money execution, broker integration, custody, or investment advice.
+The project is intentionally **research-focused, not production trading**. No real-money execution, broker integration, custody, or investment advice. Feature work is frozen; remaining progress is evidence, not new product surface.
 
 ## Development Environment
 
@@ -119,11 +119,15 @@ python3 scripts/smoke_demo.py
 backend/
 ├── src/main/java/com/signalattention/
 │   ├── strategies/         # Strategy CRUD, JSON rules
-│   ├── marketdata/         # CSV import, candle storage
+│   ├── marketdata/         # CSV import, candle storage, quality
 │   ├── backtesting/        # SMA crossover, trade simulation, metrics
-│   ├── indicators/         # SMA, future indicators
+│   ├── indicators/         # SMA, crossover detection
 │   ├── risk/               # Risk policies, order evaluation
 │   ├── papertrading/       # Paper sessions, simulated orders
+│   ├── marketregime/       # Persisted regime runs, robustness, evidence
+│   ├── anomaly/            # Candle anomaly proxy
+│   ├── assistant/          # Reviewable local assistant actions
+│   ├── attentionshowcase/  # Read-only attention summary
 │   ├── ml/                 # HTTP client for Python ML service
 │   ├── dashboard/          # Summary APIs, risk alerts
 │   ├── audit/              # Append-only event logging
@@ -138,26 +142,26 @@ ml-service/
 ├── app/
 │   ├── main.py            # FastAPI app entry
 │   ├── routes/            # Endpoints (risk, regime, anomaly)
-│   └── services/          # Feature engineering, rule-based scoring
-├── scripts/               # Training/evaluation for optional torch models
-├── models/                # Torch artifacts and experiment registry
-└── requirements.txt       # pandas, numpy, scikit-learn, FastAPI
+│   └── services/          # Feature engineering, rule-based scoring, optional torch
+├── scripts/               # Training, evaluation, inspect, promotion
+├── models/                # Local torch artifacts and experiment registry (gitignored)
+└── requirements.txt       # FastAPI, pydantic, pytest, httpx
 ```
 
 ### Frontend Structure
 ```
 frontend/
 ├── src/
-│   ├── components/        # React components
-│   ├── pages/            # Page-level components
-│   ├── hooks/            # Custom React hooks
-│   └── api/              # API client for backend
+│   ├── api/              # Backend API clients
+│   ├── workbench/        # Baseline workflow, dashboard panels, attention review
+│   ├── App.tsx           # Workbench shell
+│   └── ChartShell.tsx    # Shared chart empty/loading states
 ├── vite.config.ts        # Vite configuration
 └── package.json          # React 19, TypeScript, Vitest
 ```
 
 ### Data Flow
-CSV → Backend (import) → PostgreSQL (candles) → Backtesting Engine → Metrics → ML Service (risk score) → Dashboard + Audit Events
+CSV → Backend (import) → PostgreSQL (candles) → Backtesting Engine → Metrics → ML Service (risk, regime, anomaly) → Workbench + Audit Events
 
 ## Key Concepts
 
@@ -218,6 +222,8 @@ CSV → Backend (import) → PostgreSQL (candles) → Backtesting Engine → Met
 - **paper_sessions**: Simulated trading sessions
 - **paper_orders**: Orders within sessions
 - **audit_events**: Append-only log of important actions
+- **regime_runs** / **regime_predictions** / **regime_evidence_snapshots**: Persisted regime inference
+- **assistant_sessions** / **assistant_messages** / **assistant_actions**: Reviewable assistant flow
 
 ### Migrations
 - Flyway handles schema versioning
@@ -353,6 +359,8 @@ python3 scripts/smoke_demo.py
 - No authentication or multi-user model
 - No cloud deployment or Kubernetes
 - Dashboard is local, unauthenticated
+- Product waves are complete; do not add strategies, panels, or assistant capabilities unless the user asks
+- `HIGH_VOLATILITY` still has no support on BTC or ETH 1h 2022-2024 under the existing rule threshold
 
 ## Verification Checklist
 
