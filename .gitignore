@@ -1,6 +1,7 @@
 # Local tool state
 .omc/
 .omx/
+.grok/
 
 # Environment and secrets
 .env
