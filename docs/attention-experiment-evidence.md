@@ -46,6 +46,33 @@ The `TRENDING_DOWN` cohort was followed by the largest moves and highest realize
 
 This review adds a market outcome that is independent of the training-label calculation, but it is not independent regime ground truth. It does not establish profitability, causal predictive power, investment suitability, or deployment readiness. The missing `HIGH_VOLATILITY` support also remains unresolved.
 
+## September 9, 2026 ETH Coverage Check
+
+This check repeats the dataset-readiness gate on a second market without changing the rule. `HIGH_VOLATILITY` still requires `volatilityPercent >= 4.00`. No model was trained.
+
+Dataset:
+
+- Provider: Coinbase Exchange public candles endpoint.
+- Product and interval: `ETH-USD`, one-hour candles, January 1, 2022 through December 31, 2024.
+- CSV SHA-256: `1b2964ff3c616939bfd9d871d4e813fe1b44529da8916f26d4cc85a0848a4bb3`.
+- Candles: 26,301, with one reported three-hour source gap that was not filled.
+- Sequence windows: 26,282 using sequence length 20.
+- Split: 15,770 train, 5,256 validation, and 5,256 untouched test windows.
+
+| Split | `SIDEWAYS` | `TRENDING_UP` | `TRENDING_DOWN` | `HIGH_VOLATILITY` |
+| --- | ---: | ---: | ---: | ---: |
+| Train | 11,983 | 1,889 | 1,898 | 0 |
+| Validation | 4,178 | 666 | 412 | 0 |
+| Test | 4,107 | 590 | 559 | 0 |
+
+The readiness check passed because the three observed labels have support in every partition. ETH has more trend windows than the BTC range, but `HIGH_VOLATILITY` is still absent. Switching market on this 1h 2022–2024 window did not create the missing class. The threshold was left unchanged.
+
+```bash
+cd ml-service
+../.venv/bin/python scripts/inspect_market_regime_dataset.py \
+  --csv-path ../data/generated/coinbase-eth-usd-1h-2022-2024.csv
+```
+
 ## Reproduction
 
 From `ml-service/` with the optional Torch requirements installed:

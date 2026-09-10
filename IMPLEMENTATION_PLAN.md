@@ -219,7 +219,7 @@ Portfolio hardening wave results:
 
 Next evidence target:
 
-- Improve weak-label coverage and repeat the independent forward-outcome review across another time range or market. The current three-year range contains no `HIGH_VOLATILITY` labels under the existing rule threshold.
+- Find a range where the unchanged `volatilityPercent >= 4.00` rule actually emits `HIGH_VOLATILITY`, then repeat the independent forward-outcome review. ETH-USD 1h 2022-2024 was inspected on 2026-09-09 and also produced zero `HIGH_VOLATILITY` windows. Do not lower the threshold to invent the class. A more violent period or finer granularity is the next candidate.
 
 Current recent commits:
 
